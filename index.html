@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>كتاب سَكينة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Noto+Naskh+Arabic:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap">
+<style>
+/* Layout: a moonlit lake at night. One deliberate dark world: stars above, still water below,
+   a page that breathes, and a path the reader walks from noise to return. RTL throughout. */
+:root{
+  --night:#091214;
+  --deep:#0E1B1E;
+  --mist:#152628;
+  --moon:#EDE6D6;
+  --muted:#9DAEA8;
+  --faint:#6E817B;
+  --line:rgba(237,230,214,.12);
+  --amber:#E0AE6A;
+  --amber-glow:rgba(224,174,106,.18);
+  --amber-ink:#1A1208;
+  --paper:#F3EDE0;
+  --ink:#1D2622;
+  --ink-muted:#5E6A64;
+  --f-display:"Aref Ruqaa","Amiri",serif;
+  --f-read:"Amiri","Noto Naskh Arabic",serif;
+  --f-body:"Noto Naskh Arabic","Amiri","Geeza Pro",serif;
+  --f-ui:"IBM Plex Sans Arabic","Segoe UI","Tahoma",system-ui,sans-serif;
+  --ease:cubic-bezier(.22,.8,.24,1);
+  --slow:cubic-bezier(.45,0,.55,1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--night)}
+body{background:var(--night);color:var(--moon);font-family:var(--f-body);font-size:1.125rem;line-height:2;direction:rtl;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--night)}
+.wrap{max-width:1100px;margin-inline:auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+h1,h2,h3{text-wrap:balance;margin:0;font-weight:700}
+p{margin:0}
+a{color:var(--amber)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:4px;border-radius:6px}
+.eyebrow{font-family:var(--f-ui);font-size:.82rem;font-weight:500;color:var(--amber);letter-spacing:.04em;display:inline-flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:22px;height:1px;background:currentColor;opacity:.7}
+.display{font-family:var(--f-display);font-size:clamp(2.2rem,5.4vw,3.4rem);line-height:1.35}
+section{position:relative;padding-block:clamp(80px,12vw,150px)}
+
+/* ambient layers */
+#sky{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.glow{position:fixed;width:70vmax;height:70vmax;left:50%;top:-30vmax;transform:translateX(-50%);border-radius:50%;
+  background:radial-gradient(closest-side,rgba(237,230,214,.10),rgba(237,230,214,.03) 45%,transparent 70%);z-index:0;pointer-events:none;animation:breathe 10s var(--slow) infinite}
+@keyframes breathe{0%,100%{transform:translateX(-50%) scale(.92);opacity:.75}40%{transform:translateX(-50%) scale(1.06);opacity:1}}
+main,header.top,footer{position:relative;z-index:1}
+
+/* nav */
+.nav-shell{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;transition:background .6s var(--ease),backdrop-filter .6s}
+.nav-shell.scrolled{background:rgba(9,18,20,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.nav{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-block:18px;font-family:var(--f-ui);font-size:.92rem}
+.brand{font-family:var(--f-display);font-size:1.7rem;color:var(--moon);text-decoration:none;display:flex;align-items:center;gap:12px}
+.moon-dot{width:10px;height:10px;border-radius:50%;background:var(--moon);box-shadow:0 0 14px 3px rgba(237,230,214,.45);animation:dot 10s var(--slow) infinite}
+@keyframes dot{0%,100%{box-shadow:0 0 8px 1px rgba(237,230,214,.3)}40%{box-shadow:0 0 22px 6px rgba(237,230,214,.55)}}
+.nav ul{display:flex;gap:28px;list-style:none;margin:0;padding:0;align-items:center}
+.nav ul a{color:var(--muted);text-decoration:none;transition:color .4s}
+.nav ul a:hover,.nav ul a.active{color:var(--moon)}
+@media (max-width:760px){.nav ul li:not(.keep){display:none}}
+
+/* buttons */
+.btn{position:relative;overflow:hidden;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:15px 30px;border-radius:999px;font-family:var(--f-ui);font-weight:500;font-size:1rem;text-decoration:none;border:1px solid transparent;cursor:pointer;transition:transform .5s var(--ease),box-shadow .5s var(--ease),background .4s,border-color .4s,color .4s}
+.btn-moon{background:var(--moon);color:var(--night);box-shadow:0 0 0 0 rgba(237,230,214,0)}
+.btn-moon:hover{transform:translateY(-2px);box-shadow:0 0 40px -4px rgba(237,230,214,.45)}
+.btn-ghost{background:transparent;color:var(--moon);border-color:var(--line)}
+.btn-ghost:hover{border-color:rgba(237,230,214,.4)}
+.btn-amber{background:var(--amber);color:var(--amber-ink)}
+.btn-amber:hover{transform:translateY(-2px);box-shadow:0 0 40px -6px var(--amber)}
+.btn .arrow{transition:transform .5s var(--ease)}
+.btn:hover .arrow{transform:translateX(-5px)}
+.nav .btn{padding:9px 20px;font-size:.88rem}
+.drop{position:absolute;border-radius:50%;pointer-events:none;z-index:-1;background:currentColor;opacity:.22;transform:scale(0);animation:drop .9s var(--ease) forwards}
+@keyframes drop{to{transform:scale(1);opacity:0}}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:clamp(24px,5vw,64px);align-items:center;padding-block:clamp(28px,6vw,72px) clamp(40px,7vw,80px)}
+.hero-text{display:flex;flex-direction:column;gap:26px;min-width:0}
+.hero h1{font-family:var(--f-display);font-size:clamp(4.2rem,13vw,8.4rem);line-height:1;font-weight:700;
+  background:linear-gradient(180deg,#F7F1E4 30%,#B9C6BF);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 30px rgba(237,230,214,.15))}
+.hero .sub{font-family:var(--f-read);font-size:clamp(1.3rem,2.4vw,1.6rem);color:var(--muted);line-height:1.8;max-width:30ch}
+.cta-row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.note{font-family:var(--f-ui);font-size:.86rem;color:var(--faint)}
+.note b{color:var(--moon);font-weight:500}
+@media (max-width:860px){.hero{grid-template-columns:1fr;text-align:center}.hero-text{align-items:center}.hero .sub{margin-inline:auto}.book-col{order:-1}}
+
+.settle{animation:settle 1.8s var(--ease) both;animation-delay:calc(var(--i,0)*160ms + 200ms)}
+@keyframes settle{from{opacity:0;filter:blur(10px);transform:translateY(16px)}to{opacity:1;filter:none;transform:none}}
+
+/* 3D book column */
+.book-col{display:flex;flex-direction:column;align-items:center;min-width:0}
+.book3d{position:relative;width:min(100%,440px);max-width:100%;aspect-ratio:4/5;touch-action:pan-y;cursor:grab}
+.book3d.dragging{cursor:grabbing}
+.book3d canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
+.book3d::after{content:"";position:absolute;left:20%;right:20%;bottom:5%;height:6%;border-radius:50%;background:radial-gradient(closest-side,rgba(224,174,106,.22),transparent);filter:blur(8px);animation:pool 7s ease-in-out infinite}
+@keyframes pool{50%{transform:scale(.85);opacity:.6}}
+.hint{font-family:var(--f-ui);font-size:.8rem;color:var(--faint);transition:opacity .6s}
+.flat-cover{display:none;width:min(80%,300px);aspect-ratio:2/3;border-radius:4px 12px 12px 4px;background:radial-gradient(120% 80% at 50% 62%,#244640,#0B1614);box-shadow:0 30px 60px -20px #000;color:var(--moon);flex-direction:column;align-items:center;justify-content:center;gap:8px;font-family:var(--f-display);font-size:3.6rem}
+.no3d .flat-cover{display:flex}
+.no3d .book3d{display:none}
+
+/* horizon: still water line under the hero */
+.horizon{position:relative;height:120px;margin-top:-20px;overflow:hidden}
+.horizon canvas{width:100%;height:100%;display:block}
+
+/* interlude: words that breathe */
+.interlude{text-align:center;padding-block:clamp(60px,10vw,120px)}
+.breath-words{font-family:var(--f-display);font-size:clamp(2.4rem,7vw,4.6rem);line-height:1.4;color:var(--moon);display:inline-block;animation:words 10s var(--slow) infinite}
+@keyframes words{0%,100%{letter-spacing:0;opacity:.7;transform:scale(.97)}40%{letter-spacing:.06em;opacity:1;transform:scale(1.03)}}
+.interlude p{font-family:var(--f-ui);font-size:.9rem;color:var(--faint);margin-top:14px}
+
+/* reveal on scroll (content stays visible where unsupported) */
+@supports (animation-timeline: view()){
+  .reveal{animation:reveal linear both;animation-timeline:view();animation-range:entry 0% cover 30%}
+  @keyframes reveal{from{opacity:.1;transform:translateY(40px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+}
+
+/* who: four quiet lines */
+.who{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(32px,6vw,90px)}
+.who-head{display:flex;flex-direction:column;gap:16px;position:sticky;top:120px;align-self:start}
+.who-head p{color:var(--muted);font-family:var(--f-read);font-size:1.25rem;max-width:30ch}
+.lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.lines li{padding-block:28px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.lines li:first-child{padding-top:0}
+.lines b{font-family:var(--f-read);font-size:1.55rem;font-weight:700;color:var(--moon)}
+.lines span{color:var(--muted)}
+@media (max-width:860px){.who{grid-template-columns:1fr}.who-head{position:static}}
+
+/* breathing moon */
+.breathe{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(32px,6vw,90px);align-items:center}
+.breathe-text{display:flex;flex-direction:column;gap:18px;min-width:0}
+.breathe-text p{color:var(--muted);max-width:42ch}
+.moon-wrap{position:relative;width:min(100%,420px);max-width:100%;aspect-ratio:1;margin-inline:auto;display:grid;place-items:center}
+.halo{position:absolute;inset:0;border-radius:50%;border:1px solid var(--line)}
+.halo:nth-child(2){inset:14%}
+.moon{position:absolute;inset:30%;border-radius:50%;
+  background:radial-gradient(circle at 38% 34%,#FBF6EA,#E6DCC6 45%,#BFB49E 100%);
+  box-shadow:0 0 60px 10px rgba(237,230,214,.18),0 0 140px 30px rgba(237,230,214,.08);
+  transform:scale(var(--s,1));transition:transform 4s var(--slow),box-shadow 4s var(--slow)}
+.moon.full{box-shadow:0 0 90px 20px rgba(237,230,214,.3),0 0 200px 60px rgba(237,230,214,.12)}
+.moon-label{position:relative;display:flex;flex-direction:column;align-items:center;color:var(--night);pointer-events:none}
+.moon-label b{font-family:var(--f-display);font-size:2rem;line-height:1.3}
+.moon-label span{font-family:var(--f-ui);font-size:1.9rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.cycles{font-family:var(--f-ui);font-size:.88rem;color:var(--faint)}
+@media (max-width:860px){.breathe{grid-template-columns:1fr}}
+
+/* the path: twelve stones from noise to return */
+.path-head{display:flex;flex-direction:column;gap:14px;max-width:46ch;margin-bottom:56px}
+.path-head p{color:var(--muted)}
+.path{position:relative;list-style:none;margin:0;padding:0}
+.path svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.path .trail{fill:none;stroke:var(--line);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.path .walked{fill:none;stroke:var(--amber);stroke-width:2;vector-effect:non-scaling-stroke;stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--walk,0));filter:drop-shadow(0 0 6px rgba(224,174,106,.6))}
+.stone{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:120px;align-items:center}
+.stone .card{max-width:340px;display:flex;flex-direction:column;gap:4px;padding:18px 22px;border-radius:16px;transition:background .6s var(--ease),transform .6s var(--ease)}
+.stone .card:hover{background:rgba(237,230,214,.04);transform:translateY(-3px)}
+.stone:nth-of-type(odd) .card{grid-column:1;justify-self:end;text-align:start}
+.stone:nth-of-type(even) .card{grid-column:2;justify-self:start}
+.stone .num{font-family:var(--f-ui);font-size:.78rem;color:var(--amber);letter-spacing:.05em}
+.stone h3{font-family:var(--f-display);font-size:1.7rem;line-height:1.3}
+.stone p{color:var(--muted);font-size:1rem;line-height:1.8}
+.stone .free{font-family:var(--f-ui);font-size:.7rem;color:var(--amber-ink);background:var(--amber);padding:1px 10px;border-radius:999px;margin-inline-start:8px;vertical-align:middle;font-weight:600}
+.stone::before{content:"";position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--night);border:1.5px solid var(--faint);transition:background .6s,border-color .6s,box-shadow .6s;z-index:1}
+.stone.lit::before{background:var(--amber);border-color:var(--amber);box-shadow:0 0 14px 2px rgba(224,174,106,.6)}
+@media (max-width:760px){
+  .path svg{display:none}
+  .path{border-inline-start:1px solid var(--line);padding-inline-start:4px}
+  .stone{grid-template-columns:1fr;min-height:0}
+  .stone:nth-of-type(n) .card{grid-column:1;justify-self:start;max-width:none}
+  .stone::before{left:auto;right:-7px;top:34px;margin:0}
+}
+
+/* reader: paper floating on the lake */
+.reader-head{display:flex;flex-direction:column;gap:16px;align-items:flex-start;margin-bottom:32px}
+.tabs{position:relative;display:inline-flex;gap:4px;padding:5px;border:1px solid var(--line);border-radius:999px;font-family:var(--f-ui);max-width:100%;overflow-x:auto}
+.tab-ind{position:absolute;top:5px;bottom:5px;border-radius:999px;background:var(--moon);transition:right .6s var(--ease),width .6s var(--ease)}
+.tab{position:relative;z-index:1;background:transparent;border:0;color:var(--muted);padding:8px 20px;border-radius:999px;font:inherit;font-size:.92rem;cursor:pointer;white-space:nowrap;transition:color .5s}
+.tab[aria-selected="true"]{color:var(--night)}
+.read-bar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 74px);height:2px;max-width:760px;margin:0 auto 16px;background:var(--line);border-radius:2px;overflow:hidden;z-index:5}
+.read-bar i{display:block;height:100%;background:var(--amber);transform-origin:right;transform:scaleX(0)}
+.paper{position:relative;max-width:760px;margin-inline:auto;background:var(--paper);color:var(--ink);border-radius:4px;padding:clamp(32px,7vw,84px) clamp(22px,7vw,88px);
+  box-shadow:0 50px 100px -40px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.04),0 0 120px -30px rgba(237,230,214,.18)}
+.paper article{display:flex;flex-direction:column;gap:1.1em;max-width:60ch;margin-inline:auto;font-family:var(--f-read);font-size:1.3rem;line-height:2.05}
+.paper article.enter{animation:pageIn .9s var(--ease) both}
+@keyframes pageIn{from{opacity:0;filter:blur(6px);transform:translateY(12px)}to{opacity:1;filter:none;transform:none}}
+.paper .ch-num{font-family:var(--f-ui);font-size:.82rem;color:#9A6128;text-align:center;letter-spacing:.04em}
+.paper h3{font-family:var(--f-display);font-size:clamp(2rem,4vw,2.6rem);text-align:center;line-height:1.3}
+.paper .lede{color:var(--ink-muted);text-align:center;font-size:1.35rem}
+.paper .lede::after{content:"";display:block;width:40px;height:1px;background:#9A6128;margin:22px auto 0}
+.paper .pull{font-family:var(--f-display);font-size:1.7rem;line-height:1.7;text-align:center;color:#9A6128;padding-block:.5em}
+.paper .practice{margin-top:.8em;padding:24px 26px;border-radius:10px;background:rgba(154,97,40,.07);display:flex;flex-direction:column;gap:.5em;font-size:1.15rem}
+.paper .practice h4{margin:0;font-family:var(--f-ui);font-size:.92rem;color:#9A6128;font-weight:600}
+.paper .practice ol{margin:0;padding-inline-start:1.3em;display:flex;flex-direction:column;gap:.35em}
+.paper .end{text-align:center;color:var(--ink-muted);letter-spacing:.5em}
+.paper .more{text-align:center;font-family:var(--f-ui);font-size:1rem;color:var(--ink-muted)}
+.paper .more a{color:#9A6128}
+
+/* quote interlude */
+.quote{text-align:center}
+.quote blockquote{margin:0 auto;max-width:22ch;font-family:var(--f-display);font-size:clamp(2rem,5.6vw,3.6rem);line-height:1.6;color:var(--moon)}
+.quote blockquote em{font-style:normal;color:var(--amber)}
+
+/* buy */
+.buy{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(32px,6vw,80px);align-items:center}
+.buy-text{display:flex;flex-direction:column;gap:18px;min-width:0}
+.buy-text p{color:var(--muted);max-width:44ch}
+.steps{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;counter-reset:s}
+.steps li{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;font-family:var(--f-ui);font-size:.8rem;color:var(--faint);line-height:1.5;position:relative}
+.steps li::before{counter-increment:s;content:counter(s,arabic-indic);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--night);color:var(--moon);font-size:.9rem;transition:all .6s var(--ease)}
+.steps li.done::before{background:var(--amber);border-color:var(--amber);color:var(--amber-ink);box-shadow:0 0 16px -2px var(--amber)}
+.steps li + li::after{content:"";position:absolute;top:16px;left:calc(50% + 22px);right:calc(-50% + 22px);height:1px;background:var(--line);z-index:-1}
+.offer{position:relative;padding:clamp(26px,4vw,40px);border-radius:24px;background:linear-gradient(180deg,rgba(237,230,214,.06),rgba(237,230,214,.02));border:1px solid var(--line);display:flex;flex-direction:column;gap:20px;font-family:var(--f-ui);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transform:perspective(900px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));transition:transform .6s var(--ease)}
+.offer.hovering{transition:transform .12s linear}
+.offer::before{content:"";position:absolute;inset:-1px;border-radius:24px;padding:1px;background:conic-gradient(from var(--a,0deg),transparent 0 72%,var(--amber) 86%,transparent);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:spin 8s linear infinite;pointer-events:none}
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes spin{to{--a:360deg}}
+.offer-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.offer-top b{font-size:1.2rem;font-weight:500;color:var(--moon)}
+.offer-top small{display:block;color:var(--faint);font-size:.88rem}
+.price{font-family:var(--f-display);font-size:3.8rem;line-height:1;color:var(--amber)}
+.offer ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.offer li{display:flex;gap:12px;align-items:center;font-size:.96rem;color:var(--muted)}
+.offer li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber);flex:none}
+.pay-form{display:flex;flex-direction:column;gap:10px}
+.pay-form label{font-size:.88rem;color:var(--muted)}
+.pay-form input{font:inherit;font-size:1rem;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:rgba(9,18,20,.6);color:var(--moon);width:100%;transition:border-color .4s,box-shadow .4s}
+.pay-form input::placeholder{color:var(--faint)}
+.pay-form input:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 4px var(--amber-glow)}
+.pay-err{color:#F2A49B;font-size:.86rem}
+.paypal{background:#FFC439;color:#111}
+.paypal:hover{transform:translateY(-2px);box-shadow:0 0 36px -6px #FFC439}
+.thanks{display:flex;flex-direction:column;gap:8px;padding:16px 18px;border-radius:14px;background:var(--amber-glow);font-size:.93rem;line-height:1.8;color:var(--moon)}
+.soon{font-size:.84rem;color:var(--faint);text-align:center}
+@media (max-width:860px){.buy{grid-template-columns:1fr}}
+
+/* faq */
+.faq-list{max-width:760px}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{cursor:pointer;font-family:var(--f-read);font-weight:700;font-size:1.35rem;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;padding-block:22px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"";width:12px;height:12px;border-left:1.5px solid var(--amber);border-bottom:1.5px solid var(--amber);transform:rotate(-45deg);transition:transform .6s var(--ease);flex:none}
+.faq details[open] summary::after{transform:rotate(135deg)}
+.faq details p{color:var(--muted);max-width:60ch;padding-bottom:22px;animation:settle .8s var(--ease) both}
+
+/* footer */
+footer{padding-block:clamp(80px,12vw,140px) 56px;text-align:center}
+footer .last{font-family:var(--f-display);font-size:clamp(2rem,5vw,3rem);line-height:1.5;margin-bottom:28px}
+footer small{display:block;font-family:var(--f-ui);font-size:.82rem;color:var(--faint);margin-top:40px}
+
+/* sound toggle */
+.sound{position:fixed;left:max(20px,env(safe-area-inset-left,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:55;display:flex;align-items:center;gap:10px;padding:10px 16px 10px 14px;border-radius:999px;border:1px solid var(--line);background:rgba(9,18,20,.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--muted);font-family:var(--f-ui);font-size:.84rem;cursor:pointer;transition:color .4s,border-color .4s}
+.sound:hover{color:var(--moon);border-color:rgba(237,230,214,.3)}
+.sound .bars{display:flex;gap:2px;align-items:center;height:14px}
+.sound .bars i{width:2px;height:4px;border-radius:2px;background:currentColor;transition:height .3s}
+.sound.on{color:var(--amber);border-color:rgba(224,174,106,.4)}
+.sound.on .bars i{animation:bar 1.4s var(--slow) infinite}
+.sound.on .bars i:nth-child(2){animation-delay:.2s}.sound.on .bars i:nth-child(3){animation-delay:.4s}.sound.on .bars i:nth-child(4){animation-delay:.6s}
+@keyframes bar{0%,100%{height:4px}50%{height:14px}}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+
+<canvas id="sky" aria-hidden="true"></canvas>
+<div class="glow" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="nav-shell" id="navShell">
+    <div class="wrap">
+      <nav class="nav" aria-label="القائمة">
+        <a class="brand" href="#top"><span class="moon-dot"></span>سَكينة</a>
+        <ul>
+          <li><a href="#who">لمن الكتاب</a></li>
+          <li><a href="#breathe">تنفّس</a></li>
+          <li><a href="#path">الطريق</a></li>
+          <li><a href="#read">اقرأ مجاناً</a></li>
+          <li class="keep"><a class="btn btn-moon" href="#buy">اقتنِ الكتاب</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <div class="wrap hero" id="top">
+    <div class="hero-text">
+      <span class="eyebrow settle" style="--i:0">كتاب في السلام الداخلي</span>
+      <h1 class="settle" style="--i:1">سَكينة</h1>
+      <p class="sub settle" style="--i:3">رحلة العودة إلى الداخل. لمن تعب من الركض، ويريد أن يعرف أين يسكن الهدوء الذي يبحث عنه.</p>
+      <div class="cta-row settle" style="--i:4">
+        <a class="btn btn-moon" href="#buy">اقتنِ نسختك <span class="arrow">←</span></a>
+        <a class="btn btn-ghost" href="#read">اقرأ المقدمة مجاناً</a>
+      </div>
+      <span class="note settle" style="--i:5">نسخة رقمية · اثنا عشر باباً · <b>٥$</b></span>
+    </div>
+    <div class="book-col settle" style="--i:2">
+      <div class="book3d" id="book3d" role="img" aria-label="كتاب سكينة ثلاثي الأبعاد، اسحبه لتدويره"></div>
+      <div class="flat-cover" role="img" aria-label="غلاف كتاب سكينة">سَكينة</div>
+      <p class="hint" id="bookHint">اسحب الكتاب لتدوّره · المس الغلاف</p>
+    </div>
+  </div>
+  <div class="horizon" aria-hidden="true"><canvas id="water"></canvas></div>
+</header>
+
+<main>
+  <div class="interlude">
+    <div class="wrap">
+      <span class="breath-words">خذ نفَساً… واتركه يخرج ببطء</span>
+      <p>هذه الصفحة تتنفّس معك. لا تستعجل.</p>
+    </div>
+  </div>
+
+  <section id="who">
+    <div class="wrap who">
+      <div class="who-head reveal">
+        <span class="eyebrow">لمن هذا الكتاب</span>
+        <h2 class="display">لمن جرّب كل شيء، إلا الجلوس مع نفسه</h2>
+        <p>الكتاب لا يعدك بحياة بلا عواصف. يعلّمك أين تجد القاع الساكن تحت الموج.</p>
+      </div>
+      <ul class="lines">
+        <li class="reveal"><b>لمن يستيقظ متعباً قبل أن يبدأ يومه</b><span>لمن تدور في رأسه المحادثات القديمة، والاحتمالات التي لم تحدث.</span></li>
+        <li class="reveal"><b>لمن يبدو هادئاً من الخارج</b><span>يبتسم ويعمل ويجامل، وفي الداخل بحر لا يهدأ ولا يعرف أحد عنه.</span></li>
+        <li class="reveal"><b>لمن لم يجد نفسه في كتب الإيجابية</b><span>لا يطلب منك أن تكون سعيداً طوال الوقت. يطلب منك أن تكون صادقاً.</span></li>
+        <li class="reveal"><b>لمن يريد شيئاً يعيشه، لا يقرؤه فقط</b><span>كل باب ينتهي بتمرين قصير تستطيع أن تفعله اليوم.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="breathe">
+    <div class="wrap breathe">
+      <div class="breathe-text reveal">
+        <span class="eyebrow">تمرين من الباب الثالث</span>
+        <h2 class="display">ثلاثة أنفاس تحت القمر</h2>
+        <p>شهيق والقمر يكبر أربع ثوانٍ، وزفير وهو يصغر ست ثوانٍ. الزفير الأطول يخبر جسدك أنه آمن، فيهدأ القلب.</p>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-moon" id="breatheBtn" type="button">ابدأ التنفّس</button>
+          <span class="cycles" id="cycles"></span>
+        </div>
+      </div>
+      <div class="moon-wrap reveal" aria-live="polite">
+        <div class="halo"></div><div class="halo"></div>
+        <div class="moon" id="moon"></div>
+        <div class="moon-label"><b id="moonWord">مستعد؟</b><span id="moonCount"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="path">
+    <div class="wrap">
+      <div class="path-head reveal">
+        <span class="eyebrow">الفهرس</span>
+        <h2 class="display">الطريق من الضجيج إلى العودة</h2>
+        <p>اثنا عشر باباً مرتّبة كطريق. كلما نزلت في الصفحة، أضاء الطريق خطوة.</p>
+      </div>
+      <ol class="path" id="pathList">
+        <svg viewBox="0 0 100 1200" preserveAspectRatio="none" aria-hidden="true">
+          <path class="trail" d="M50,0 L50,50 C68,75 68,125 50,150 C32,175 32,225 50,250 C68,275 68,325 50,350 C32,375 32,425 50,450 C68,475 68,525 50,550 C32,575 32,625 50,650 C68,675 68,725 50,750 C32,775 32,825 50,850 C68,875 68,925 50,950 C32,975 32,1025 50,1050 C68,1075 68,1125 50,1150 L50,1200"/>
+          <path class="walked" id="walked" pathLength="1" d="M50,0 L50,50 C68,75 68,125 50,150 C32,175 32,225 50,250 C68,275 68,325 50,350 C32,375 32,425 50,450 C68,475 68,525 50,550 C32,575 32,625 50,650 C68,675 68,725 50,750 C32,775 32,825 50,850 C68,875 68,925 50,950 C32,975 32,1025 50,1050 C68,1075 68,1125 50,1150 L50,1200"/>
+        </svg>
+        <li class="stone"><div class="card"><span class="num">الباب ١</span><h3>الضجيج <span class="free">مجاناً</span></h3><p>من أين يأتي كل هذا الصخب، ولماذا لا يسكت حين نهرب منه.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ٢</span><h3>الشاهد <span class="free">مجاناً</span></h3><p>أنت لست أفكارك. أنت السماء التي تمرّ فيها الغيوم.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ٣</span><h3>النَّفَس</h3><p>الجسر الوحيد بين الجسد والروح، وهو معك في كل لحظة.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ٤</span><h3>القبول</h3><p>أن تكفّ عن مصارعة الموج، دون أن تستسلم للغرق.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ٥</span><h3>الجرح</h3><p>ما لم يُشفَ يتكرر. كيف تنظر إلى الألم القديم دون أن تعيشه من جديد.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ٦</span><h3>الصفح</h3><p>أن تفتح باب السجن، ثم تكتشف أن السجين كان أنت.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ٧</span><h3>التعلّق</h3><p>كل ما تقبض عليه بقوة يقبض عليك. فن أن تحب بيد مفتوحة.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ٨</span><h3>الخلوة</h3><p>الفرق بين أن تكون وحيداً وأن تكون مع نفسك.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ٩</span><h3>الآن</h3><p>الماضي ذكرى والمستقبل خيال. العنوان الوحيد للحياة هو هذه اللحظة.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ١٠</span><h3>الامتنان</h3><p>العين التي ترى ما لديك قبل أن تحصي ما ينقصك.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ١١</span><h3>الفناء</h3><p>الموت معلّم صامت، يعلّمنا ما يستحق أن نعيش له.</p></div></li>
+        <li class="stone"><div class="card"><span class="num">الباب ١٢</span><h3>العودة</h3><p>السلام ليس مكاناً تصل إليه. هو المكان الذي خرجت منه.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="read">
+    <div class="wrap">
+      <div class="reader-head reveal">
+        <span class="eyebrow">اقرأ مجاناً</span>
+        <h2 class="display">ابدأ الرحلة من هنا</h2>
+        <div class="tabs" role="tablist" aria-label="فصول مجانية">
+          <span class="tab-ind" id="tabInd" aria-hidden="true"></span>
+          <button class="tab" role="tab" id="tab-intro" aria-controls="ch-intro" aria-selected="true">المقدمة</button>
+          <button class="tab" role="tab" id="tab-1" aria-controls="ch-1" aria-selected="false">الباب الأول</button>
+          <button class="tab" role="tab" id="tab-2" aria-controls="ch-2" aria-selected="false">الباب الثاني</button>
+        </div>
+      </div>
+      <div class="read-bar" aria-hidden="true"><i id="readBar"></i></div>
+      <div class="paper" id="paper">
+        <article id="ch-intro" role="tabpanel" aria-labelledby="tab-intro">
+          <span class="ch-num">مقدمة</span>
+          <h3>رسالة إلى من أتعبه الطريق</h3>
+          <p class="lede">قبل أن تبدأ، توقّف لحظة. خذ نفَساً واحداً بطيئاً. هذا هو الكتاب كله، والباقي شرح.</p>
+          <p>أكتب هذه الصفحات لك أنت، الذي فتح هذا الكتاب لأن شيئاً في داخله لم يعد يحتمل. ربما لم يحدث لك شيء كبير. لا كارثة ولا فاجعة. فقط تعبٌ يتراكم بصمت، يوماً بعد يوم، حتى صار الهدوء ذكرى بعيدة لا تعرف متى فقدتها.</p>
+          <p>نحن جيل يعرف كل شيء عن العالم، ولا يعرف شيئاً تقريباً عن داخله. نعرف أخبار مدن لم نزرها، وأسماء أشخاص لن نلتقيهم، وآراء الجميع في كل شيء. لكن حين نجلس وحدنا في غرفة صامتة، دون هاتف ولا شاشة، نشعر بشيء يشبه الذعر. كأن الصمت عدو. كأن البقاء مع أنفسنا عقوبة.</p>
+          <p>لماذا يخيفنا الصمت إلى هذا الحد؟ لأن الصمت مرآة. وفي المرآة نرى ما هربنا منه طويلاً: الحزن الذي لم نسمح له أن يُبكى، والغضب الذي ابتلعناه كي نبدو لطفاء، والسؤال الذي نؤجله منذ سنوات: هل هذه هي الحياة التي أريدها فعلاً؟</p>
+          <p class="pull">السلام الداخلي ليس غياب العاصفة.<br>هو أن تعرف أين تقف حين تهبّ.</p>
+          <p>هذا الكتاب لن يعطيك وصفة سحرية. لن يقول لك فكّر بإيجابية وكل شيء سيكون بخير، لأن هذا ليس صحيحاً، وأنت تعرف أنه ليس صحيحاً. الأشياء لن تكون دائماً بخير. سيمرض من نحب، وسنخسر أشياء، وسنُخذَل، وسنَخذُل. السؤال ليس كيف نمنع هذا. السؤال هو: كيف نبقى أحياء من الداخل ونحن نعبر كل هذا؟</p>
+          <p>تعلّمت معظم ما في هذه الصفحات بالطريقة الصعبة. في ليالٍ لم أنم فيها، وفي صباحات استيقظت فيها ولا أعرف لماذا أنا حزين. وتعلّمته من حكماء عاشوا قبلنا بقرون، كتبوا عن النفس وأحوالها بعمق ما زال يدهشني. قال أحدهم: «من عرف نفسه فقد عرف ربّه». وأنا أفهمها اليوم هكذا: الطريق إلى كل ما هو عظيم يبدأ من الداخل، لا من الخارج.</p>
+          <p>اقرأ هذا الكتاب ببطء. لا تقرأه لتنتهي منه. اقرأ باباً واحداً، ثم أغلق الكتاب وعِش معه يوماً أو يومين. افعل التمرين في آخره ولو مرة واحدة. الأفكار التي تُقرأ ولا تُعاش تبقى حبراً على ورق. والأفكار التي تُعاش تصبح جزءاً منك.</p>
+          <p>لست مكسوراً. أنت فقط متعب. والتعب لا يحتاج إلى إصلاح. يحتاج إلى راحة، وإلى عودة.</p>
+          <p>فلنبدأ.</p>
+          <p class="end">· · ·</p>
+        </article>
+
+        <article id="ch-1" role="tabpanel" aria-labelledby="tab-1" hidden>
+          <span class="ch-num">الباب الأول</span>
+          <h3>الضجيج</h3>
+          <p class="lede">من أين يأتي كل هذا الصخب؟</p>
+          <p>جرّب هذا الآن: أغمض عينيك عشر ثوانٍ وحاول ألا تفكر في شيء.</p>
+          <p>لم تستطع، أليس كذلك؟ قبل أن تصل إلى الثانية الخامسة، جاءتك فكرة عن شيء نسيت أن تفعله، ثم تذكرت كلمة قالها لك أحدهم البارحة، ثم سألت نفسك لماذا تفعل هذا التمرين أصلاً. هذا هو الضجيج. وهو لم يبدأ حين أغمضت عينيك. كان هناك طوال الوقت، لكنك لم تكن تسمعه لأنك كنت مشغولاً.</p>
+          <p>تمرّ في ذهن الإنسان آلاف الأفكار كل يوم، وأغلبها مكرّر: الأفكار نفسها، المخاوف نفسها، الحوارات المتخيّلة نفسها، تدور كأسطوانة لا تتوقف. ومعظمها لا يتعلق بما يحدث الآن. يتعلق بما حدث ولن يتغير، أو بما قد يحدث ولن يحدث غالباً.</p>
+          <p>العقل ليس عدوك. العقل أداة رائعة، صُمّمت لتحميك. منذ آلاف السنين كان أجدادنا يعيشون بين الوحوش والمجاعات، وكان العقل الذي يتوقع الخطر ويتذكر الأذى هو العقل الذي ينجو. ورثنا هذا العقل نفسه، لكننا نعيش في عالم مختلف. لم يعد هناك نمر خلف الشجرة، فصار العقل يخترع النمور: رسالة لم يُرَدّ عليها، نظرة من زميل، رقم في حساب البنك، صورة لحياة شخص آخر تبدو أجمل من حياتك.</p>
+          <p class="pull">العقل الذي لا يجد خطراً يصنعه.<br>والقلب الذي لا يجد راحة ينساها.</p>
+          <p>ثم جاء العالم الحديث وزاد الطين بلّة. صرنا نحمل في جيوبنا آلة مصمّمة بعناية كي لا نتركها أبداً. كل إشعار يَعِد بشيء، وكل تمريرة للشاشة تبحث عن شيء لا نعرف ما هو. نملأ كل فراغ: في الطابور، في المصعد، قبل النوم. لم نعد نترك لأنفسنا لحظة واحدة فارغة. وفي اللحظات الفارغة تحديداً كانت النفس ترتاح وتهضم ما مرّ بها، كما يرتاح البحر بين موجتين.</p>
+          <p>لكن هناك ضجيج أعمق من الهاتف وأقدم منه. ضجيج الأصوات التي سكنتنا ونحن صغار. صوت يقول: لست كافياً. وصوت يقول: يجب أن تُرضي الجميع. وصوت يقول: إن ارتحت فأنت كسول، وإن فرحت فسيحدث شيء سيئ. هذه الأصوات ليست صوتك. هي أصداء. جاءت من أب متعب، أو أم خائفة، أو معلّم قاسٍ، أو مجتمع لا يرحم. حملتها معك سنوات حتى ظننت أنها أنت.</p>
+          <p>الخطوة الأولى نحو السكينة ليست أن تُسكت هذا الضجيج. لا أحد يستطيع أن يُسكت البحر بالصراخ عليه. الخطوة الأولى أبسط من ذلك بكثير، وأصعب: أن تسمعه. أن تنتبه إليه. أن تقول لنفسك بهدوء: «آه، هذا هو الضجيج مرة أخرى».</p>
+          <p>حين تسمّي الشيء، تخرج قليلاً منه. حين تقول «أنا أشعر بالقلق»، أنت لم تعد القلق نفسه. أنت من يلاحظ القلق. وهذه المسافة الصغيرة، مسافة شعرة بينك وبين أفكارك، هي الباب الذي سنعبر منه في الباب القادم.</p>
+          <p>لا تحاول أن تُصلح شيئاً هذا الأسبوع. فقط استمع. كمن يجلس على شاطئ ويسمع الموج دون أن يطلب منه أن يتوقف.</p>
+          <div class="practice">
+            <h4>تمرين الباب الأول: دفتر الضجيج</h4>
+            <ol>
+              <li>اختر وقتاً ثابتاً كل مساء، عشر دقائق فقط.</li>
+              <li>اكتب كل الأفكار التي تدور في رأسك كما هي، دون ترتيب ولا تصحيح ولا حكم.</li>
+              <li>في نهاية الأسبوع، اقرأ ما كتبت، وضع خطاً تحت الأفكار التي تكررت أكثر من مرة.</li>
+              <li>اسأل نفسك عن كل فكرة متكررة: صوت من هذا؟ متى سمعته أول مرة؟</li>
+            </ol>
+          </div>
+          <p class="end">· · ·</p>
+        </article>
+
+        <article id="ch-2" role="tabpanel" aria-labelledby="tab-2" hidden>
+          <span class="ch-num">الباب الثاني</span>
+          <h3>الشاهد</h3>
+          <p class="lede">أنت لست أفكارك. أنت السماء التي تمرّ فيها الغيوم.</p>
+          <p>انظر إلى السماء في يوم غائم. الغيوم تأتي وتذهب. بعضها أبيض خفيف، وبعضها رمادي ثقيل يحمل المطر، وبعضها أسود يحمل الرعد. لكن هل رأيت يوماً غيمة تؤذي السماء؟ هل تلطّخت السماء بغيمة مرّت فيها؟</p>
+          <p>السماء تبقى سماء. واسعة، صافية خلف كل شيء، حتى في أشد العواصف. والطيار الذي يخترق الغيوم يعرف هذا جيداً: فوق الغيوم، دائماً، شمس.</p>
+          <p>هذه هي الحقيقة التي يدور حولها هذا الكتاب كله: في داخلك مكان لا تصل إليه العواصف. ليس لأنك قوي، ولا لأنك محظوظ، بل لأن هذا المكان هو أنت في جوهرك. والقلق والحزن والغضب والخوف غيوم. حقيقية، ومؤلمة أحياناً، لكنها ليست أنت.</p>
+          <p class="pull">الفكرة التي تراقبها<br>لا تستطيع أن تكون أنت.</p>
+          <p>في الباب الأول تعلّمت أن تسمع الضجيج. الآن سنسأل سؤالاً أعمق: من الذي يسمع؟</p>
+          <p>حين تقول «أنا حزين»، هناك حزن، وهناك من يعرف أن هناك حزناً. حين تلاحظ أن فكرة قلق مرّت في رأسك، هناك فكرة، وهناك من لاحظها. هذا الذي يلاحظ، هذا الشاهد الصامت خلف كل التجارب، هو ما سمّاه الحكماء بأسماء كثيرة: القلب، والسرّ، والروح، والذات الحقيقية. لا يهمّ الاسم. المهم أن تتعرّف إليه.</p>
+          <p>تخيّل أنك تجلس في سينما وتشاهد فيلماً مؤثراً. تبكي حين يموت البطل، ويخفق قلبك حين يطارده الأشرار. أنت داخل القصة تماماً. ثم فجأة تُضاء الأنوار، وتتذكر: أنا في صالة سينما. هذه شاشة. أنا هنا، آمن، في كرسيّي. الفيلم لم يتوقف، والمشاعر لم تختفِ، لكن شيئاً تغيّر. صرت تعرف أين أنت.</p>
+          <p>معظمنا يعيش حياته كلها داخل الفيلم. نصدّق كل فكرة، ونتبع كل شعور كأنه أمر واجب التنفيذ. يقول العقل «أنت فاشل» فنشعر بالفشل. يقول «الناس يكرهونك» فننكمش. يقول «سيحدث شيء سيئ» فنعيش الكارثة قبل أن تحدث، وأحياناً نعيشها مئة مرة وهي لا تحدث أبداً.</p>
+          <p>أن تصبح شاهداً لا يعني أن تصبح بارداً أو بعيداً عن مشاعرك. على العكس. الشاهد هو الوحيد القادر على أن يشعر بكل شيء دون أن يغرق. يستطيع أن يحزن دون أن يصير الحزن، وأن يغضب دون أن يحرقه الغضب. كالأم التي تحتضن طفلها وهو يبكي: لا تبكي معه بنفس الهلع، ولا تتركه وحده. تبقى حاضرة وهادئة وواسعة، حتى يهدأ.</p>
+          <p>هكذا ستتعلم أن تحتضن نفسك.</p>
+          <p>في البداية سيبدو الأمر غريباً. ستنسى مراراً، وتجد نفسك وقد ابتلعتك فكرة وأخذتك بعيداً ساعة كاملة. لا بأس. اللحظة التي تنتبه فيها إلى أنك نسيت هي لحظة عودة. وكل عودة، مهما كانت صغيرة، تقوّي العضلة. لا أحد يتعلم السباحة من أول مرة. لكن الماء، بعد حين، يتعلّم أن يحملك.</p>
+          <div class="practice">
+            <h4>تمرين الباب الثاني: سمِّ الغيمة</h4>
+            <ol>
+              <li>حين تشعر بشعور قوي اليوم، توقّف ثلاث ثوانٍ.</li>
+              <li>بدل أن تقول «أنا قلق»، قل في سرّك: «هناك قلق يمرّ الآن».</li>
+              <li>لاحظ أين تشعر به في جسدك: في الصدر؟ في المعدة؟ في الحلق؟</li>
+              <li>خذ نفَساً بطيئاً، وتخيّل نفسك السماء، والقلق غيمة تعبر. لا تطردها. اتركها تمرّ.</li>
+            </ol>
+          </div>
+          <p class="end">· · ·</p>
+          <p class="more">عشرة أبواب أخرى تنتظرك في الكتاب الكامل. <a href="#buy">اقتنِ نسختك</a></p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <div class="interlude quote">
+    <div class="wrap reveal">
+      <blockquote>البحيرة لا تحتاج أن تفعل شيئاً كي تصفو. <em>يكفي أن تكفّ عن تحريكها.</em></blockquote>
+    </div>
+  </div>
+
+  <section id="buy">
+    <div class="wrap buy">
+      <div class="buy-text reveal">
+        <span class="eyebrow">اقتنِ نسختك</span>
+        <h2 class="display">الكتاب كاملاً، معك أينما ذهبت</h2>
+        <p>ادفع بأمان عبر PayPal أو البطاقة، ويصلك الكتاب على بريدك. اقرأه على الهاتف أو الحاسوب، أو اطبعه واحمله معك.</p>
+        <ol class="steps" id="steps" aria-label="خطوات الشراء">
+          <li class="done">اكتب بريدك</li>
+          <li>ادفع ٥$ عبر PayPal</li>
+          <li>يصلك الكتاب</li>
+        </ol>
+      </div>
+      <div class="offer reveal" id="offer">
+        <div class="offer-top">
+          <div><b>سَكينة · نسخة رقمية</b><small>ملف PDF · ٤٦ صفحة</small></div>
+          <div class="price">٥$</div>
+        </div>
+        <ul>
+          <li>المقدمة والأبواب الاثنا عشر كاملة</li>
+          <li>اثنا عشر تمريناً عملياً</li>
+          <li>يصلك على بريدك الإلكتروني</li>
+          <li>دفع آمن عبر PayPal</li>
+        </ul>
+        <form class="pay-form" id="payForm" novalidate>
+          <label for="buyerEmail">بريدك الإلكتروني (يصلك الكتاب عليه)</label>
+          <input id="buyerEmail" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com">
+          <p class="pay-err" id="payErr" hidden></p>
+          <button class="btn btn-amber" id="buyBtn" type="submit">متابعة إلى الدفع · ٥$ <span class="arrow">←</span></button>
+          <a class="btn paypal" id="payLink" href="#buy" target="_blank" rel="noopener" hidden>ادفع ٥$ عبر PayPal <span class="arrow">←</span></a>
+        </form>
+        <div class="thanks" id="thanks" hidden>
+          <b>أكمل الدفع في صفحة PayPal</b>
+          <span>بعد إتمام الدفع، يصلك الكتاب على <span id="thanksEmail" dir="ltr"></span>. إن لم يصلك خلال ٢٤ ساعة، تفقّد مجلد الرسائل غير المرغوبة.</span>
+        </div>
+        <p class="soon" id="buyNote">دفع آمن عبر PayPal · لا نرى بيانات بطاقتك</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq" id="faq">
+    <div class="wrap">
+      <h2 class="display reveal" style="margin-bottom:24px">أسئلة قبل أن تبدأ</h2>
+      <div class="faq-list">
+        <details class="reveal"><summary>هل الكتاب ديني؟</summary><p>الكتاب إنساني قبل كل شيء. يستلهم من حكمة المتصوفة والفلاسفة ومن علم النفس الحديث، ويحترم إيمان كل قارئ، ويصلح لأي إنسان يبحث عن هدوء حقيقي.</p></details>
+        <details class="reveal"><summary>هل أحتاج خبرة في التأمل؟</summary><p>لا. الكتاب يبدأ معك من الصفر. كل تمرين يأخذ بين ثلاث وعشر دقائق، ولا يحتاج إلا إلى مكان هادئ ونيّة صادقة.</p></details>
+        <details class="reveal"><summary>كم صفحة؟ وكم يستغرق؟</summary><p>اثنا عشر باباً في ستة وأربعين صفحة، مع تمرين عملي في آخر كل باب. أنصحك بقراءة باب واحد كل أسبوع، فتكون رحلة ثلاثة أشهر تعيشها لا تقرؤها فقط.</p></details>
+        <details class="reveal"><summary>كيف أدفع؟ وكيف يصلني الكتاب؟</summary><p>تدفع عبر PayPal أو البطاقة على صفحة PayPal الآمنة. لا يُطلب منك أي رقم بطاقة على هذه الصفحة. بعد الدفع يصلك الكتاب على بريدك.</p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="last reveal">أغلق الشاشة الآن.<br>وعُد إلى نفَسك.</p>
+    <a class="btn btn-ghost" href="#top">العودة إلى البداية</a>
+    <small>سَكينة · كتاب في السلام الداخلي · جميع الحقوق محفوظة للمؤلف</small>
+  </div>
+</footer>
+
+<button class="sound" id="sound" type="button" aria-pressed="false"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="soundLabel">صوت الموج</span></button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ===== إعدادات الدفع =====
+// بريد حساب PayPal الذي يستلم المال (مثال: "you@gmail.com")
+const PAYPAL_EMAIL = "";
+// أو رابط صفحة Payhip/Gumroad إن وُجد (يُستعمل بدل PayPal ويرسل الكتاب تلقائياً)
+const BUY_URL = "";
+const PRICE = 5, CURRENCY = "USD", ITEM = "Sakina - eBook (PDF)";
+
+const $ = id => document.getElementById(id);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ar = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
+
+// payment
+(function(){
+  const form = $('payForm'), email = $('buyerEmail'), err = $('payErr'), steps = [...$('steps').children];
+  const ready = !!(BUY_URL || PAYPAL_EMAIL);
+  if (BUY_URL) $('buyNote').textContent = 'دفع آمن · يصلك الكتاب فوراً بعد الدفع';
+  if (!ready) $('buyNote').textContent = 'الدفع يُفتح قريباً. تابعنا حتى لا يفوتك.';
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const v = email.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ err.textContent = 'اكتب بريداً صحيحاً حتى يصلك الكتاب عليه، مثل name@gmail.com'; err.hidden = false; email.focus(); return; }
+    if (!ready){ err.textContent = 'الدفع لم يُفتح بعد. ارجع قريباً، الكتاب على وشك الصدور.'; err.hidden = false; return; }
+    const url = BUY_URL || ('https://www.paypal.com/cgi-bin/webscr?' + new URLSearchParams({
+      cmd:'_xclick', business:PAYPAL_EMAIL, item_name:ITEM, amount:PRICE, currency_code:CURRENCY, custom:v, no_shipping:'1', charset:'utf-8'
+    }));
+    const pay = $('payLink'); pay.href = url; pay.hidden = false; $('buyBtn').hidden = true; pay.focus();
+    $('thanksEmail').textContent = v;
+  });
+  $('payLink').addEventListener('click', () => { steps[1].classList.add('done'); $('thanks').hidden = false; });
+  email.addEventListener('input', () => { err.hidden = true; $('payLink').hidden = true; $('buyBtn').hidden = false; });
+})();
+
+// offer card: gentle 3D tilt (mouse only)
+(function(){
+  const el = $('offer'); if (reduce) return;
+  el.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return;
+    const r = el.getBoundingClientRect(), x = (e.clientX - r.left)/r.width - .5, y = (e.clientY - r.top)/r.height - .5;
+    el.classList.add('hovering'); el.style.setProperty('--ty', (x*8)+'deg'); el.style.setProperty('--tx', (-y*6)+'deg'); });
+  el.addEventListener('pointerleave', () => { el.classList.remove('hovering'); el.style.removeProperty('--ty'); el.style.removeProperty('--tx'); });
+})();
+
+// a drop of water in every button
+document.addEventListener('pointerdown', e => {
+  const btn = e.target.closest('.btn'); if (!btn || reduce) return;
+  const r = btn.getBoundingClientRect(), s = Math.max(r.width, r.height) * 2.2, d = document.createElement('span');
+  d.className = 'drop'; d.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX-r.left-s/2}px;top:${e.clientY-r.top-s/2}px`;
+  btn.appendChild(d); setTimeout(() => d.remove(), 950);
+});
+
+// scroll: nav, active link, the lit path, reading bar
+const navShell = $('navShell'), links = [...document.querySelectorAll('.nav ul a[href^="#"]:not(.btn)')];
+const pathList = $('pathList'), walked = $('walked'), stones = [...document.querySelectorAll('.stone')];
+const paper = $('paper'), readBar = $('readBar');
+function onScroll(){
+  navShell.classList.toggle('scrolled', scrollY > 10);
+  let cur = null;
+  links.forEach(a => { const s = document.querySelector(a.getAttribute('href')); if (s && s.getBoundingClientRect().top < innerHeight*.45) cur = a; });
+  links.forEach(a => a.classList.toggle('active', a === cur));
+  const pr = pathList.getBoundingClientRect(), mid = innerHeight * .6;
+  const walk = Math.min(1, Math.max(0, (mid - pr.top) / pr.height));
+  walked.style.setProperty('--walk', walk);
+  stones.forEach(s => { const r = s.getBoundingClientRect(); s.classList.toggle('lit', r.top + r.height/2 < mid); });
+  const rr = paper.getBoundingClientRect();
+  readBar.style.transform = `scaleX(${Math.min(1, Math.max(0, (innerHeight*.5 - rr.top) / rr.height))})`;
+}
+addEventListener('scroll', onScroll, {passive:true}); addEventListener('resize', onScroll); onScroll();
+
+// tabs with a sliding moon pill
+const tabs = [...document.querySelectorAll('.tab')], ind = $('tabInd');
+function placeInd(t){ const p = t.parentElement.getBoundingClientRect(), r = t.getBoundingClientRect(); ind.style.right = (p.right - r.right) + 'px'; ind.style.width = r.width + 'px'; }
+tabs.forEach(t => t.addEventListener('click', () => {
+  tabs.forEach(o => { const on = o === t, panel = $(o.getAttribute('aria-controls'));
+    o.setAttribute('aria-selected', on); panel.hidden = !on;
+    if (on){ panel.classList.remove('enter'); void panel.offsetWidth; panel.classList.add('enter'); } });
+  placeInd(t); if (paper.getBoundingClientRect().top < 0) paper.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'});
+  onScroll();
+}));
+const placeCurrent = () => placeInd(tabs.find(t => t.getAttribute('aria-selected') === 'true'));
+placeCurrent(); document.fonts && document.fonts.ready.then(placeCurrent); addEventListener('resize', placeCurrent);
+
+// breathing moon: 4s in, 6s out, three breaths
+(function(){
+  const btn = $('breatheBtn'), moon = $('moon'), word = $('moonWord'), count = $('moonCount'), cyc = $('cycles');
+  let timer = null, running = false;
+  function stop(done){ clearInterval(timer); running = false; moon.style.transitionDuration = '1.5s'; moon.style.setProperty('--s', 1); moon.classList.remove('full');
+    word.textContent = done ? 'أحسنت' : 'مستعد؟'; count.textContent = ''; btn.textContent = done ? 'مرة أخرى' : 'ابدأ التنفّس'; cyc.textContent = done ? 'لاحظ كيف تشعر الآن.' : ''; }
+  btn.addEventListener('click', () => {
+    if (running) return stop(false);
+    running = true; btn.textContent = 'توقّف'; let sec = 0;
+    const tick = () => {
+      if (sec >= 30) return stop(true);
+      const k = sec % 10, inhale = k < 4;
+      if (k === 0){ moon.style.transitionDuration = '4s'; moon.style.setProperty('--s', 1.7); moon.classList.add('full'); }
+      if (k === 4){ moon.style.transitionDuration = '6s'; moon.style.setProperty('--s', 1); moon.classList.remove('full'); }
+      word.textContent = inhale ? 'شهيق' : 'زفير'; count.textContent = ar(inhale ? 4 - k : 10 - k);
+      cyc.textContent = 'النفَس ' + ar(Math.floor(sec/10) + 1) + ' من ٣'; sec++;
+    };
+    tick(); timer = setInterval(tick, 1000);
+  });
+})();
+
+// the night sky: slow stars and a few drifting fireflies
+(function(){
+  const c = $('sky'), x = c.getContext('2d'); let w, h, stars = [], flies = [];
+  function size(){ const dpr = Math.min(devicePixelRatio || 1, 2); w = innerWidth; h = innerHeight; c.width = w*dpr; c.height = h*dpr; x.setTransform(dpr,0,0,dpr,0,0);
+    const n = Math.round(w*h/9000); stars = Array.from({length:n}, () => ({x:Math.random()*w, y:Math.random()*h*.85, r:Math.random()*1.1 + .2, p:Math.random()*6.28, s:.3 + Math.random()*.7}));
+    flies = Array.from({length: w < 700 ? 10 : 18}, () => ({x:Math.random()*w, y:h*.3 + Math.random()*h*.7, vx:(Math.random()-.5)*.15, vy:-.05 - Math.random()*.12, p:Math.random()*6.28})); }
+  function draw(t){
+    x.clearRect(0,0,w,h);
+    const drift = (scrollY * .04) % h;
+    stars.forEach(s => { const a = .25 + .55 * (.5 + .5*Math.sin(t/1000*s.s + s.p)); let y = s.y - drift; if (y < 0) y += h;
+      x.globalAlpha = a; x.fillStyle = '#EDE6D6'; x.beginPath(); x.arc(s.x, y, s.r, 0, 6.283); x.fill(); });
+    flies.forEach(f => { f.x += f.vx; f.y += f.vy; if (f.y < -10){ f.y = h + 10; f.x = Math.random()*w; }
+      const a = .15 + .35 * (.5 + .5*Math.sin(t/700 + f.p)), g = x.createRadialGradient(f.x, f.y, 0, f.x, f.y, 10);
+      g.addColorStop(0, `rgba(224,174,106,${a})`); g.addColorStop(1, 'rgba(224,174,106,0)');
+      x.globalAlpha = 1; x.fillStyle = g; x.beginPath(); x.arc(f.x, f.y, 10, 0, 6.283); x.fill(); });
+    x.globalAlpha = 1;
+    if (!reduce) requestAnimationFrame(draw);
+  }
+  size(); addEventListener('resize', size); reduce ? draw(0) : requestAnimationFrame(draw);
+})();
+
+// the lake surface under the hero: moon reflection broken by slow ripples
+(function(){
+  const c = $('water'), x = c.getContext('2d'); let w, h;
+  function size(){ const dpr = Math.min(devicePixelRatio || 1, 2); w = c.clientWidth; h = c.clientHeight; c.width = w*dpr; c.height = h*dpr; x.setTransform(dpr,0,0,dpr,0,0); }
+  function draw(t){
+    x.clearRect(0,0,w,h);
+    const g = x.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(237,230,214,.10)'); g.addColorStop(.02,'rgba(237,230,214,.03)'); g.addColorStop(1,'rgba(9,18,20,0)');
+    x.fillStyle = g; x.fillRect(0,0,w,h);
+    x.fillStyle = 'rgba(237,230,214,.35)'; x.fillRect(0,0,w,1);
+    for (let i = 0; i < 14; i++){
+      const y = 8 + i*7.5, len = (w*.18) * (1 - i/16) * (.7 + .3*Math.sin(t/1600 + i)), off = Math.sin(t/2200 + i*1.7) * 14;
+      x.globalAlpha = .55 * (1 - i/14); x.fillStyle = '#EDE6D6';
+      x.fillRect(w/2 - len/2 + off, y, len, 1.2);
+    }
+    x.globalAlpha = 1;
+    if (!reduce) requestAnimationFrame(draw);
+  }
+  size(); addEventListener('resize', size); reduce ? draw(0) : requestAnimationFrame(draw);
+})();
+
+// ambient sound: soft waves made in the browser (no files)
+(function(){
+  const btn = $('sound'), label = $('soundLabel'); let ctx = null, master = null, on = false;
+  function build(){
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const len = ctx.sampleRate * 4, buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++){ const d = buf.getChannelData(ch); let last = 0;
+      for (let i = 0; i < len; i++){ const white = Math.random()*2 - 1; last = (last + .02*white) / 1.02; d[i] = last * 3.5; } }
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 650;
+    const swell = ctx.createGain(); swell.gain.value = .55;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = .09; const depth = ctx.createGain(); depth.gain.value = .4;
+    lfo.connect(depth).connect(swell.gain);
+    const lfo2 = ctx.createOscillator(); lfo2.frequency.value = .05; const d2 = ctx.createGain(); d2.gain.value = 250; lfo2.connect(d2).connect(lp.frequency);
+    master = ctx.createGain(); master.gain.value = 0;
+    src.connect(lp).connect(swell).connect(master).connect(ctx.destination);
+    src.start(); lfo.start(); lfo2.start();
+  }
+  btn.addEventListener('click', async () => {
+    try {
+      if (!ctx) build();
+      if (ctx.state === 'suspended') await ctx.resume();
+      on = !on; const now = ctx.currentTime;
+      master.gain.cancelScheduledValues(now); master.gain.setValueAtTime(master.gain.value, now);
+      master.gain.linearRampToValueAtTime(on ? .35 : 0, now + 2.5);
+      btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on); label.textContent = on ? 'إيقاف الموج' : 'صوت الموج';
+    } catch(_) { label.textContent = 'الصوت غير متاح هنا'; }
+  });
+})();
+
+// 3D book: drag to turn it, touch the cover to drop a ripple on the lake
+(function(){
+  const host = $('book3d');
+  const fallback = () => document.documentElement.classList.add('no3d');
+  if (!window.THREE || !host) return fallback();
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({antialias:true, alpha:true}); } catch(e){ return fallback(); }
+  if (!renderer.getContext()) return fallback();
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  host.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, .1, 100); camera.position.set(0, 0, 7.6);
+  scene.add(new THREE.AmbientLight(0xffffff, .45));
+  const key = new THREE.DirectionalLight(0xfff4e4, .9); key.position.set(-2, 5, 6); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xe0ae6a, .55); rim.position.set(4, -2, -4); scene.add(rim);
+
+  const W = 2, H = 3, D = .38, TW = 768, TH = 1152;
+  const coverC = document.createElement('canvas'); coverC.width = TW; coverC.height = TH; const cx2 = coverC.getContext('2d');
+  let drops = [];
+  function drawCover(t){
+    const g = cx2.createRadialGradient(TW/2, TH*.62, 20, TW/2, TH*.62, TH*.75); g.addColorStop(0, '#244640'); g.addColorStop(1, '#0B1614');
+    cx2.fillStyle = g; cx2.fillRect(0, 0, TW, TH);
+    const cx = TW/2, cy = TH*.64, max = TW*.95;
+    for (let i = 0; i < 7; i++){ const p = ((t/9000) + i/7) % 1, r = 10 + p*max;
+      cx2.beginPath(); cx2.ellipse(cx, cy, r, r*.32, 0, 0, Math.PI*2); cx2.strokeStyle = `rgba(241,230,210,${(1-p)*.5})`; cx2.lineWidth = 2.2; cx2.stroke(); }
+    drops = drops.filter(d => t - d.t < 2600);
+    drops.forEach(d => { for (let j = 0; j < 3; j++){ const p = (t - d.t)/2600 - j*.12; if (p <= 0) continue;
+      const r = p*TW*.8; cx2.beginPath(); cx2.ellipse(d.x, d.y, r, r*.34, 0, 0, Math.PI*2); cx2.strokeStyle = `rgba(217,163,94,${(1-p)*.9})`; cx2.lineWidth = 3; cx2.stroke(); } });
+    cx2.beginPath(); cx2.arc(cx, cy, 6, 0, Math.PI*2); cx2.fillStyle = '#D9A35E'; cx2.fill();
+    cx2.direction = 'rtl'; cx2.textAlign = 'center'; cx2.fillStyle = '#F1E6D2';
+    cx2.font = '700 190px "Aref Ruqaa", "Amiri", serif'; cx2.fillText('سَكينة', TW/2, 300);
+    cx2.globalAlpha = .85; cx2.font = '500 46px "Noto Naskh Arabic", serif'; cx2.fillText('رحلة العودة إلى الداخل', TW/2, 400);
+    cx2.globalAlpha = .7; cx2.font = '500 30px "IBM Plex Sans Arabic", sans-serif'; cx2.fillText('اثنا عشر باباً إلى السلام الداخلي', TW/2, TH - 80);
+    cx2.globalAlpha = 1;
+    const s = cx2.createLinearGradient(TW, 0, TW - 60, 0); s.addColorStop(0, 'rgba(0,0,0,.45)'); s.addColorStop(1, 'rgba(0,0,0,0)'); cx2.fillStyle = s; cx2.fillRect(TW - 60, 0, 60, TH);
+  }
+  function makeTex(w, h, paint){ const c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h);
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; return t; }
+  const paintBack = (x, w, h) => { x.fillStyle = '#0E1C19'; x.fillRect(0, 0, w, h); x.direction = 'rtl'; x.textAlign = 'center';
+    x.fillStyle = '#D9A35E'; x.font = '700 50px "Aref Ruqaa", serif'; x.fillText('البحيرة لا تحتاج أن تفعل', w/2, 330); x.fillText('شيئاً كي تصفو.', w/2, 410);
+    x.fillStyle = '#F1E6D2'; x.fillText('يكفي أن تكفّ عن تحريكها.', w/2, 520);
+    x.globalAlpha = .75; x.font = '500 30px "Noto Naskh Arabic", serif';
+    ['كتاب لمن تعب من الركض، ويريد أن يعرف أخيراً','أين يسكن الهدوء الذي يبحث عنه.'].forEach((l,i) => x.fillText(l, w/2, 680 + i*56));
+    x.globalAlpha = 1; x.font = '700 90px "Aref Ruqaa", serif'; x.fillText('سَكينة', w/2, h - 140); };
+  const paintSpine = (x, w, h) => { x.fillStyle = '#122421'; x.fillRect(0, 0, w, h); x.save(); x.translate(w/2, h/2); x.rotate(Math.PI/2);
+    x.direction = 'rtl'; x.textAlign = 'center'; x.fillStyle = '#F1E6D2'; x.font = '700 70px "Aref Ruqaa", serif'; x.fillText('سَكينة', 0, 24); x.restore();
+    x.fillStyle = '#D9A35E'; x.beginPath(); x.arc(w/2, h - 70, 7, 0, Math.PI*2); x.fill(); };
+  const paintPages = (x, w, h) => { x.fillStyle = '#EFE7D6'; x.fillRect(0, 0, w, h); for (let i = 0; i < w; i += 3){ x.fillStyle = `rgba(120,100,70,${.08 + Math.random()*.08})`; x.fillRect(i, 0, 1, h); } };
+  const paintPagesH = (x, w, h) => { x.fillStyle = '#EFE7D6'; x.fillRect(0, 0, w, h); for (let i = 0; i < h; i += 3){ x.fillStyle = `rgba(120,100,70,${.08 + Math.random()*.08})`; x.fillRect(0, i, w, 1); } };
+  const coverTex = new THREE.CanvasTexture(coverC); coverTex.encoding = THREE.sRGBEncoding; coverTex.anisotropy = 8;
+  let backTex = makeTex(TW, TH, paintBack), spineTex = makeTex(128, TH, paintSpine);
+  const pagesTex = makeTex(64, TH, paintPages), pagesTexH = makeTex(TW, 64, paintPagesH);
+
+  const dark = new THREE.MeshStandardMaterial({color:0x10201d, roughness:.7});
+  const glow = (map, k) => new THREE.MeshStandardMaterial({map, emissive:0xffffff, emissiveMap:map, emissiveIntensity:k, roughness:.55});
+  const coverMat = glow(coverTex, .55), backMat = glow(backTex, .5), spineMat = glow(spineTex, .5);
+  const pageMat = new THREE.MeshStandardMaterial({map:pagesTex, roughness:.9}), pageMatH = new THREE.MeshStandardMaterial({map:pagesTexH, roughness:.9});
+
+  const book = new THREE.Group(), t = .035;
+  const front = new THREE.Mesh(new THREE.BoxGeometry(W, H, t), [dark, dark, dark, dark, coverMat, dark]); front.position.z = D/2 - t/2;
+  const back = new THREE.Mesh(new THREE.BoxGeometry(W, H, t), [dark, dark, dark, dark, dark, backMat]); back.position.z = -D/2 + t/2;
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(t, H, D), [spineMat, dark, dark, dark, dark, dark]); spine.position.x = W/2 - t/2;
+  const pages = new THREE.Mesh(new THREE.BoxGeometry(W - .08, H - .08, D - 2*t), [pageMat, pageMat, pageMatH, pageMatH, pageMat, pageMat]); pages.position.x = -.02;
+  book.add(front, back, spine, pages); scene.add(book);
+
+  const idleY = -.42, idleX = .08;
+  let rotY = -1.6, rotX = .2, tY = idleY, tX = idleX, dragging = false, lastX = 0, lastY = 0, moved = 0, spinV = 0;
+  const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+  function hitCover(e){
+    const r = host.getBoundingClientRect(); ptr.set(((e.clientX - r.left)/r.width)*2 - 1, -((e.clientY - r.top)/r.height)*2 + 1);
+    ray.setFromCamera(ptr, camera); const h = ray.intersectObject(front)[0];
+    if (h && h.face && h.face.materialIndex === 4 && h.uv){ drops.push({x:h.uv.x*TW, y:(1 - h.uv.y)*TH, t:performance.now()}); return true; } return false;
+  }
+  host.addEventListener('pointerdown', e => { dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY; host.classList.add('dragging'); host.setPointerCapture(e.pointerId); });
+  host.addEventListener('pointermove', e => {
+    if (dragging){ const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
+      tY += dx*.012; tX = Math.max(-.5, Math.min(.5, tX + dy*.006)); spinV = dx*.012; }
+    else if (e.pointerType === 'mouse' && !reduce){ const r = host.getBoundingClientRect();
+      tY = idleY + ((e.clientX - r.left)/r.width - .5)*.5; tX = idleX + ((e.clientY - r.top)/r.height - .5)*.3; }
+  });
+  const end = e => { if (!dragging) return; dragging = false; host.classList.remove('dragging'); if (moved < 6 && hitCover(e)) $('bookHint').style.opacity = .35; };
+  host.addEventListener('pointerup', end); host.addEventListener('pointercancel', end);
+  host.addEventListener('pointerleave', () => { if (!dragging){ tY = idleY; tX = idleX; } });
+
+  function size(){ const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+  size(); addEventListener('resize', size);
+  let visible = true;
+  if ('IntersectionObserver' in window) new IntersectionObserver(es => { const was = visible; visible = es[0].isIntersecting; if (visible && !was && !reduce) requestAnimationFrame(loop); }).observe(host);
+
+  function frame(now){
+    drawCover(now); coverTex.needsUpdate = true;
+    if (!dragging){ if (Math.abs(spinV) > .001){ tY += spinV; spinV *= .92; }
+      else { const k = Math.round((tY - idleY) / (Math.PI*2)); tY += ((idleY + k*Math.PI*2) - tY) * .02; } }
+    rotY += (tY - rotY)*.08; rotX += (tX - rotX)*.08;
+    book.rotation.set(rotX, rotY, reduce ? 0 : Math.sin(now/2600)*.025);
+    book.position.y = reduce ? 0 : Math.sin(now/1100)*.07;
+    renderer.render(scene, camera);
+  }
+  function loop(now){ if (!visible) return; frame(now); requestAnimationFrame(loop); }
+  if (reduce){ rotY = idleY; rotX = idleX; frame(2500); host.addEventListener('pointermove', () => frame(performance.now())); }
+  else requestAnimationFrame(loop);
+
+  if (document.fonts) document.fonts.ready.then(() => {
+    backTex = makeTex(TW, TH, paintBack); spineTex = makeTex(128, TH, paintSpine);
+    backMat.map = backMat.emissiveMap = backTex; spineMat.map = spineMat.emissiveMap = spineTex;
+    backMat.needsUpdate = spineMat.needsUpdate = true; if (reduce) frame(2500);
+  });
+})();
+</script>
+</body>
+</html>
