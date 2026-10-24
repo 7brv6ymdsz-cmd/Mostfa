@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://7brv6ymdsz-cmd.github.io/Mostfa/sitemap.xml
