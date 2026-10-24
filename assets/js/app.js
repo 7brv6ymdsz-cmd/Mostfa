@@ -1,6 +1,6 @@
 "use strict";
 // ===== إعدادات الدفع =====
-// بريد حساب PayPal الذي يستلم المال (مثال: "you@gmail.com")
+// رقم التاجر في PayPal (Merchant ID) أو بريد الحساب الذي يستلم المال
 const PAYPAL_EMAIL = "";
 // أو رابط صفحة Payhip/Gumroad إن وُجد (يُستعمل بدل PayPal ويرسل الكتاب تلقائياً)
 const BUY_URL = "";
@@ -22,7 +22,7 @@ const ar = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ err.textContent = 'اكتب بريداً صحيحاً حتى يصلك الكتاب عليه، مثل name@gmail.com'; err.hidden = false; email.focus(); return; }
     if (!ready){ err.textContent = 'الدفع لم يُفتح بعد. ارجع قريباً، الكتاب على وشك الصدور.'; err.hidden = false; return; }
     const url = BUY_URL || ('https://www.paypal.com/cgi-bin/webscr?' + new URLSearchParams({
-      cmd:'_xclick', business:PAYPAL_EMAIL, item_name:ITEM, amount:PRICE, currency_code:CURRENCY, custom:v, no_shipping:'1', charset:'utf-8'
+      cmd:'_xclick', business:PAYPAL_EMAIL, item_name:ITEM, amount:PRICE, currency_code:CURRENCY, custom:v, no_shipping:'1', charset:'utf-8', return:new URL('thanks.html', location.href).href, cancel_return:location.href.split('#')[0] + '#buy'
     }));
     const pay = $('payLink'); pay.href = url; pay.hidden = false; $('buyBtn').hidden = true; pay.focus();
     $('thanksEmail').textContent = v;
