@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="theme-color" content="#091214">
+<title>لوحة الإدارة · سَكينة</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div class="wrap">
+<div class="lock" id="lock">
+  <form class="lock-card" id="lockForm" novalidate>
+    <h1>سَكينة</h1>
+    <p id="lockMsg">أدخل الرمز السري لفتح لوحة الإدارة.</p>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••••" aria-label="الرمز السري">
+    <input id="pin2" type="password" inputmode="numeric" autocomplete="new-password" placeholder="أعد كتابة الرمز" aria-label="تأكيد الرمز" hidden>
+    <p class="err" id="lockErr" hidden></p>
+    <button class="btn primary" type="submit" id="lockBtnSubmit">فتح</button>
+    <p class="note" id="lockNote">البيانات مشفّرة ومحفوظة على هذا الجهاز فقط، ولا تُرسل إلى أي مكان.</p>
+  </form>
+</div>
+  <header class="top" id="topbar" hidden>
+    <div class="brand"><h1>سَكينة</h1><span>لوحة الإدارة · خاصة بك</span></div>
+    <div class="actions">
+      <span class="pill ok"><i></i>مشفّرة على هذا الجهاز</span>
+      <button class="btn" id="exportBtn" type="button">تصدير CSV</button><button class="btn" id="backupBtn" type="button">نسخة احتياطية</button><label class="btn" for="restoreFile">استعادة</label><input class="hidden-input" id="restoreFile" type="file" accept=".json,application/json"><button class="btn" id="lockBtn" type="button">قفل</button>
+    </div>
+  </header>
+
+  
+
+  <div id="app" hidden>
+    <section class="tiles" aria-label="ملخّص">
+      <div class="tile"><label>عدد المشترين</label><b id="tBuyers">٠</b><small id="tBuyersSub">كل الوقت</small></div>
+      <div class="tile"><label>إجمالي المبيعات</label><b id="tGross">٠$</b><small>قبل عمولة PayPal</small></div>
+      <div class="tile"><label>عمولة PayPal (تقدير)</label><b id="tFees">٠$</b><small id="tFeesSub"></small></div>
+      <div class="tile accent"><label>صافي الربح</label><b id="tNet">٠$</b><small id="tNet30">آخر ٣٠ يوماً: ٠$</small></div>
+      <div class="tile alert wide" id="tPendingTile"><label>كتب لم تُرسَل بعد</label><b id="tPending">٠</b><small>أرسل الكتاب لهؤلاء</small></div>
+    </section>
+
+    <section class="card" style="margin-top:20px">
+      <div class="card-head"><h2>المبيعات اليومية</h2><p>آخر ٣٠ يوماً · عدد النسخ</p></div>
+      <div class="chart"><svg id="chart" viewBox="0 0 600 180" preserveAspectRatio="none" role="img" aria-label="رسم المبيعات اليومية"></svg></div>
+    </section>
+
+    <div class="grid2" style="margin-top:20px">
+      <section class="card">
+        <div class="card-head"><h2>تسجيل بيعة جديدة</h2></div>
+        <form id="addForm" novalidate>
+          <div class="field"><label for="fName">اسم المشتري</label><input id="fName" autocomplete="off" placeholder="الاسم كما ظهر في PayPal"></div>
+          <div class="field"><label for="fEmail">بريد المشتري</label><input id="fEmail" type="email" dir="ltr" autocomplete="off" placeholder="buyer@example.com"></div>
+          <div class="row2">
+            <div class="field"><label for="fAmount">المبلغ ($)</label><input id="fAmount" type="number" min="0" step="0.01" value="5" inputmode="decimal"></div>
+            <div class="field"><label for="fDate">التاريخ</label><input id="fDate" type="date"></div>
+          </div>
+          <div class="field"><label for="fTxn">رقم عملية PayPal (اختياري)</label><input id="fTxn" dir="ltr" autocomplete="off" placeholder="مثل 9XK12345AB678901C"></div>
+          <div class="field"><label for="fSent">حالة الكتاب</label><select id="fSent"><option value="0">لم يُرسَل بعد</option><option value="1">أُرسل الكتاب</option></select></div>
+          <p class="err" id="fErr" hidden></p>
+          <button class="btn primary" type="submit" id="addBtn">حفظ البيعة</button>
+          <p class="note">تجد الاسم والبريد ورقم العملية في إشعار PayPal الذي يصلك عند كل دفعة.</p>
+        </form>
+        <details class="fees">
+          <summary>إعدادات عمولة PayPal</summary>
+          <div class="row2">
+            <div class="field"><label for="feePct">النسبة %</label><input id="feePct" type="number" step="0.1" min="0" value="5.4"></div>
+            <div class="field"><label for="feeFix">مبلغ ثابت $</label><input id="feeFix" type="number" step="0.01" min="0" value="0.30"></div>
+          </div>
+          <p class="note">القيم الافتراضية تقدير لدفعة دولية. عدّلها حسب ما يظهر في كشف PayPal.</p>
+        </details>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>المشترون</h2>
+          <div class="toolbar">
+            <input id="search" type="search" placeholder="ابحث بالاسم أو البريد" aria-label="بحث">
+            <div class="seg" role="group" aria-label="تصفية">
+              <button type="button" data-f="all" aria-pressed="true">الكل</button>
+              <button type="button" data-f="pending" aria-pressed="false">لم يُرسَل</button>
+              <button type="button" data-f="sent" aria-pressed="false">أُرسل</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>التاريخ</th><th>المشتري</th><th>البريد</th><th>المبلغ</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <div class="empty" id="empty"><b>لا توجد مبيعات بعد</b>عند أول دفعة تصلك، سجّلها من النموذج وستظهر هنا مع أرباحك.</div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="admin.js"></script>
+</body>
+</html>
