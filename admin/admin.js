@@ -115,7 +115,7 @@ function render(){
       <td>${ar(esc(x.date))}</td>
       <td>${esc(x.name) || '—'}${x.txn ? `<br><small style="color:var(--faint);direction:ltr;display:inline-block">${esc(x.txn)}</small>` : ''}</td>
       <td class="email">${esc(x.email)}</td>
-      <td>${money(+x.amount || 0)}${(+x.amount || 0) < 5 ? ' <span class="status pending" title="أقل من سعر الكتاب">⚠️ أقل من ٥$</span>' : ''}</td>
+      <td>${money(+x.amount || 0)}${(+x.amount || 0) < 9.99 ? ' <span class="status pending" title="أقل من سعر الكتاب">⚠️ أقل من ٩٫٩٩$</span>' : ''}</td>
       <td><span class="status ${x.sent ? 'sent' : 'pending'}">${x.sent ? 'أُرسل الكتاب' : 'لم يُرسَل'}</span></td>
       <td><div class="row-actions">
         <button class="btn sm" data-copy="${esc(x.email)}">نسخ البريد</button>
@@ -157,7 +157,7 @@ $('addForm').addEventListener('submit', async e => {
   state.sales.push({id: crypto.randomUUID(), name: name.slice(0,120), email: email.slice(0,200), amount, date,
     txn: $('fTxn').value.trim().slice(0,40), sent: $('fSent').value === '1', createdAt: new Date().toISOString()});
   await save();
-  ['fName','fEmail','fTxn'].forEach(id => $(id).value = ''); $('fAmount').value = 5; $('fSent').value = '0';
+  ['fName','fEmail','fTxn'].forEach(id => $(id).value = ''); $('fAmount').value = 9.99; $('fSent').value = '0';
   toast('حُفظت البيعة'); render();
 });
 

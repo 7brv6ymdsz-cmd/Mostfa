@@ -217,7 +217,7 @@ main,header.top,footer{position:relative;z-index:1}
 .offer-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .offer-top b{font-size:1.2rem;font-weight:500;color:var(--moon)}
 .offer-top small{display:block;color:var(--faint);font-size:.88rem}
-.price{font-family:var(--f-display);font-size:3.8rem;line-height:1;color:var(--amber)}
+.price{font-family:var(--f-display);font-size:clamp(2.4rem,9vw,3.2rem);line-height:1;color:var(--amber);white-space:nowrap;flex:none}
 .offer ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .offer li{display:flex;gap:12px;align-items:center;font-size:.96rem;color:var(--muted)}
 .offer li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber);flex:none}

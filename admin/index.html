@@ -61,14 +61,14 @@
           <div class="field"><label for="fName">اسم المشتري</label><input id="fName" autocomplete="off" placeholder="الاسم كما ظهر في PayPal"></div>
           <div class="field"><label for="fEmail">بريد المشتري</label><input id="fEmail" type="email" dir="ltr" autocomplete="off" placeholder="buyer@example.com"></div>
           <div class="row2">
-            <div class="field"><label for="fAmount">المبلغ ($)</label><input id="fAmount" type="number" min="0" step="0.01" value="5" inputmode="decimal"></div>
+            <div class="field"><label for="fAmount">المبلغ ($)</label><input id="fAmount" type="number" min="0" step="0.01" value="9.99" inputmode="decimal"></div>
             <div class="field"><label for="fDate">التاريخ</label><input id="fDate" type="date"></div>
           </div>
           <div class="field"><label for="fTxn">رقم عملية PayPal (اختياري)</label><input id="fTxn" dir="ltr" autocomplete="off" placeholder="مثل 9XK12345AB678901C"></div>
           <div class="field"><label for="fSent">حالة الكتاب</label><select id="fSent"><option value="0">لم يُرسَل بعد</option><option value="1">أُرسل الكتاب</option></select></div>
           <p class="err" id="fErr" hidden></p>
           <button class="btn primary" type="submit" id="addBtn">حفظ البيعة</button>
-          <p class="note">تجد الاسم والبريد ورقم العملية في إشعار PayPal الذي يصلك عند كل دفعة. تأكّد أن المبلغ الواصل ٥$ كاملة قبل إرسال الكتاب.</p>
+          <p class="note">تجد الاسم والبريد ورقم العملية في إشعار PayPal الذي يصلك عند كل دفعة. تأكّد أن المبلغ الواصل ٩٫٩٩$ كاملاً قبل إرسال الكتاب.</p>
         </form>
         <details class="fees">
           <summary>إعدادات عمولة PayPal</summary>
@@ -104,6 +104,6 @@
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
-<script src="admin.js?v=4"></script>
+<script src="admin.js?v=5"></script>
 </body>
 </html>
