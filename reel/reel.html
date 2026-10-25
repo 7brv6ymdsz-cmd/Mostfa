@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>سكينة · ريل</title>
+<style>
+@font-face{font-family:"Aref Ruqaa";font-weight:700;src:url(../assets/fonts/aref-ruqaa-arabic-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Amiri";font-weight:400;src:url(../assets/fonts/amiri-arabic-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Plex";font-weight:500;src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Plex";font-weight:600;src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2) format("woff2")}
+@font-face{font-family:"PlexL";font-weight:600;src:url(../assets/fonts/ibm-plex-sans-arabic-latin-600-normal.woff2) format("woff2")}
+html,body{margin:0;background:#000;overflow:hidden;display:grid;place-items:center;height:100vh}
+canvas{height:100vh;width:auto}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// Sakina — 30s vertical reel. Scenes are cued to the voiceover lines in timing.json.
+const W = 1080, H = 1920, CX = W / 2, T_END = 30;
+const COL = { night:'#091214', deep:'#0E1B1E', mist:'#152628', moon:'#EDE6D6', muted:'#9DAEA8', faint:'#6E817B', amber:'#E0AE6A' };
+const F = { display:'"Aref Ruqaa"', read:'"Amiri"', ui:'"Plex"', latin:'"PlexL"' };
+const moonA = a => `rgba(237,230,214,${a})`, amberA = a => `rgba(224,174,106,${a})`;
+const cv = document.getElementById('c'); cv.width = W; cv.height = H;
+const X = cv.getContext('2d');
+function layer(w = W, h = H){ const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
+
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const eOutExpo = k => k >= 1 ? 1 : 1 - Math.pow(2, -10 * k);
+const eInOut = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+const eSine = k => -(Math.cos(Math.PI * k) - 1) / 2;
+const eOutCubic = k => 1 - Math.pow(1 - k, 3);
+const eOutBack = k => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); };
+const TAU = Math.PI * 2;
+function hash(a, b = 0){ let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const vnoise = x => { const i = Math.floor(x), f = x - i, s = f * f * (3 - 2 * f); return lerp(hash(i, 7), hash(i + 1, 7), s) * 2 - 1; };
+
+function txt(c, s, x, y, size, fam, color, o = {}){
+  c.save(); c.font = `${o.w || 400} ${size}px ${fam}`; c.textAlign = o.align || 'center'; c.textBaseline = 'middle';
+  c.direction = o.dir || 'rtl'; c.globalAlpha = o.a ?? 1;
+  if (o.stroke){ c.lineJoin = 'round'; c.strokeStyle = o.stroke; c.lineWidth = o.sw || 10; c.strokeText(s, x, y); }
+  if (o.glow){ c.shadowColor = o.glowC || color; c.shadowBlur = o.glow; }
+  c.fillStyle = color; c.fillText(s, x, y); c.restore();
+}
+function measure(s, size, fam, w = 400){ X.save(); X.font = `${w} ${size}px ${fam}`; const m = X.measureText(s).width; X.restore(); return m; }
+function glowDot(c, x, y, r, gr, color = '237,230,214', a = 1){
+  const g = c.createRadialGradient(x, y, 0, x, y, gr);
+  g.addColorStop(0, `rgba(${color},${.55 * a})`); g.addColorStop(.25, `rgba(${color},${.16 * a})`); g.addColorStop(1, `rgba(${color},0)`);
+  c.fillStyle = g; c.fillRect(x - gr, y - gr, gr * 2, gr * 2);
+  if (r > 0){ c.fillStyle = `rgba(${color},${a})`; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); }
+}
+
+let TM, LS; // timing + line starts
+const THOUGHTS = ['لماذا؟','ماذا لو','متأخر','لازم','بكرا','ما صار','أسرع','كان لازم','ما في وقت','الكل ناطر','غلطت؟','تذكير','قلق','مرة تانية','ليش قلت هيك','الفاتورة','ما نمت','شو بيفكروا','أكتر','هلّق','فوراً','ما رد','يمكن','كيف','إيمتى'];
+const POSTS = ['٣ رسائل جديدة','تذكير: اجتماع ٩:٠٠','١٢ إشعاراً','مكالمة فائتة','البطارية ٥٪','موعد التسليم اليوم','٤٧ رسالة غير مقروءة','هل شفت هاد؟','ترند جديد','عرض لفترة محدودة'];
+const R2 = rng(23);
+const STARS = Array.from({ length: 500 }, () => ({ x: R2() * W, y: R2() * H, r: Math.pow(R2(), 4) * 2 + .4, tw: R2() * TAU, sp: .5 + R2() * 2, d: R2() }));
+const SCRIBBLE = (() => { const r = rng(9), p = [[0, 0]]; let a = 0, x = 0, y = 0; for (let i = 0; i < 260; i++){ a += (r() - .5) * 1.6; x += Math.cos(a) * 14; y += Math.sin(a) * 14;
+  const d = Math.hypot(x, y); if (d > 180){ x *= 180 / d; y *= 180 / d; a += Math.PI * .8; } p.push([x, y]); } return p; })();
+const GRAIN = Array.from({ length: 6 }, (_, k) => { const [c, g] = layer(256, 256); const d = g.createImageData(256, 256); const r = rng(100 + k);
+  for (let i = 0; i < d.data.length; i += 4){ const v = r() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); return c; });
+const AR = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+
+// ───────── A · the feed, stopped ─────────
+function sHook(c, t){
+  c.fillStyle = '#060b0c'; c.fillRect(0, 0, W, H);
+  const stop = LS[0] + .12, k = eOutExpo(seg(t, stop, stop + .25));          // 0 → feed racing, 1 → frozen
+  const scroll = t < stop ? t * 5200 : stop * 5200 + (1 - Math.pow(2, -10 * (t - stop))) * 120;
+  const shake = (1 - seg(t, stop, stop + .35)) * (t > stop ? 26 : 0);
+  c.save(); c.translate((hash(Math.floor(t * 30), 1) - .5) * shake, (hash(Math.floor(t * 30), 2) - .5) * shake);
+  // a social feed racing upward
+  for (let i = -2; i < 40; i++){
+    const y = i * 330 - (scroll % (330 * 10)) - 60; if (y < -340 || y > H + 20) continue;
+    const id = (i + Math.floor(scroll / 3300) * 10 + 100) % POSTS.length;
+    c.save(); if (t < stop){ c.filter = 'blur(6px)'; }
+    c.fillStyle = '#132426'; c.beginPath(); c.roundRect(70, y, W - 140, 300, 34); c.fill();
+    c.fillStyle = moonA(.08); c.beginPath(); c.roundRect(110, y + 110, W - 220, 150, 18); c.fill();
+    c.fillStyle = hash(id, 4) < .5 ? COL.amber : '#ff5a50'; c.beginPath(); c.arc(W - 140, y + 60, 26, 0, TAU); c.fill();
+    txt(c, POSTS[id], W - 190, y + 60, 40, F.ui, COL.moon, { w: 600, align: 'right' });
+    txt(c, THOUGHTS[(id * 3) % THOUGHTS.length], CX, y + 185, 52, F.ui, moonA(.5), { w: 600 });
+    c.restore();
+  }
+  c.restore();
+  // dim the feed once it stops
+  c.fillStyle = `rgba(6,11,12,${.72 * k})`; c.fillRect(0, 0, W, H);
+  // giant pause mark slams in
+  const p = eOutBack(seg(t, stop - .06, stop + .3));
+  if (p > .001){ c.save(); c.translate(CX, 700); c.scale(lerp(1.8, 1, clamp(p)) * p, lerp(1.8, 1, clamp(p)) * p);
+    c.shadowColor = amberA(.6); c.shadowBlur = 60; c.fillStyle = COL.amber;
+    c.beginPath(); c.roundRect(-110, -150, 72, 300, 30); c.fill(); c.beginPath(); c.roundRect(38, -150, 72, 300, 30); c.fill(); c.restore();
+    const q = seg(t, stop, stop + .9); c.beginPath(); c.arc(CX, 700, 230 + q * 400, 0, TAU); c.strokeStyle = amberA(.6 * (1 - q)); c.lineWidth = 6 * (1 - q) + 1; c.stroke(); }
+  if (t >= stop && t < stop + .05){ c.fillStyle = moonA(.8); c.fillRect(0, 0, W, H); }
+}
+
+// ───────── B · tired before the day starts ─────────
+function sTired(c, t){
+  const u = t - LS[2];
+  c.fillStyle = '#0a1214'; c.fillRect(0, 0, W, H);
+  const ring = Math.sin(u * 60) * (u < LS[4] - LS[2] ? 1 : 0), you = eInOut(seg(t, LS[4] - .15, LS[4] + .5));
+  const a = 1 - you;
+  c.save(); c.translate(CX + ring * 9, 720); c.rotate(ring * .015); c.scale(1 + you * .4, 1 + you * .4); c.globalAlpha = a;
+  // alarm clock
+  c.strokeStyle = COL.moon; c.lineWidth = 10; c.beginPath(); c.roundRect(-330, -170, 660, 340, 60); c.stroke();
+  [[-260, -210], [260, -210]].forEach(([x, y]) => { c.beginPath(); c.arc(x, y, 60, Math.PI, 0); c.fillStyle = COL.moon; c.fill(); });
+  txt(c, '٦:٠٠', 0, 10, 230, F.ui, COL.amber, { w: 600, dir: 'ltr', glow: 40, glowC: amberA(.6) });
+  c.restore();
+  // ringing arcs
+  if (a > 0) for (let k = 0; k < 3; k++){ const q = (u * 2.2 + k / 3) % 1; c.strokeStyle = moonA(.5 * (1 - q) * a); c.lineWidth = 5;
+    [-1, 1].forEach(sd => { c.beginPath(); c.arc(CX + sd * 360, 720, 60 + q * 120, sd > 0 ? -.6 : Math.PI - .6, sd > 0 ? .6 : Math.PI + .6); c.stroke(); }); }
+  // zzz / tired eyes line
+  txt(c, 'تعبان قبل ما تبلّش', CX, 1000, 44, F.read, moonA(.55 * a * seg(u, .3, .8)));
+  // "this is for YOU": rings converge on the viewer
+  if (you > 0){ for (let k = 0; k < 4; k++){ const q = clamp(you * 1.3 - k * .1); c.beginPath(); c.arc(CX, 760, lerp(900, 40 + k * 26, eOutExpo(q)), 0, TAU);
+      c.strokeStyle = amberA(.7 * q); c.lineWidth = 3; c.stroke(); }
+    glowDot(c, CX, 760, 16 * you, 200 * you, '224,174,106', you); }
+}
+
+// ───────── C · the mind that won't stop ─────────
+function sMind(c, t){
+  const u = t - LS[5];
+  c.fillStyle = '#081012'; c.fillRect(0, 0, W, H);
+  const cy = 760, speed = 1 + u * .9;
+  // head
+  c.strokeStyle = moonA(.85); c.lineWidth = 6; c.beginPath(); c.arc(CX, cy - 40, 250, 0, TAU); c.stroke();
+  c.beginPath(); c.moveTo(CX - 150, cy + 190); c.quadraticCurveTo(CX - 90, cy + 360, CX - 300, cy + 430); c.moveTo(CX + 150, cy + 190); c.quadraticCurveTo(CX + 90, cy + 360, CX + 300, cy + 430); c.stroke();
+  // scribble of thoughts growing inside
+  const n = Math.floor(SCRIBBLE.length * eOutCubic(seg(u, 0, 3.6)));
+  c.beginPath(); for (let i = 0; i < n; i++){ const [x, y] = SCRIBBLE[i]; const j = vnoise(i * .3 + u * 6) * 3; i ? c.lineTo(CX + x + j, cy - 40 + y * .95 + j) : c.moveTo(CX + x, cy - 40 + y); }
+  c.strokeStyle = amberA(.75); c.lineWidth = 3; c.stroke();
+  // orbiting words
+  for (let i = 0; i < 16; i++){
+    const a = i / 16 * TAU + u * speed * (.4 + hash(i) * .5) * (i % 2 ? 1 : -1), rr = 330 + hash(i, 2) * 140;
+    const x = CX + Math.cos(a) * rr, y = cy - 40 + Math.sin(a) * rr * .8;
+    txt(c, THOUGHTS[(i * 7) % THOUGHTS.length], x, y, 34 + hash(i, 3) * 26, F.ui, i % 4 ? COL.moon : COL.amber, { w: 600, a: .35 + .5 * hash(i, 5) });
+  }
+  // glitch slices as it peaks
+  const g = seg(u, 2.5, 4); for (let k = 0; k < 6; k++){ if (hash(k, Math.floor(t * 15)) > g * .7) continue;
+    const y = hash(k, Math.floor(t * 15) + 1) * H, h = 10 + hash(k, Math.floor(t * 15) + 2) * 80; c.drawImage(c.canvas, 0, y, W, h, (hash(k, Math.floor(t * 15) + 3) - .5) * 120, y, W, h); }
+}
+
+// ───────── D · you are the sky ─────────
+function sSky(c, t){
+  const u = t - LS[8];
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#040a0c'); g.addColorStop(1, '#14282a'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  for (const s of STARS){ const y = (s.y + u * 12 * s.d) % H; c.fillStyle = moonA((.5 + .5 * Math.sin(u * s.sp + s.tw)) * .85 * seg(u, 0, .6)); c.beginPath(); c.arc(s.x, y, s.r, 0, TAU); c.fill(); }
+  const zoom = 1 - eInOut(seg(t, LS[9] - .1, LS[9] + 1.2)) * .25;
+  c.save(); c.translate(CX, 760); c.scale(zoom, zoom); c.translate(-CX, -760);
+  glowDot(c, CX, 420, 0, 500, '237,230,214', .5);
+  const mg = c.createRadialGradient(CX - 20, 400, 6, CX, 420, 80); mg.addColorStop(0, '#FDFAF2'); mg.addColorStop(1, '#D9D0BC'); c.fillStyle = mg; c.beginPath(); c.arc(CX, 420, 80, 0, TAU); c.fill();
+  c.restore();
+  // thoughts become clouds that pass
+  const cl = seg(t, LS[10] - .3, LS[10] + .6);
+  for (let i = 0; i < 14; i++){ const d = hash(i, 51), y = 600 + hash(i, 52) * 700, x = ((hash(i, 53) * (W + 700) + u * (40 + d * 90)) % (W + 700)) - 350;
+    c.save(); c.filter = `blur(${(1 - cl) * 2 + cl * (3 + (1 - d) * 8)}px)`;
+    txt(c, THOUGHTS[i % THOUGHTS.length], x, y, 40 + d * 60, F.read, COL.muted, { a: .12 + d * .25 }); c.restore(); }
+}
+
+// ───────── E · breathe now ─────────
+function sBreath(c, t){
+  const u = t - LS[11];
+  c.fillStyle = COL.night; c.fillRect(0, 0, W, H);
+  const p = eSine(seg(t, LS[12], LS[12] + 2.2)), q = eSine(seg(t, LS[13] - .2, LS[13] + 2.3)), b = p - q * .75;
+  const r = 70 + b * 190 + Math.sin(u * 5) * 4 * (1 - p), cy = 760;
+  c.save(); c.translate(CX, cy); c.rotate(u * .08);
+  for (let i = 0; i < 120; i++){ const a = i / 120 * TAU, len = (16 + 150 * b) * (.55 + .45 * Math.sin(i * .9 + u * 2.2)), r0 = r + 30;
+    c.strokeStyle = i % 10 ? moonA(.18 + .25 * b) : amberA(.6 * b + .2); c.lineWidth = i % 5 ? 2 : 3;
+    c.beginPath(); c.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); c.lineTo(Math.cos(a) * (r0 + len), Math.sin(a) * (r0 + len)); c.stroke(); }
+  c.restore();
+  for (let i = 1; i <= 8; i++){ c.strokeStyle = moonA(.14 * (1 - i / 9) * (.3 + b)); c.lineWidth = 2; c.beginPath(); c.arc(CX, cy, r + 200 * b + i * (24 + 40 * b), 0, TAU); c.stroke(); }
+  glowDot(c, CX, cy, 0, r * 3 + 140);
+  const g = c.createRadialGradient(CX - r * .25, cy - r * .3, r * .1, CX, cy, r); g.addColorStop(0, '#FBF7EE'); g.addColorStop(1, '#CFC6B2');
+  c.fillStyle = g; c.beginPath(); c.arc(CX, cy, r, 0, TAU); c.fill();
+  // breath guide
+  const inh = t < LS[13] - .2, show = seg(t, LS[12] - .1, LS[12] + .3) * (1 - seg(t, LS[14] - .5, LS[14] - .1));
+  if (show > 0){ const prog = inh ? seg(t, LS[12], LS[12] + 2.2) : seg(t, LS[13] - .2, LS[13] + 2.3), n = inh ? 4 : 6;
+    txt(c, inh ? 'شهيق' : 'زفير', CX, 260, 64, F.ui, amberA(show), { w: 600 });
+    for (let i = 0; i < n; i++){ const on = prog * n > i; c.fillStyle = on ? amberA(show) : moonA(.18 * show); c.beginPath(); c.arc(CX + (i - (n - 1) / 2) * -44, 340, on ? 11 : 7, 0, TAU); c.fill(); } }
+}
+
+// ───────── F/G · the book + CTA ─────────
+const [COVER, cvc] = layer(560, 820), [COVER2, cv2] = layer(560, 820);
+function paintCover(){
+  const w = 560, h = 820, g = cvc.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#16302F'); g.addColorStop(1, '#081314');
+  cvc.fillStyle = g; cvc.fillRect(0, 0, w, h);
+  const r = rng(77); for (let i = 0; i < 140; i++){ cvc.fillStyle = moonA(r() * .5); cvc.beginPath(); cvc.arc(r() * w, r() * h * .55, r() * 1.3 + .2, 0, TAU); cvc.fill(); }
+  cvc.strokeStyle = amberA(.55); cvc.lineWidth = 1.5; cvc.strokeRect(28, 28, w - 56, h - 56);
+  const mg = cvc.createRadialGradient(w / 2, 230, 0, w / 2, 230, 220); mg.addColorStop(0, moonA(.35)); mg.addColorStop(1, moonA(0)); cvc.fillStyle = mg; cvc.fillRect(0, 0, w, h);
+  cvc.fillStyle = '#F2ECDF'; cvc.beginPath(); cvc.arc(w / 2, 230, 58, 0, TAU); cvc.fill();
+  txt(cvc, 'سَكينة', w / 2, 440, 150, F.display, COL.moon, { w: 700 });
+  txt(cvc, 'رحلة العودة إلى الداخل', w / 2, 528, 32, F.read, COL.muted);
+  txt(cvc, 'اثنا عشر باباً', w / 2, 730, 22, F.ui, COL.amber, { w: 500 });
+}
+function drawBook(c, cx, cy, th, sweep, s){
+  const cw = 560, ch = 820, T = 70, D = 1800;
+  cv2.clearRect(0, 0, cw, ch); cv2.drawImage(COVER, 0, 0);
+  if (sweep > 0 && sweep < 1){ const x = lerp(-300, cw + 300, sweep), g = cv2.createLinearGradient(x - 160, 0, x + 160, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,245,225,.3)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    cv2.save(); cv2.globalCompositeOperation = 'lighter'; cv2.fillStyle = g; cv2.fillRect(0, 0, cw, ch); cv2.restore(); }
+  c.save(); c.translate(cx, cy); c.scale(s, s); c.translate(-cx, -cy);
+  const P = (xl, zl, yl) => { const xr = xl * Math.cos(th) + zl * Math.sin(th), zr = -xl * Math.sin(th) + zl * Math.cos(th), f = D / (D + zr); return [cx + xr * f, cy + yl * f, f]; };
+  c.save(); c.filter = 'blur(30px)'; c.fillStyle = 'rgba(0,0,0,.6)'; c.beginPath(); c.ellipse(cx + 30, cy + ch / 2 + 30, cw * .55, 40, 0, 0, TAU); c.fill(); c.restore();
+  const a = P(cw / 2, 0, -ch / 2), b = P(cw / 2, T, -ch / 2), d = P(cw / 2, T, ch / 2), e = P(cw / 2, 0, ch / 2);
+  c.fillStyle = '#081516'; c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(d[0], d[1]); c.lineTo(e[0], e[1]); c.closePath(); c.fill();
+  const N = 120; for (let k = 0; k < N; k++){ const p0 = P(lerp(-cw / 2, cw / 2, k / N), 0, -ch / 2), p1 = P(lerp(-cw / 2, cw / 2, (k + 1) / N), 0, -ch / 2), hh = ch * p0[2];
+    c.drawImage(COVER2, k / N * cw, 0, cw / N + .6, ch, p0[0], cy - hh / 2, p1[0] - p0[0] + .6, hh); }
+  c.restore();
+}
+function sBook(c, t){
+  const u = t - LS[14];
+  const g = c.createRadialGradient(CX, 760, 0, CX, 760, 1100); g.addColorStop(0, '#183234'); g.addColorStop(1, COL.night); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  for (const s of STARS){ c.fillStyle = moonA(.3 * (.55 + .45 * Math.sin(t * s.sp + s.tw))); c.beginPath(); c.arc(s.x, s.y, s.r * .8, 0, TAU); c.fill(); }
+  const en = eOutExpo(seg(u, 0, 1.4)), cta = eInOut(seg(t, LS[15] - .2, LS[15] + .5));
+  const th = lerp(1.2, .3, en) + Math.sin(t * 1.1) * .05, cy = lerp(lerp(900, 760, en), 600, cta), sc = lerp(.95, .66, cta);
+  drawBook(c, CX, cy, th, seg(u, .9, 2.0), sc);
+  // CTA: free intro + link in bio
+  const bp = eOutBack(seg(t, LS[15], LS[15] + .35));
+  if (bp > 0){ const label = 'المقدّمة مجانية', w = measure(label, 64, F.ui, 600) + 140, hh = 130, y = 1020;
+    c.save(); c.translate(CX, y + hh / 2); c.scale(bp, bp); c.shadowColor = amberA(.55); c.shadowBlur = 50; c.fillStyle = COL.amber;
+    c.beginPath(); c.roundRect(-w / 2, -hh / 2, w, hh, hh / 2); c.fill(); c.shadowBlur = 0;
+    const sh = seg(t, LS[15] + .4, LS[15] + 1.1); if (sh > 0 && sh < 1){ c.clip(); const sx = lerp(w, -w, sh), sg = c.createLinearGradient(sx - 80, 0, sx + 80, 0);
+      sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(.5, 'rgba(255,255,255,.6)'); sg.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = sg; c.fillRect(-w / 2, -hh / 2, w, hh); }
+    c.restore(); txt(c, label, CX, y + hh / 2 + 4, 64 * bp, F.ui, '#1A1208', { w: 600 }); }
+  const lb = eOutBack(seg(t, LS[16], LS[16] + .35));
+  if (lb > 0){ const bob = Math.sin(t * 9) * 14 * lb;
+    c.save(); c.globalAlpha = clamp(lb); c.translate(CX, 230 + bob); c.fillStyle = COL.moon;
+    c.beginPath(); c.moveTo(0, -70); c.lineTo(60, 0); c.lineTo(22, 0); c.lineTo(22, 70); c.lineTo(-22, 70); c.lineTo(-22, 0); c.lineTo(-60, 0); c.closePath(); c.fill(); c.restore();
+    txt(c, 'الرابط بالبايو', CX, 360 + bob * .4, 54, F.ui, COL.moon, { w: 600, a: clamp(lb) }); }
+}
+
+// ───────── H · send it to someone ─────────
+function sShare(c, t){
+  const u = t - LS[17];
+  c.fillStyle = COL.night; c.fillRect(0, 0, W, H);
+  for (const s of STARS){ c.fillStyle = moonA(.4 * (.55 + .45 * Math.sin(t * s.sp + s.tw))); c.beginPath(); c.arc(s.x, s.y, s.r * .8, 0, TAU); c.fill(); }
+  // paper plane on a curved path, leaving a dashed trail
+  const fp = eInOut(seg(u, 0, 1.6)), path = k => [lerp(W * .82, W * .2, k) + Math.sin(k * Math.PI) * 60, 900 - Math.sin(k * Math.PI) * 330 - k * 120];
+  c.setLineDash([16, 18]); c.strokeStyle = moonA(.4); c.lineWidth = 4; c.beginPath();
+  for (let k = 0; k <= fp; k += .01){ const [x, y] = path(k); k ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); c.setLineDash([]);
+  const [px, py] = path(fp), [qx, qy] = path(Math.min(1, fp + .01)), ang = Math.atan2(qy - py, qx - px);
+  if (fp < 1){ c.save(); c.translate(px, py); c.rotate(ang); c.fillStyle = COL.moon;
+    c.beginPath(); c.moveTo(60, 0); c.lineTo(-50, -40); c.lineTo(-24, 0); c.lineTo(-50, 40); c.closePath(); c.fill();
+    c.fillStyle = COL.faint; c.beginPath(); c.moveTo(60, 0); c.lineTo(-24, 0); c.lineTo(-30, 26); c.closePath(); c.fill(); c.restore(); }
+  // arrives at a friend: a soft glowing heart of light
+  const arr = eOutBack(seg(u, 1.5, 2.0));
+  if (arr > 0){ const [x, y] = path(1); glowDot(c, x, y, 18 * arr, 220 * arr, '224,174,106', clamp(arr));
+    for (let k = 0; k < 3; k++){ const q = (u * .8 + k / 3) % 1; c.beginPath(); c.arc(x, y, 30 + q * 160, 0, TAU); c.strokeStyle = amberA(.5 * (1 - q) * clamp(arr)); c.lineWidth = 3; c.stroke(); } }
+  // end card
+  const ec = eOutCubic(seg(t, 28.0, 28.7));
+  if (ec > 0){ c.fillStyle = `rgba(9,18,20,${.85 * ec})`; c.fillRect(0, 0, W, H);
+    glowDot(c, CX, 600, 10, 140, '237,230,214', ec);
+    txt(c, 'سَكينة', CX, 820 + (1 - ec) * 40, 230, F.display, COL.moon, { w: 700, a: ec, glow: 30, glowC: moonA(.4) });
+    txt(c, 'رحلة العودة إلى الداخل', CX, 990, 54, F.read, COL.muted, { a: ec });
+    txt(c, 'احفظ الفيديو وارجعلو وقت ما تحتاجو', CX, 1110, 42, F.ui, COL.amber, { w: 500, a: seg(t, 28.5, 29) }); }
+}
+
+// ───────── captions: viral word-by-word ─────────
+function captions(c, t){
+  const line = TM.lines.find(l => t >= l.s - .08 && t < l.e + .45 + (l.i === 12 ? 1.2 : 0)); if (!line) return;
+  if (line.i === 17 && t > 28.0) return;
+  const ws = TM.words.filter(w => w.line === line.i), size = line.i === 0 ? 140 : 88, fam = F.ui, sp = size * .5;
+  const pop = line.i === 0 ? 1 : eOutBack(seg(t, line.s - .08, line.s + .14)), fade = 1 - seg(t, line.e + .3, line.e + .45 + (line.i === 12 ? 1.2 : 0));
+  // wrap into rows of max width
+  const rows = [[]]; let rw = 0; for (const w of ws){ const m = measure(w.w, size, fam, 600); if (rw + m > 900 && rows[rows.length - 1].length){ rows.push([]); rw = 0; } rows[rows.length - 1].push({ ...w, m }); rw += m + sp; }
+  const y0 = 1270 - (rows.length - 1) * size * .62;
+  if (line.i === 0){ c.fillStyle = 'rgba(6,11,12,.75)'; c.fillRect(0, y0 - size, W, size * 2); }
+  rows.forEach((row, ri) => { const tw = row.reduce((s, w) => s + w.m, 0) + sp * (row.length - 1); let x = CX + tw / 2;
+    row.forEach(w => { const on = t >= w.s - .03 && t < w.e + .05, said = line.i === 0 || t >= w.s - .03, k = eOutBack(seg(t, w.s - .03, w.s + .12));
+      const cx = x - w.m / 2, s = pop * (on ? 1 + .12 * k : 1);
+      c.save(); c.translate(cx, y0 + ri * size * 1.25); c.scale(s, s); c.globalAlpha = fade;
+      if (on){ c.fillStyle = amberA(.95); c.beginPath(); c.roundRect(-w.m / 2 - 14, -size * .62, w.m + 28, size * 1.24, 22); c.fill(); }
+      txt(c, w.w, 0, 4, size, fam, on ? '#1A1208' : (said ? COL.moon : moonA(.55)), { w: 600, stroke: on ? null : 'rgba(0,0,0,.55)', sw: 12 });
+      c.restore(); x -= w.m + sp; }); });
+}
+
+function post(c, t){
+  const v = c.createRadialGradient(CX, H / 2, H * .3, CX, H / 2, H * .75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.5)'); c.fillStyle = v; c.fillRect(0, 0, W, H);
+  const f = Math.floor(t * 30); c.save(); c.globalCompositeOperation = 'overlay'; c.globalAlpha = .07; c.fillStyle = c.createPattern(GRAIN[f % 6], 'repeat');
+  c.translate(-hash(f, 1) * 256, -hash(f, 2) * 256); c.fillRect(0, 0, W + 256, H + 256); c.restore();
+  // retention progress bar
+  c.fillStyle = moonA(.15); c.fillRect(0, 0, W, 8); c.fillStyle = COL.amber; c.fillRect(W - W * t / T_END, 0, W * t / T_END, 8);
+}
+
+const SCENES = () => [[0, sHook], [LS[2], sTired], [LS[5], sMind], [LS[8], sSky], [LS[11], sBreath], [LS[14], sBook], [LS[17], sShare]];
+function render(t){
+  X.setTransform(1, 0, 0, 1, 0, 0); X.globalAlpha = 1; X.filter = 'none'; X.globalCompositeOperation = 'source-over';
+  const sc = SCENES(); let i = 0; while (i + 1 < sc.length && t >= sc[i + 1][0] - .06) i++;
+  const st = sc[i][0], k = eOutExpo(seg(t, st - .06, st + .3)), punch = i ? lerp(1.12, 1, k) : 1;
+  X.save(); X.translate(CX, H / 2); X.scale(punch, punch); X.translate(-CX, -H / 2); sc[i][1](X, Math.max(t, st)); X.restore();
+  if (i && t < st + .04){ X.fillStyle = moonA(.35); X.fillRect(0, 0, W, H); }   // cut flash
+  captions(X, t);
+  post(X, t);
+}
+window.render = render; window.T_END = T_END;
+window.ready = (async () => {
+  TM = await (await fetch('timing.json')).json(); LS = TM.lines.map(l => l.s);
+  await Promise.all(['700 40px "Aref Ruqaa"', '400 40px "Amiri"', '500 40px "Plex"', '600 40px "Plex"', '600 40px "PlexL"'].map(f => document.fonts.load(f, 'سكينة ٦:٠٠ abc')));
+  paintCover(); render(0); return true;
+})();
+if (!location.search.includes('render')){ const t0 = performance.now(); window.ready.then(function loop(){ render(((performance.now() - t0) / 1000) % T_END); requestAnimationFrame(loop); }); }
+</script>
+</body>
+</html>
