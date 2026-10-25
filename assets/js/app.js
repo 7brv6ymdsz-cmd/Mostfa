@@ -1,4 +1,5 @@
 "use strict";
+if (window.top !== window.self) { document.documentElement.hidden = true; throw new Error('framed'); }
 // ===== إعدادات الدفع =====
 // رقم التاجر في PayPal (Merchant ID) أو بريد الحساب الذي يستلم المال
 const PAYPAL_EMAIL = "SRDWG2BE4NWME";

@@ -1,4 +1,5 @@
 "use strict";
+if (window.top !== window.self) { document.documentElement.hidden = true; throw new Error('framed'); }
 // Private sales ledger. Everything lives encrypted (AES-GCM, key from the PIN via PBKDF2)
 // in this browser's localStorage; nothing is sent anywhere.
 const STORE = 'sakina-admin-v1', ITER = 310000, IDLE_MS = 10 * 60 * 1000;
@@ -114,7 +115,7 @@ function render(){
       <td>${ar(esc(x.date))}</td>
       <td>${esc(x.name) || '—'}${x.txn ? `<br><small style="color:var(--faint);direction:ltr;display:inline-block">${esc(x.txn)}</small>` : ''}</td>
       <td class="email">${esc(x.email)}</td>
-      <td>${money(+x.amount || 0)}</td>
+      <td>${money(+x.amount || 0)}${(+x.amount || 0) < 5 ? ' <span class="status pending" title="أقل من سعر الكتاب">⚠️ أقل من ٥$</span>' : ''}</td>
       <td><span class="status ${x.sent ? 'sent' : 'pending'}">${x.sent ? 'أُرسل الكتاب' : 'لم يُرسَل'}</span></td>
       <td><div class="row-actions">
         <button class="btn sm" data-copy="${esc(x.email)}">نسخ البريد</button>
