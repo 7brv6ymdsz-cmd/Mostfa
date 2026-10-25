@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /Mostfa/admin/
-Disallow: /Mostfa/read/
 Sitemap: https://7brv6ymdsz-cmd.github.io/Mostfa/sitemap.xml

@@ -1,28 +1,8 @@
 "use strict";
 if (window.top !== window.self) { document.documentElement.hidden = true; throw new Error('framed'); }
-// ===== إعدادات الدفع =====
-// صفحة المنتج في Payhip: تتحقق من الدفع وتعطي المشتري رابط تحميل خاصاً به
-const BUY_URL = "https://payhip.com/b/gfGci";
-
 const $ = id => document.getElementById(id);
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ar = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
-
-// payment: Payhip handles checkout, verification and the download
-(function(){
-  const link = $('buyLink');
-  if (!/^https:\/\/payhip\.com\/b\/[A-Za-z0-9]+$/.test(BUY_URL)) { link.removeAttribute('href'); link.setAttribute('aria-disabled','true'); link.textContent = 'الدفع يُفتح قريباً'; return; }
-  link.href = BUY_URL;
-})();
-
-// offer card: gentle 3D tilt (mouse only)
-(function(){
-  const el = $('offer'); if (reduce) return;
-  el.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return;
-    const r = el.getBoundingClientRect(), x = (e.clientX - r.left)/r.width - .5, y = (e.clientY - r.top)/r.height - .5;
-    el.classList.add('hovering'); el.style.setProperty('--ty', (x*8)+'deg'); el.style.setProperty('--tx', (-y*6)+'deg'); });
-  el.addEventListener('pointerleave', () => { el.classList.remove('hovering'); el.style.removeProperty('--ty'); el.style.removeProperty('--tx'); });
-})();
 
 // a drop of water in every button
 document.addEventListener('pointerdown', e => {
