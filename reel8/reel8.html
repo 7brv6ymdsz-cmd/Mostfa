@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>سكينة · الامتنان</title>
+<link rel="stylesheet" href="../shared/reel.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="../shared/sakina.js"></script>
+<script>
+// Reel 8 "gratitude" (chapter 10): an old wish list turns out fulfilled; each blessing lights a star,
+// habit dims them, gratitude lights them again; a shooting star carries it to someone.
+const { W, H, CX, COL, F, moonA, amberA, clamp, lerp, seg, eOutExpo, eInOut, eOutCubic, eOutBack, TAU, hash, AR,
+        txt, measure, title, wordAt, zAt, book, endCard } = Sakina;
+let LS, LE; const K = {};
+const STARS = [ // the constellation of what you already have (screen positions)
+  { x: 790, y: 520, k: 'home', s: 'البيت' }, { x: 560, y: 380, k: 'work', s: 'العمل' }, { x: 300, y: 560, k: 'people', s: 'أمي' },
+  { x: 420, y: 760, k: 'people', s: 'صديق' }, { x: 700, y: 780, k: 'people', s: 'أنت' }];
+const LINKS = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 0]];
+const LACKS = [{ x: 200, y: 330 }, { x: 900, y: 330 }, { x: 860, y: 980 }];
+const REEL = {
+  T_END: 0,
+  cues(S){
+    LS = S.LS; LE = S.LE;
+    K.wish = wordAt(0, 'ما'); K.home = wordAt(1, 'البيت'); K.work = wordAt(1, 'العمل'); K.people = wordAt(1, 'والناس');
+    K.habit = LS[2]; K.forget = wordAt(2, 'فتنسى'); K.not = LS[3]; K.see = LS[4]; K.before = wordAt(4, 'قبل');
+    K.link = wordAt(6, 'والرابط'); K.end = S.T_END - 2.1; REEL.captions.until = K.end;
+  },
+  vel(){ return .35; },
+  wrate(){ return .6; },
+  world(t){
+    const s = {}; s.wt = Sakina.wtAt(t); s.storm = 0;
+    const dim = seg(t, K.habit, K.forget + .6) * (1 - seg(t, K.see - .1, K.see + .6));
+    s.sat = .55 * dim; s.warm = .18 * seg(t, K.see, K.see + 1) * (1 - seg(t, LS[5], LS[5] + 1));
+    const book = eInOut(seg(t, LS[5] - .6, LS[5] + .4)), z = zAt(t), y = 1.8, ty = y + lerp(2.6, .4, book);
+    s.ro = [0, y, z]; s.ta = [lerp(5.5, 0, book), ty, z + 10]; s.moon = 1 + .3 * book;
+    s.vig = .15 * dim;
+    return s;
+  },
+  overlays(c, t, s){
+    wishList(c, t); constellation(c, t); lacks(c, t);
+    title(c, 'العين تعتاد…', 1060, 110, seg(t, K.habit - .05, K.habit + .4), 1 - seg(t, LS[3] - .35, LS[3]), { col: '#BFC9C6', glow: 0 });
+    title(c, 'أن ترى ما لديك', 1060, 120, seg(t, K.see - .05, K.see + .45), 1 - seg(t, LS[5] - .45, LS[5] - .05), { glow: 50, glowC: amberA(.5) });
+    book(c, t, { start: LS[5], cta: LS[6], end: LS[7], link: K.link, label: 'الباب العاشر · الامتنان' });
+    shootingStar(c, t); endCard(c, t, K.end);
+  },
+  captions: {},
+};
+// hook: a wish list from years ago — every line already ticked
+const WISHES = ['بيت صغير', 'عمل أحبه', 'أن يحبني أحد', 'صحة أمي'];
+function wishList(c, t){
+  const a = 1 - seg(t, LS[1] - .3, LS[1] + .1); if (a <= 0) return;
+  const cx = CX, cy = 760, w = 600, h = 560;
+  c.save(); c.globalAlpha = a; c.translate(cx, cy); c.rotate(-.04 + Math.sin(t * .8) * .01);
+  c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 40; c.fillStyle = '#EFE6D2'; c.beginPath(); c.roundRect(-w / 2, -h / 2, w, h, 14); c.fill(); c.shadowBlur = 0;
+  c.strokeStyle = 'rgba(120,100,70,.25)'; c.lineWidth = 2; for (let y = -h / 2 + 150; y < h / 2 - 20; y += 88){ c.beginPath(); c.moveTo(-w / 2 + 40, y + 34); c.lineTo(w / 2 - 40, y + 34); c.stroke(); }
+  c.restore();
+  c.save(); c.globalAlpha = a; c.translate(cx, cy); c.rotate(-.04 + Math.sin(t * .8) * .01);
+  txt(c, 'قائمة أمنياتي · ' + AR(2016), 0, -h / 2 + 70, 44, F.read, '#3a2c1a', { w: 400 });
+  WISHES.forEach((wsh, i) => { const y = -h / 2 + 170 + i * 88;
+    txt(c, wsh, w / 2 - 70, y, 46, F.read, '#2d241a', { align: 'right' });
+    const k = eOutBack(seg(t, K.wish - .1 + i * .28, K.wish + .2 + i * .28));
+    if (k > 0){ c.save(); c.strokeStyle = '#2f8a5a'; c.lineWidth = 9; c.lineCap = 'round'; c.translate(-w / 2 + 80, y); c.scale(k, k);
+      c.beginPath(); c.moveTo(-22, 0); c.lineTo(-6, 16); c.lineTo(26, -20); c.stroke(); c.restore(); } });
+  c.restore();
+}
+function starGlow(c, x, y, r, a){ const g = c.createRadialGradient(x, y, 0, x, y, r * 6); g.addColorStop(0, amberA(.9 * a)); g.addColorStop(.2, amberA(.3 * a)); g.addColorStop(1, amberA(0));
+  c.fillStyle = g; c.fillRect(x - r * 6, y - r * 6, r * 12, r * 12); c.fillStyle = `rgba(255,240,210,${a})`; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+  c.strokeStyle = `rgba(255,240,210,${.5 * a})`; c.lineWidth = 2; c.beginPath(); c.moveTo(x - r * 4, y); c.lineTo(x + r * 4, y); c.moveTo(x, y - r * 4); c.lineTo(x, y + r * 4); c.stroke(); }
+// each blessing lights a star; habit dims them; gratitude brings them back brighter
+function constellation(c, t){
+  const out = 1 - seg(t, LS[5] - .5, LS[5] - .1); if (out <= 0 || t < K.home - .2) return;
+  const dim = seg(t, K.habit, K.forget + .5) * (1 - seg(t, K.see - .1, K.see + .5)), boost = 1 + .5 * seg(t, K.see, K.see + .8);
+  const on = st => { const t0 = st.k === 'home' ? K.home : st.k === 'work' ? K.work : K.people + .25 * STARS.filter(z => z.k === 'people').indexOf(st); return eOutBack(seg(t, t0 - .05, t0 + .35)); };
+  const blur = 6 * dim; if (blur > .3){ c.save(); c.filter = `blur(${blur}px)`; }
+  for (const [a, b] of LINKS){ const pa = on(STARS[a]), pb = on(STARS[b]); if (pa <= 0 || pb <= 0) continue; const k = Math.min(pa, pb);
+    c.strokeStyle = amberA(.35 * k * (1 - dim * .85) * out * boost); c.lineWidth = 2; c.beginPath(); c.moveTo(STARS[a].x, STARS[a].y); c.lineTo(lerp(STARS[a].x, STARS[b].x, clamp(k)), lerp(STARS[a].y, STARS[b].y, clamp(k))); c.stroke(); }
+  STARS.forEach((st, i) => { const k = on(st); if (k <= 0) return; const tw = .85 + .15 * Math.sin(t * 3 + i);
+    starGlow(c, st.x, st.y, 7 * clamp(k) * boost, clamp(k) * (1 - dim * .85) * out * tw);
+    txt(c, st.s, st.x, st.y + 54, 38, F.ui, COL.moon, { w: 600, a: clamp(k) * (1 - dim) * out }); });
+  if (blur > .3) c.restore();
+  // haze while the eye "gets used to it"
+  if (dim > 0){ c.fillStyle = `rgba(30,40,44,${.35 * dim})`; c.fillRect(0, 0, W, H); }
+}
+// what you lack is acknowledged, not ignored — it just isn't counted first
+function lacks(c, t){
+  const a = seg(t, K.not - .05, K.not + .4) * (1 - seg(t, LS[5] - .5, LS[5] - .1)); if (a <= 0) return;
+  const shrink = lerp(1, .6, seg(t, K.before, K.before + .8));
+  c.save(); c.globalAlpha = a; c.setLineDash([8, 10]); c.strokeStyle = moonA(.4); c.lineWidth = 3;
+  LACKS.forEach(l => { c.beginPath(); c.arc(l.x, l.y, 46 * shrink, 0, TAU); c.stroke(); }); c.restore();
+  txt(c, 'ما ينقصك', LACKS[0].x, LACKS[0].y + 80, 30, F.ui, moonA(.55), { w: 500, a: a * (1 - seg(t, K.before, K.before + .6)) });
+}
+// share: one star breaks away and streaks off to someone
+function shootingStar(c, t){
+  const u = t - LS[7]; if (u < 0 || t > K.end + .4) return; const k = eInOut(seg(u, 0, 1.4));
+  const x0 = 820, y0 = 300, x1 = 140, y1 = 640, x = lerp(x0, x1, k), y = lerp(y0, y1, k) - Math.sin(Math.PI * k) * 80;
+  const g = c.createLinearGradient(x, y, x + 260, y - 120); g.addColorStop(0, amberA(.9)); g.addColorStop(1, amberA(0));
+  c.save(); c.strokeStyle = g; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 260 * (1 - k * .3), y - 120 * (1 - k * .3)); c.stroke(); c.restore();
+  const Sg = c.createRadialGradient(x, y, 0, x, y, 60); Sg.addColorStop(0, 'rgba(255,240,210,.95)'); Sg.addColorStop(1, 'rgba(255,240,210,0)'); c.fillStyle = Sg; c.fillRect(x - 60, y - 60, 120, 120);
+}
+window.ready = fetch('timing.json').then(r => r.json()).then(tm => { REEL.T_END = Math.round((tm.T + 2.6) * 10) / 10; Sakina.start(REEL); return window.ready; });
+</script>
+</body>
+</html>

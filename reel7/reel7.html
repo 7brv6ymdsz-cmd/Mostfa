@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>سكينة · الآن</title>
+<link rel="stylesheet" href="../shared/reel.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="../shared/sakina.js"></script>
+<script>
+// Reel 7 "now" (chapter 9): the sea rewinds into the past, races into the future, then stops dead on "now";
+// a three-things grounding exercise brings you back.
+const { W, H, CX, COL, F, moonA, amberA, clamp, lerp, seg, eOutExpo, eInOut, eOutCubic, eOutBack, TAU, hash, AR,
+        txt, measure, title, wordAt, zAt, book, endCard } = Sakina;
+let LS, LE; const K = {};
+const REEL = {
+  T_END: 0,
+  cues(S){
+    LS = S.LS; LE = S.LE;
+    K.past = LS[1]; K.future = LS[2]; K.now = LS[3]; K.nowWord = wordAt(3, 'الآن'); K.see = wordAt(4, 'اذكر');
+    K.fill = LE[4] + .1; K.back = LS[5]; K.home = wordAt(5, 'عدت'); K.link = wordAt(7, 'والرابط'); K.end = S.T_END - 2.1; REEL.captions.until = K.end;
+  },
+  vel(t){ return t < K.past ? 1.4 : t < K.future ? lerp(1.4, -2.6, seg(t, K.past, K.past + .3)) : t < K.now ? lerp(-2.6, 6, seg(t, K.future, K.future + .3)) : lerp(6, .25, eOutCubic(seg(t, K.now, K.now + .6))); },
+  wrate(t){ return t < K.past ? 1 : t < K.future ? lerp(1, -2.6, seg(t, K.past, K.past + .3)) : t < K.now ? lerp(-2.6, 5, seg(t, K.future, K.future + .3)) : lerp(5, .25, eOutCubic(seg(t, K.now, K.now + .5))); },
+  world(t){
+    const s = {}; s.wt = Sakina.wtAt(t);
+    const still = eInOut(seg(t, K.now - .05, K.now + .8)), past = seg(t, K.past - .1, K.past + .3) * (1 - seg(t, K.future - .1, K.future + .2)), fut = seg(t, K.future - .1, K.future + .3) * (1 - still);
+    s.storm = lerp(lerp(.4, .65, fut), 0, still);
+    s.sat = .6 * past + .3 * fut; s.warm = .4 * past + .12 * seg(t, K.fill, K.fill + 1.5) * (1 - seg(t, LS[6], LS[6] + .8));
+    const z = zAt(t), y = lerp(2.6 + Math.sin(t * 1.7) * .2, 1.9, still), ty = y + lerp(-.3, .38, still);
+    s.ro = [0, y, z]; s.ta = [0, ty, z + 10]; s.roll = -.04 * past + .04 * fut;
+    s.moon = 1 + .4 * still;
+    s.ripT = t > K.home - .1 ? t - (K.home - .1) : -1; s.ripC = [0, zAt(K.home) + 14];
+    return s;
+  },
+  overlays(c, t, s){
+    title(c, 'عقلك ليس هنا.', 340, 130, 1, 1 - seg(t, K.past - .35, K.past + .05), { glow: 40 });
+    era(c, t, K.past, K.future, 'الماضي', -1, 2026, 2014, ['كان يجب…', 'لو أنني…', 'تلك الليلة', 'لماذا قلت؟']);
+    era(c, t, K.future, K.now, 'المستقبل', 1, 2026, 2046, ['ماذا لو…؟', 'ربما…', 'حين أنجح…', 'سأرتاح بعد…']);
+    // "now": everything stops on one word
+    const nw = seg(t, K.nowWord - .05, K.nowWord + .4), nout = 1 - seg(t, LS[4] - .3, LS[4] + .1);
+    if (nw > 0 && nout > 0){ title(c, 'الآن', 760, 280, nw, nout, { glow: 70, glowC: moonA(.55) });
+      const q = seg(t, K.nowWord, K.nowWord + 1.6); c.save(); c.globalAlpha = (1 - q) * nout; c.strokeStyle = moonA(.6); c.lineWidth = 3; c.beginPath(); c.arc(CX, 760, 120 + q * 520, 0, TAU); c.stroke(); c.restore(); }
+    exercise(c, t);
+    book(c, t, { start: LS[6], cta: LS[7], end: LS[8], link: K.link, label: 'الباب التاسع · الآن' });
+    save(c, t); endCard(c, t, K.end);
+  },
+  captions: { until: 1e9 },
+};
+// past / future: a spinning clock, the years rolling, old or anxious thoughts drifting by
+function era(c, t, t0, t1, name, dir, y0, y1, frags){
+  const a = seg(t, t0 - .1, t0 + .25) * (1 - seg(t, t1 - .25, t1 + .05)); if (a <= 0) return;
+  const k = seg(t, t0, t1), cy = 760;
+  title(c, name, 330, 150, seg(t, t0 - .1, t0 + .35), a, { glow: 40, col: dir < 0 ? '#E9D2A6' : '#CFE3EA' });
+  c.save(); c.globalAlpha = a; c.strokeStyle = moonA(.85); c.lineWidth = 6; c.beginPath(); c.arc(CX, cy, 170, 0, TAU); c.stroke();
+  for (let i = 0; i < 12; i++){ const an = i / 12 * TAU; c.lineWidth = i % 3 ? 3 : 6; c.beginPath(); c.moveTo(CX + Math.cos(an) * 140, cy + Math.sin(an) * 140); c.lineTo(CX + Math.cos(an) * 158, cy + Math.sin(an) * 158); c.stroke(); }
+  const spin = dir * (t - t0) * (dir < 0 ? 9 : 16);
+  c.lineCap = 'round'; c.lineWidth = 8; c.beginPath(); c.moveTo(CX, cy); c.lineTo(CX + Math.cos(spin - Math.PI / 2) * 120, cy + Math.sin(spin - Math.PI / 2) * 120); c.stroke();
+  c.lineWidth = 10; c.beginPath(); c.moveTo(CX, cy); c.lineTo(CX + Math.cos(spin / 12 - Math.PI / 2) * 80, cy + Math.sin(spin / 12 - Math.PI / 2) * 80); c.stroke();
+  c.fillStyle = COL.amber; c.beginPath(); c.arc(CX, cy, 12, 0, TAU); c.fill(); c.restore();
+  const yr = Math.round(lerp(y0, y1, Math.pow(k, dir < 0 ? .8 : 1.3)));
+  txt(c, AR(yr), CX, 1020, 92, F.ui, COL.amber, { w: 600, a, dir: 'ltr', glow: 20, glowC: 'rgba(0,0,0,.8)' });
+  frags.forEach((f, i) => { const st = t0 + .15 + i * .35, d = t - st; if (d < 0) return;
+    const x = CX + dir * -1 * (-260 + d * 170) + (i % 2 ? 160 : -160), y = 520 + i * 150 + Math.sin(d * 2 + i) * 10;
+    c.save(); c.filter = 'blur(1.5px)'; txt(c, f, x, y, 44, F.read, dir < 0 ? '#E9D2A6' : '#CFE3EA', { a: a * .55 * Math.min(1, d * 3) }); c.restore(); });
+}
+// "name three things you see": three circles fill during the pause, then merge into one point of light
+function exercise(c, t){
+  const a = seg(t, K.see - .1, K.see + .3) * (1 - seg(t, LS[6] - .4, LS[6])); if (a <= 0) return;
+  const merge = eInOut(seg(t, K.back, K.home + .2)), cy = 760;
+  for (let i = 0; i < 3; i++){
+    const x = lerp(CX + 230 - i * 230, CX, merge), ft = K.fill + i * .55, f = eOutBack(seg(t, ft, ft + .3));
+    c.save(); c.globalAlpha = a; c.strokeStyle = moonA(.75 * (1 - merge)); c.lineWidth = 4; c.beginPath(); c.arc(x, cy, 78, 0, TAU); c.stroke();
+    if (f > 0){ c.shadowColor = amberA(.7); c.shadowBlur = 40; c.fillStyle = amberA(.9); c.beginPath(); c.arc(x, cy, 70 * f * lerp(1, .45, merge), 0, TAU); c.fill(); }
+    c.restore();
+    if (f > 0 && merge < .5) txt(c, AR(i + 1), x, cy + 4, 64, F.ui, '#1A1208', { w: 600, a: a * clamp(f) * (1 - merge * 2) });
+  }
+  txt(c, 'خذ وقتك…', CX, 940, 44, F.ui, moonA(.75), { w: 500, a: a * seg(t, LE[4], LE[4] + .3) * (1 - seg(t, K.back - .2, K.back + .1)) });
+  title(c, 'عُدتَ.', 560, 170, seg(t, K.home - .05, K.home + .45), a, { glow: 60, glowC: amberA(.45) });
+}
+// save: a bookmark draws itself and fills with light
+function save(c, t){
+  const t0 = LS[8] - .1; if (t < t0) return;
+  const a = seg(t, t0, t0 + .3) * (1 - seg(t, K.end, K.end + .45)); if (a <= 0) return;
+  const draw = eInOut(seg(t, LS[8], LS[8] + .55)), fill = eOutBack(seg(t, LS[8] + .55, LS[8] + .9)), cy = 790;
+  const path = () => { c.beginPath(); c.moveTo(CX - 110, cy - 150); c.lineTo(CX + 110, cy - 150); c.lineTo(CX + 110, cy + 150); c.lineTo(CX, cy + 80); c.lineTo(CX - 110, cy + 150); c.closePath(); };
+  c.save(); c.globalAlpha = a; c.lineWidth = 7; c.lineJoin = 'round'; c.strokeStyle = COL.moon; c.setLineDash([1100 * draw, 2400]); path(); c.stroke(); c.setLineDash([]);
+  if (fill > 0){ c.save(); c.translate(CX, cy); c.scale(fill, fill); c.translate(-CX, -cy); c.shadowColor = amberA(.7); c.shadowBlur = 60; c.fillStyle = COL.amber; path(); c.fill(); c.restore();
+    c.strokeStyle = '#1A1208'; c.lineWidth = 12; c.lineCap = 'round'; c.beginPath(); c.moveTo(CX - 42, cy - 20); c.lineTo(CX - 8, cy + 14); c.lineTo(CX + 50, cy - 50); c.stroke(); }
+  c.restore();
+  txt(c, 'تم الحفظ', CX, cy + 230, 44, F.ui, COL.amber, { w: 600, a: a * clamp(fill) });
+}
+// length = voice-over + room for the end card; Sakina.start replaces window.ready with its own promise
+window.ready = fetch('timing.json').then(r => r.json()).then(tm => { REEL.T_END = Math.round((tm.T + 2.6) * 10) / 10; Sakina.start(REEL); return window.ready; });
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>سكينة · الخلوة</title>
+<link rel="stylesheet" href="../shared/reel.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="../shared/sakina.js"></script>
+<script>
+// Reel 9 "solitude" (chapter 8): screen time, the noise of others and to-do lists swiped away, the phone turned over,
+// alone vs. with yourself (a light with no reflection vs. one with its reflection), and a five-minute timer.
+const { W, H, CX, COL, F, moonA, amberA, clamp, lerp, seg, eOutExpo, eInOut, eOutCubic, eOutBack, TAU, hash, AR,
+        txt, measure, title, wordAt, zAt, project, book, endCard } = Sakina;
+let LS, LE; const K = {};
+const REEL = {
+  T_END: 0,
+  cues(S){
+    LS = S.LS; LE = S.LE;
+    K.others = wordAt(1, 'مع'); K.todo = wordAt(1, 'ولا');
+    K.fear = LS[2]; K.silent = wordAt(2, 'حين'); K.diff = LS[3]; K.alone = wordAt(3, 'وحيدا'); K.withSelf = wordAt(3, 'وأن');
+    K.try = LS[4]; K.five = wordAt(4, 'خمس'); K.link = wordAt(6, 'والرابط'); K.end = S.T_END - 2.1; REEL.captions.until = K.end;
+    // the second "مع" in line 1 is "مع نفسك فقط"
+    const ws = S.TM.words.filter(w => w.line === 1); const m = ws.filter(w => w.w.replace(/[^ء-ي]/g, '') === 'مع'); K.self = m.length > 1 ? m[1].s : LE[1] - .8;
+  },
+  vel(t){ return t < LS[2] ? 1.2 : .35; },
+  wrate(t){ return t < LS[2] ? 1 : .4; },
+  world(t){
+    const s = {}; s.wt = Sakina.wtAt(t);
+    const hush = eInOut(seg(t, K.silent - .1, K.silent + .8));
+    s.storm = lerp(.32, 0, hush); s.sat = .3 * (1 - hush);
+    s.warm = .15 * seg(t, K.withSelf, K.withSelf + 1) * (1 - seg(t, LS[5], LS[5] + .8));
+    const z = zAt(t), y = lerp(2.5, 1.8, hush), ty = y + lerp(-.25, .38, hush);
+    s.ro = [0, y, z]; s.ta = [0, ty, z + 10]; s.moon = 1 + .2 * hush;
+    s.vig = .35 * seg(t, K.silent, K.silent + .4) * (1 - seg(t, K.diff - .2, K.diff + .4));
+    // the self: a warm light resting on the water, with its reflection
+    const sa = seg(t, K.self - .1, K.self + .5) * (1 - seg(t, LS[5] - .3, LS[5] + .2)) * (1 - .8 * seg(t, K.silent, K.silent + .3) * (1 - seg(t, K.diff, K.diff + .4)));
+    s.orb = sa > 0 ? [.9, .25, zAt(K.self) + 16, 1.1 * sa] : [0, 0, 0, 0];
+    s.ripT = t > K.five ? (t - K.five) % 3 : -1; s.ripC = [.9, zAt(K.self) + 16];
+    return s;
+  },
+  overlays(c, t, s){
+    screenTime(c, t); noise(c, t); phoneFlip(c, t); twoLights(c, t, s); timer(c, t);
+    title(c, 'حين يصمت كل شيء', 640, 100, seg(t, K.silent - .05, K.silent + .4), 1 - seg(t, K.diff - .3, K.diff), { fam: F.read, w: 400, glow: 0, col: '#C9D3D0' });
+    book(c, t, { start: LS[5], cta: LS[6], end: LS[7], link: K.link, label: 'الباب الثامن · الخلوة' });
+    save(c, t); endCard(c, t, K.end);
+  },
+  captions: {},
+};
+function card(c, x, y, w, h, a){ c.save(); c.globalAlpha = a; c.fillStyle = 'rgba(14,26,28,.86)'; c.strokeStyle = moonA(.22); c.lineWidth = 2; c.beginPath(); c.roundRect(x - w / 2, y - h / 2, w, h, 36); c.fill(); c.stroke(); c.restore(); }
+// hook: today's screen time
+const APPS = [['التواصل', .82], ['الفيديو', .55], ['الرسائل', .4], ['الأخبار', .22]];
+function screenTime(c, t){
+  const a = 1 - seg(t, LS[1] - .3, LS[1] + .1); if (a <= 0) return; const cy = 760;
+  card(c, CX, cy, 760, 640, a);
+  txt(c, 'وقت الشاشة اليوم', CX + 300, cy - 240, 40, F.ui, moonA(.7), { w: 500, a, align: 'right' });
+  const mins = Math.floor(lerp(400, 462, eOutCubic(seg(t, 0, 1.6))));
+  txt(c, AR(Math.floor(mins / 60)) + ' س ' + AR(mins % 60) + ' د', CX + 300, cy - 150, 104, F.ui, COL.moon, { w: 600, a, align: 'right' });
+  APPS.forEach(([n, v], i) => { const y = cy - 20 + i * 82, k = eOutCubic(seg(t, .2 + i * .15, .9 + i * .15));
+    txt(c, n, CX + 300, y, 34, F.ui, moonA(.75), { w: 500, a, align: 'right' });
+    c.save(); c.globalAlpha = a; c.fillStyle = moonA(.1); c.beginPath(); c.roundRect(CX - 300, y - 12, 420, 24, 12); c.fill();
+    c.fillStyle = i ? moonA(.55) : COL.amber; c.beginPath(); c.roundRect(CX + 120 - 420 * v * k, y - 12, 420 * v * k, 24, 12); c.fill(); c.restore(); });
+}
+// "not with thoughts about others, nor your to-do list": each one is swiped away
+function noise(c, t){
+  const a = seg(t, K.others - .2, K.others + .2); if (a <= 0 || t > LS[2] + .3) return;
+  const swipe = (t0) => eOutExpo(seg(t, t0, t0 + .45));
+  const s1 = swipe(K.todo - .1), s2 = swipe(K.self - .1);
+  c.save(); c.translate(-s1 * 1300, 0);
+  ['ماذا قال عني؟', 'هل زعل مني؟', 'لماذا لم يرد؟'].forEach((q, i) => { const w = measure(q, 40, F.ui, 500) + 80, x = CX + (i - 1) * 120, y = 560 + i * 130;
+    card(c, x, y, w, 96, a); txt(c, q, x, y + 2, 40, F.ui, COL.moon, { w: 500, a }); });
+  c.restore();
+  const ta = seg(t, K.todo - .05, K.todo + .3); if (ta <= 0) return;
+  c.save(); c.translate(s2 * 1300, 0);
+  card(c, CX, 820, 640, 420, ta);
+  txt(c, 'مهام اليوم', CX + 260, 660, 40, F.ui, COL.amber, { w: 600, a: ta, align: 'right' });
+  ['الرد على الرسائل', 'دفع الفاتورة', 'اجتماع ٩:٠٠', 'الاتصال بـ…'].forEach((m, i) => { const y = 740 + i * 72;
+    c.save(); c.globalAlpha = ta; c.strokeStyle = moonA(.5); c.lineWidth = 3; c.strokeRect(CX + 230, y - 16, 32, 32); c.restore();
+    txt(c, m, CX + 200, y + 2, 36, F.ui, COL.moon, { w: 500, a: ta, align: 'right' }); });
+  c.restore();
+}
+// the phone turns face down, its light goes out
+function phoneFlip(c, t){
+  const a = seg(t, K.fear - .2, K.fear + .2) * (1 - seg(t, K.diff - .4, K.diff)); if (a <= 0) return;
+  const flip = eInOut(seg(t, K.silent - .3, K.silent + .3)), sy = Math.abs(Math.cos(flip * Math.PI)), back = flip > .5, w = 340, h = 680, cy = 800;
+  c.save(); c.globalAlpha = a; c.translate(CX, cy); c.scale(1, sy);
+  if (!back){ const g = c.createRadialGradient(0, 0, 40, 0, 0, 700); g.addColorStop(0, 'rgba(170,205,255,.25)'); g.addColorStop(1, 'rgba(170,205,255,0)'); c.fillStyle = g; c.fillRect(-700, -700, 1400, 1400); }
+  c.fillStyle = back ? '#0b1214' : '#2a4766'; c.strokeStyle = moonA(.35); c.lineWidth = 3; c.beginPath(); c.roundRect(-w / 2, -h / 2, w, h, 50); c.fill(); c.stroke();
+  if (back){ c.strokeStyle = moonA(.2); c.beginPath(); c.arc(-w / 2 + 70, -h / 2 + 70, 26, 0, TAU); c.stroke(); }
+  else { txt(c, '٢٣ إشعاراً', 0, -40, 44, F.ui, '#EEF3FF', { w: 600 }); }
+  c.restore();
+}
+// alone: a cold light with no reflection · with yourself: a warm light and its reflection
+function twoLights(c, t, s){
+  const a = seg(t, K.diff - .1, K.diff + .4) * (1 - seg(t, LS[4] - .3, LS[4] + .1)); if (a <= 0) return;
+  const al = seg(t, K.alone - .1, K.alone + .3), ws = seg(t, K.withSelf - .1, K.withSelf + .3);
+  const p = project(s, [-1.6, .25, zAt(K.self) + 16]); if (p && al > 0){ const g = c.createRadialGradient(p[0], p[1], 0, p[0], p[1], 60);
+    g.addColorStop(0, `rgba(170,190,200,${.8 * a * al})`); g.addColorStop(1, 'rgba(170,190,200,0)'); c.fillStyle = g; c.fillRect(p[0] - 60, p[1] - 60, 120, 120);
+    txt(c, 'وحيداً', p[0], p[1] - 110, 44, F.ui, '#B8C4C8', { w: 600, a: a * al }); }
+  const q = project(s, s.orb.slice(0, 3)); if (q && ws > 0) txt(c, 'مع نفسك', q[0], q[1] - 110, 44, F.ui, COL.amber, { w: 600, a: a * ws, glow: 20, glowC: amberA(.5) });
+}
+// a five-minute timer that has already started
+function timer(c, t){
+  const a = seg(t, K.five - .1, K.five + .4) * (1 - seg(t, LS[5] - .4, LS[5])); if (a <= 0) return;
+  const el = Math.max(0, t - K.five - .3), left = 300 - Math.floor(el), cy = 700, r = 190;
+  c.save(); c.globalAlpha = a; c.lineWidth = 12; c.strokeStyle = moonA(.15); c.beginPath(); c.arc(CX, cy, r, 0, TAU); c.stroke();
+  c.strokeStyle = COL.amber; c.lineCap = 'round'; c.shadowColor = amberA(.6); c.shadowBlur = 24; c.beginPath(); c.arc(CX, cy, r, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - el / 300)); c.stroke(); c.restore();
+  txt(c, AR(String(Math.floor(left / 60)).padStart(2, '0')) + ':' + AR(String(left % 60).padStart(2, '0')), CX, cy + 6, 110, F.ui, COL.moon, { w: 600, a, dir: 'ltr' });
+  txt(c, 'فقط أنت', CX, cy + 300, 44, F.ui, COL.amber, { w: 600, a: a * seg(t, LE[4] - .6, LE[4]) });
+}
+function save(c, t){
+  const t0 = LS[7] - .1; if (t < t0) return;
+  const a = seg(t, t0, t0 + .3) * (1 - seg(t, K.end, K.end + .45)); if (a <= 0) return;
+  const draw = eInOut(seg(t, LS[7], LS[7] + .55)), fill = eOutBack(seg(t, LS[7] + .55, LS[7] + .9)), cy = 790;
+  const path = () => { c.beginPath(); c.moveTo(CX - 110, cy - 150); c.lineTo(CX + 110, cy - 150); c.lineTo(CX + 110, cy + 150); c.lineTo(CX, cy + 80); c.lineTo(CX - 110, cy + 150); c.closePath(); };
+  c.save(); c.globalAlpha = a; c.lineWidth = 7; c.lineJoin = 'round'; c.strokeStyle = COL.moon; c.setLineDash([1100 * draw, 2400]); path(); c.stroke(); c.setLineDash([]);
+  if (fill > 0){ c.save(); c.translate(CX, cy); c.scale(fill, fill); c.translate(-CX, -cy); c.shadowColor = amberA(.7); c.shadowBlur = 60; c.fillStyle = COL.amber; path(); c.fill(); c.restore();
+    c.strokeStyle = '#1A1208'; c.lineWidth = 12; c.lineCap = 'round'; c.beginPath(); c.moveTo(CX - 42, cy - 20); c.lineTo(CX - 8, cy + 14); c.lineTo(CX + 50, cy - 50); c.stroke(); }
+  c.restore();
+  txt(c, 'الليلة · ٥ دقائق', CX, cy + 230, 44, F.ui, COL.amber, { w: 600, a: a * clamp(fill) });
+}
+window.ready = fetch('timing.json').then(r => r.json()).then(tm => { REEL.T_END = Math.round((tm.T + 2.6) * 10) / 10; Sakina.start(REEL); return window.ready; });
+</script>
+</body>
+</html>

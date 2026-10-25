@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>سكينة · الجرح</title>
+<link rel="stylesheet" href="../shared/reel.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="../shared/sakina.js"></script>
+<script>
+// Reel 10 "the wound" (chapter 5): the same story with different names; the moon cracks; the scene loops
+// until you look at it; then the cracks are filled with gold (kintsugi) and become the most beautiful part.
+const { W, H, CX, COL, F, moonA, amberA, clamp, lerp, seg, eOutExpo, eInOut, eOutCubic, eOutBack, TAU, hash, rng, AR,
+        txt, measure, title, wordAt, zAt, project, MOON, book, endCard } = Sakina;
+let LS, LE; const K = {};
+const LOOPS = 3;
+const REEL = {
+  T_END: 0,
+  cues(S){
+    LS = S.LS; LE = S.LE;
+    K.why = LS[1]; K.wound = wordAt(1, 'الجرح'); K.loop = LS[2]; K.look = wordAt(2, 'حتى'); K.not = LS[3]; K.heal = LS[4];
+    K.gold = LS[5]; K.goldWord = wordAt(5, 'بالذهب'); K.beauty = wordAt(5, 'فتصير'); K.link = wordAt(7, 'والرابط'); K.end = S.T_END - 2.1; REEL.captions.until = K.end;
+    K.loopLen = (K.look - K.loop) / LOOPS;
+  },
+  vel(t){ return t < K.heal ? .9 : .5; },
+  wrate(){ return 1; },
+  world(t){
+    const s = {};
+    // the loop: the same few seconds of sea replay until "until you look at it"
+    let tt = t; if (t >= K.loop && t < K.look) tt = K.loop + ((t - K.loop) % K.loopLen);
+    s.wt = Sakina.wtAt(tt);
+    s.storm = lerp(.35, .05, seg(t, K.not - .3, K.heal + .5));
+    s.sat = .35 * seg(t, K.wound, K.wound + .5) * (1 - seg(t, K.heal, K.heal + 1));
+    s.warm = .25 * seg(t, K.goldWord, K.goldWord + 1) * (1 - seg(t, LS[6], LS[6] + .8));
+    const push = eInOut(seg(t, K.heal, K.gold + 1)), z = Sakina.zAt(tt) + push * 5, y = 2.1, ty = y + .62;
+    s.ro = [0, y, z]; s.ta = [0, ty, z + 10]; s.moon = 1.1;
+    s.light = 0; return s;
+  },
+  overlays(c, t, s){
+    sameStory(c, t); bigMoon(c, t, s); loopCounter(c, t);
+    title(c, 'ليس أن تنسى', 1120, 110, seg(t, K.not - .05, K.not + .4), 1 - seg(t, K.heal - .3, K.heal + .1), { glow: 30 });
+    title(c, 'أجمل ما فيه', 1120, 120, seg(t, K.beauty - .05, K.beauty + .45), 1 - seg(t, LS[6] - .45, LS[6] - .05), { glow: 50, glowC: amberA(.5) });
+    book(c, t, { start: LS[6], cta: LS[7], end: LS[8], link: K.link, label: 'الباب الخامس · الجرح' });
+    share(c, t); endCard(c, t, K.end);
+  },
+  after(c, t){ // a hard cut flash each time the scene restarts
+    if (t >= K.loop && t < K.look){ const ph = (t - K.loop) % K.loopLen; if (ph < .06 && t - K.loop > .1){ c.fillStyle = moonA(.35); c.fillRect(0, 0, W, H); } }
+  },
+  captions: {},
+};
+// hook: three cards, three names, the same picture
+const STORIES = [['أحمد', 2018], ['سارة', 2021], ['؟', 2025]];
+function sameStory(c, t){
+  const a = 1 - seg(t, K.why - .3, K.why + .1); if (a <= 0) return;
+  STORIES.forEach(([n, y], i) => {
+    const e = i === 0 ? 1 : eOutBack(seg(t, .25 + i * .45, .6 + i * .45)); if (e <= 0) return;
+    const x = CX + (1 - i) * 30, cy = 640 + i * 150, rot = (i - 1) * .06;
+    c.save(); c.globalAlpha = a; c.translate(x, cy); c.rotate(rot); c.scale(e, e);
+    c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 30; c.fillStyle = '#EDE6D6'; c.fillRect(-250, -150, 500, 330); c.shadowBlur = 0;
+    c.fillStyle = '#1c2a2c'; c.fillRect(-226, -128, 452, 230);
+    // the same scene every time: one figure stays, one walks away
+    c.fillStyle = '#D9CFBC'; c.beginPath(); c.arc(-60, -40, 22, 0, TAU); c.fill(); c.fillRect(-76, -16, 32, 80);
+    c.globalAlpha = a * .55; c.beginPath(); c.arc(110, -40, 22, 0, TAU); c.fill(); c.fillRect(94, -16, 32, 80); c.globalAlpha = a;
+    c.strokeStyle = '#D9CFBC'; c.setLineDash([8, 8]); c.lineWidth = 3; c.beginPath(); c.moveTo(140, 30); c.lineTo(200, 30); c.stroke(); c.setLineDash([]);
+    c.restore();
+    c.save(); c.globalAlpha = a; c.translate(x, cy); c.rotate(rot); c.scale(e, e);
+    txt(c, n + ' · ' + AR(y), 0, 140, 38, F.ui, '#2b2318', { w: 600 }); c.restore();
+  });
+  title(c, 'القصة نفسها', 330, 140, 1, a, { glow: 40 });
+}
+// a large moon over the real one; it cracks, and later the cracks fill with gold
+const CRACKS = (() => { const r = rng(55), out = []; for (let k = 0; k < 6; k++){ let a = r() * TAU, x = Math.cos(a) * 30, y = Math.sin(a) * 30; const pts = [[x, y]];
+  const dir = a + (r() - .5); for (let i = 0; i < 16; i++){ const d = dir + (r() - .5) * 1.3; x += Math.cos(d) * 22; y += Math.sin(d) * 22; if (Math.hypot(x, y) > 190) break; pts.push([x, y]); } out.push(pts); } return out; })();
+function bigMoon(c, t, s){
+  const a = seg(t, K.why - .3, K.why + .4) * (1 - seg(t, LS[6] - .4, LS[6])); if (a <= 0) return;
+  const mp = project(s, MOON, true); if (!mp) return; const [x, y] = mp, R = 190;
+  const g = c.createRadialGradient(x, y, 0, x, y, R * 2.6); g.addColorStop(0, moonA(.35 * a)); g.addColorStop(1, moonA(0)); c.fillStyle = g; c.fillRect(x - R * 2.6, y - R * 2.6, R * 5.2, R * 5.2);
+  const mg = c.createRadialGradient(x - R * .3, y - R * .3, R * .1, x, y, R); mg.addColorStop(0, '#FBF7EE'); mg.addColorStop(1, '#CFC6B2');
+  c.save(); c.globalAlpha = a; c.fillStyle = mg; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill(); c.clip();
+  [[-.3, -.2, .18], [.25, .1, .12], [-.05, .35, .09], [.35, -.32, .07]].forEach(([u, v, r]) => { c.fillStyle = 'rgba(150,140,120,.14)'; c.beginPath(); c.arc(x + u * R, y + v * R, r * R, 0, TAU); c.fill(); });
+  const crack = seg(t, K.wound - .05, K.wound + 1.2), gold = eInOut(seg(t, K.goldWord - .4, K.goldWord + 1.1));
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  CRACKS.forEach((pts, j) => { const n = Math.max(2, Math.floor(pts.length * clamp(crack * 1.3 - j * .05))); if (crack <= 0) return;
+    c.beginPath(); pts.slice(0, n).forEach(([u, v], i) => i ? c.lineTo(x + u, y + v) : c.moveTo(x + u, y + v));
+    c.strokeStyle = 'rgba(40,34,26,.85)'; c.lineWidth = 5; c.stroke();
+    if (gold > 0){ const m = Math.max(2, Math.floor(n * clamp(gold * 1.2 - j * .04))); c.beginPath(); pts.slice(0, m).forEach(([u, v], i) => i ? c.lineTo(x + u, y + v) : c.moveTo(x + u, y + v));
+      c.save(); c.shadowColor = amberA(.9); c.shadowBlur = 18; c.strokeStyle = '#F2C27A'; c.lineWidth = 7; c.stroke(); c.restore(); } });
+  c.restore();
+}
+function loopCounter(c, t){
+  if (t < K.loop - .1 || t > K.look + .4) return; const a = seg(t, K.loop - .1, K.loop + .2) * (1 - seg(t, K.look, K.look + .4));
+  const n = Math.min(LOOPS, Math.floor((t - K.loop) / K.loopLen) + 1);
+  txt(c, '↻ المرّة ' + AR(n), CX, 1130, 54, F.ui, COL.amber, { w: 600, a });
+}
+// share: a lantern rises from the water toward the moon
+function share(c, t){
+  const u = t - LS[8]; if (u < -.1 || t > K.end + .5) return; const k = eInOut(seg(u, 0, 2.6)), a = seg(u, -.1, .3) * (1 - seg(t, K.end, K.end + .5));
+  const x = lerp(CX - 160, CX + 40, k), y = lerp(1250, 560, k);
+  const g = c.createRadialGradient(x, y, 0, x, y, 120); g.addColorStop(0, amberA(.8 * a)); g.addColorStop(1, amberA(0)); c.fillStyle = g; c.fillRect(x - 120, y - 120, 240, 240);
+  c.fillStyle = `rgba(255,226,170,${a})`; c.beginPath(); c.roundRect(x - 16, y - 24, 32, 44, 8); c.fill();
+}
+window.ready = fetch('timing.json').then(r => r.json()).then(tm => { REEL.T_END = Math.round((tm.T + 2.6) * 10) / 10; Sakina.start(REEL); return window.ready; });
+</script>
+</body>
+</html>

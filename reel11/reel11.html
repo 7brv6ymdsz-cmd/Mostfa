@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>سكينة · العودة</title>
+<link rel="stylesheet" href="../shared/reel.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="../shared/sakina.js"></script>
+<script>
+// Reel 11 "the return" (chapter 12): a compass spins, points at a trip, a job, a person — the noise follows each time;
+// then the needle turns to point at you, and a circle of light closes where you started. The book is the map: twelve doors.
+const { W, H, CX, COL, F, moonA, amberA, clamp, lerp, seg, eOutExpo, eInOut, eOutCubic, eOutBack, TAU, hash, AR,
+        txt, measure, title, wordAt, zAt, thoughts, rain, book, endCard } = Sakina;
+let LS, LE; const K = {};
+const PINS = [{ k: 'trip', s: 'سفر', x: 820, y: 470, a: -.75 }, { k: 'work', s: 'عمل', x: CX, y: 380, a: 0 }, { k: 'person', s: 'شخص', x: 260, y: 470, a: .75 }];
+const REEL = {
+  T_END: 0,
+  cues(S){
+    LS = S.LS; LE = S.LE;
+    K.trip = wordAt(1, 'سفر'); K.work = wordAt(1, 'عمل'); K.person = wordAt(1, 'شخص'); K.noise = LS[2]; K.back = wordAt(2, 'يعود');
+    K.not = LS[3]; K.home = LS[4]; K.left = wordAt(4, 'خرجت'); K.map = wordAt(5, 'اثني'); K.link = wordAt(6, 'والرابط'); K.end = S.T_END - 2.1; REEL.captions.until = K.end;
+  },
+  vel(t){ return t < LS[1] ? 1.5 : t < K.not ? 4.5 : lerp(4.5, .4, eOutCubic(seg(t, K.not, K.home))); },
+  wrate(t){ return t < K.not ? 1.1 : .5; },
+  world(t){
+    const s = {}; s.wt = Sakina.wtAt(t);
+    const calm = eInOut(seg(t, K.not - .1, K.home + .2)), storm = seg(t, K.noise - .1, K.back + .3);
+    s.storm = lerp(lerp(.35, .95, storm), 0, calm); s.sat = .3 * storm * (1 - calm); s.warm = .2 * seg(t, K.left, K.left + 1) * (1 - seg(t, LS[5], LS[5] + 1));
+    const flashes = [[K.back, 1]]; s.light = 0; for (const [ft, a] of flashes){ const d = t - ft; if (d >= 0 && d < .5) s.light += a * Math.exp(-d * 9) * (.6 + .4 * Math.sin(d * 80)); }
+    const z = zAt(t), y = lerp(2.8 + Math.sin(t * 1.8) * .25, 1.8, calm), ty = y + lerp(-.3, .4, calm);
+    // the search swings the camera left and right; the return brings it back to center
+    const yaw = (1 - calm) * (t > LS[1] ? Math.sin((t - LS[1]) * 1.6) * 2.2 : 0);
+    s.ro = [0, y, z]; s.ta = [yaw, ty, z + 10]; s.roll = (1 - calm) * Math.sin(t * 1.3) * .03; s.moon = 1 + .3 * calm;
+    s.ripT = t > K.left ? (t - K.left) : -1; s.ripC = [0, zAt(K.left) + 14];
+    return s;
+  },
+  overlays(c, t, s){
+    rain(c, s, seg(t, K.noise, K.back) * (1 - seg(t, K.not - .2, K.not + .3)));
+    thoughts(c, t, K.back - .2, K.not - .2, 820, 18);
+    pins(c, t); compass(c, t); circleHome(c, t); doors(c, t);
+    title(c, 'أين السلام؟', 330, 130, 1, 1 - seg(t, LS[1] - .3, LS[1] + .1), { glow: 40 });
+    title(c, 'المكان الذي خرجتَ منه', 1130, 84, seg(t, K.left - .05, K.left + .45), 1 - seg(t, LS[5] - .4, LS[5]), { glow: 40, glowC: amberA(.45) });
+    book(c, t, { start: LS[5], cta: LS[6], end: LS[7], link: K.link, label: '' });
+    share(c, t); endCard(c, t, K.end);
+  },
+  captions: {},
+};
+// the compass: spinning, then pointing at each destination, then down — at you
+function needleAngle(t){
+  if (t < LS[1] - .2) return (t * 9 + Math.sin(t * 5) * .6) % TAU;
+  const pts = [[LS[1] - .2, ((LS[1] - .2) * 9 + Math.sin((LS[1] - .2) * 5) * .6) % TAU], [K.trip, PINS[0].a], [K.work, PINS[1].a], [K.person, PINS[2].a], [K.noise, PINS[2].a + .3], [K.back, PINS[0].a + .2]];
+  if (t >= K.home - .2) return lerp(Math.sin(t * 7) * .6, Math.PI, eOutBack(seg(t, K.home - .2, K.left)));
+  if (t >= K.not) return Math.sin(t * 4.5) * lerp(1.2, .5, seg(t, K.not, K.home));
+  for (let i = pts.length - 1; i >= 0; i--) if (t >= pts[i][0]){ const nx = pts[i + 1]; if (!nx) return pts[i][1] + Math.sin(t * 9) * .15;
+    return lerp(pts[i][1], nx[1], eOutBack(seg(t, pts[i][0], pts[i][0] + .45))); }
+  return 0;
+}
+function compass(c, t){
+  const a = 1 - seg(t, LS[5] - .5, LS[5] - .1); if (a <= 0) return;
+  const cy = 780, r = 190, ang = needleAngle(t);
+  c.save(); c.globalAlpha = a;
+  const g = c.createRadialGradient(CX, cy, 0, CX, cy, r * 1.4); g.addColorStop(0, 'rgba(12,24,26,.75)'); g.addColorStop(1, 'rgba(12,24,26,0)'); c.fillStyle = g; c.fillRect(CX - r * 1.5, cy - r * 1.5, r * 3, r * 3);
+  c.strokeStyle = moonA(.85); c.lineWidth = 5; c.beginPath(); c.arc(CX, cy, r, 0, TAU); c.stroke();
+  for (let i = 0; i < 36; i++){ const an = i / 36 * TAU; c.lineWidth = i % 9 ? 2 : 4; c.beginPath(); c.moveTo(CX + Math.cos(an) * (r - (i % 9 ? 14 : 26)), cy + Math.sin(an) * (r - (i % 9 ? 14 : 26))); c.lineTo(CX + Math.cos(an) * r, cy + Math.sin(an) * r); c.stroke(); }
+  c.translate(CX, cy); c.rotate(ang);
+  c.fillStyle = COL.amber; c.shadowColor = amberA(.7); c.shadowBlur = 25; c.beginPath(); c.moveTo(0, -r + 34); c.lineTo(20, 0); c.lineTo(-20, 0); c.closePath(); c.fill(); c.shadowBlur = 0;
+  c.fillStyle = moonA(.6); c.beginPath(); c.moveTo(0, r - 34); c.lineTo(20, 0); c.lineTo(-20, 0); c.closePath(); c.fill();
+  c.fillStyle = COL.moon; c.beginPath(); c.arc(0, 0, 12, 0, TAU); c.fill(); c.restore();
+  txt(c, 'أنت', CX, cy + r + 70, 46, F.ui, COL.amber, { w: 600, a: a * seg(t, K.left - .1, K.left + .3), glow: 20, glowC: amberA(.6) });
+}
+function icon(c, k, x, y, a){
+  c.save(); c.globalAlpha = a; c.strokeStyle = COL.moon; c.fillStyle = COL.moon; c.lineWidth = 5; c.lineJoin = 'round'; c.lineCap = 'round'; c.translate(x, y);
+  if (k === 'trip'){ c.rotate(-.6); c.beginPath(); c.moveTo(-34, 0); c.lineTo(34, 0); c.moveTo(-4, 0); c.lineTo(-18, -26); c.moveTo(-4, 0); c.lineTo(-18, 26); c.moveTo(24, 0); c.lineTo(16, -10); c.moveTo(24, 0); c.lineTo(16, 10); c.stroke(); }
+  if (k === 'work'){ c.strokeRect(-32, -18, 64, 44); c.beginPath(); c.moveTo(-12, -18); c.lineTo(-12, -30); c.lineTo(12, -30); c.lineTo(12, -18); c.stroke(); }
+  if (k === 'person'){ c.beginPath(); c.moveTo(0, 26); c.bezierCurveTo(-40, -2, -22, -34, 0, -14); c.bezierCurveTo(22, -34, 40, -2, 0, 26); c.stroke(); }
+  c.restore();
+}
+// destinations: each one lights, then is crossed out when the noise comes back
+function pins(c, t){
+  const a = seg(t, K.trip - .3, K.trip) * (1 - seg(t, K.not - .2, K.not + .2)); if (a <= 0) return;
+  const cross = seg(t, K.back - .1, K.back + .5);
+  PINS.forEach((p, i) => { const t0 = K[p.k], e = eOutBack(seg(t, t0 - .1, t0 + .3)); if (e <= 0) return;
+    c.save(); c.globalAlpha = a; c.setLineDash([6, 12]); c.strokeStyle = moonA(.35); c.lineWidth = 3; c.beginPath(); c.moveTo(CX, 780); c.quadraticCurveTo((CX + p.x) / 2, (780 + p.y) / 2 - 120, p.x, p.y + 60); c.stroke(); c.restore();
+    c.save(); c.globalAlpha = a * clamp(e); c.fillStyle = 'rgba(14,26,28,.85)'; c.strokeStyle = amberA(.8); c.lineWidth = 3; c.beginPath(); c.arc(p.x, p.y, 62 * e, 0, TAU); c.fill(); c.stroke(); c.restore();
+    icon(c, p.k, p.x, p.y, a * clamp(e) * (1 - .5 * cross));
+    txt(c, p.s, p.x, p.y + 100, 40, F.ui, COL.moon, { w: 600, a: a * clamp(e) * (1 - .5 * cross) });
+    if (cross > 0){ c.save(); c.globalAlpha = a; c.strokeStyle = '#ff6a5c'; c.lineWidth = 7; c.lineCap = 'round'; const k = cross * 2;
+      c.beginPath(); c.moveTo(p.x - 40, p.y - 40); c.lineTo(lerp(p.x - 40, p.x + 40, clamp(k)), lerp(p.y - 40, p.y + 40, clamp(k))); c.stroke();
+      if (k > 1){ c.beginPath(); c.moveTo(p.x + 40, p.y - 40); c.lineTo(lerp(p.x + 40, p.x - 40, clamp(k - 1)), lerp(p.y - 40, p.y + 40, clamp(k - 1))); c.stroke(); } c.restore(); }
+  });
+}
+// the circle closes where you began
+function circleHome(c, t){
+  const a = seg(t, K.left - .2, K.left + .2) * (1 - seg(t, LS[5] - .5, LS[5] - .1)); if (a <= 0) return;
+  const k = eInOut(seg(t, K.left - .1, K.left + 1.3)), cy = 780, r = 300;
+  c.save(); c.globalAlpha = a; c.shadowColor = amberA(.8); c.shadowBlur = 30 * k; c.strokeStyle = k >= 1 ? COL.amber : moonA(.9); c.lineWidth = 6; c.lineCap = 'round';
+  c.beginPath(); c.arc(CX, cy, r, Math.PI / 2, Math.PI / 2 + TAU * k); c.stroke(); c.restore();
+}
+// "a map back to it, in twelve doors": twelve stations under the book
+function doors(c, t){
+  const a = seg(t, K.map - .3, K.map + .2) * (1 - seg(t, LS[6] - .2, LS[6] + .2)); if (a <= 0) return;
+  const y = 1250, xa = W * .86, xb = W * .14, p = eOutCubic(seg(t, K.map - .1, K.map + 1.2));
+  c.save(); c.globalAlpha = a; c.fillStyle = moonA(.18); c.fillRect(xb, y - 1, xa - xb, 2); c.fillStyle = COL.amber; c.fillRect(xa - (xa - xb) * p, y - 2, (xa - xb) * p, 4);
+  for (let i = 0; i < 12; i++){ const x = lerp(xa, xb, i / 11), on = p * 11 >= i; c.fillStyle = on ? COL.amber : moonA(.3); c.beginPath(); c.arc(x, y, on ? 9 : 6, 0, TAU); c.fill(); }
+  c.restore();
+  txt(c, 'اثنا عشر باباً', CX, y + 60, 40, F.ui, COL.amber, { w: 600, a });
+}
+function share(c, t){
+  const u = t - LS[7]; if (u < -.1 || t > K.end + .5) return; const k = eInOut(seg(u, 0, 2.6)), a = seg(u, -.1, .3) * (1 - seg(t, K.end, K.end + .5));
+  const x = lerp(CX + 160, CX - 40, k), y = lerp(1250, 560, k);
+  const g = c.createRadialGradient(x, y, 0, x, y, 120); g.addColorStop(0, amberA(.8 * a)); g.addColorStop(1, amberA(0)); c.fillStyle = g; c.fillRect(x - 120, y - 120, 240, 240);
+  c.fillStyle = `rgba(255,226,170,${a})`; c.beginPath(); c.roundRect(x - 16, y - 24, 32, 44, 8); c.fill();
+}
+window.ready = fetch('timing.json').then(r => r.json()).then(tm => { REEL.T_END = Math.round((tm.T + 2.6) * 10) / 10; Sakina.start(REEL); return window.ready; });
+</script>
+</body>
+</html>
