@@ -235,11 +235,11 @@
       <div class="buy-text reveal">
         <span class="eyebrow">اقتنِ نسختك</span>
         <h2 class="display">الكتاب كاملاً، معك أينما ذهبت</h2>
-        <p>ادفع بأمان عبر PayPal أو البطاقة، ويصلك الكتاب على بريدك. اقرأه على الهاتف أو الحاسوب، أو اطبعه واحمله معك.</p>
+        <p>ادفع بأمان عبر PayPal أو البطاقة، ويظهر لك زر تحميل الكتاب فوراً بعد الدفع. اقرأه على الهاتف أو الحاسوب، أو اطبعه واحمله معك.</p>
         <ol class="steps" id="steps" aria-label="خطوات الشراء">
-          <li class="done">اكتب بريدك</li>
-          <li>ادفع ٥$ عبر PayPal</li>
-          <li>يصلك الكتاب</li>
+          <li class="done">اكبس «اشترِ الآن»</li>
+          <li class="done">ادفع ٥$ بأمان</li>
+          <li class="done">حمّل الكتاب فوراً</li>
         </ol>
       </div>
       <div class="offer reveal" id="offer">
@@ -250,25 +250,11 @@
         <ul>
           <li>المقدمة والأبواب الاثنا عشر كاملة</li>
           <li>اثنا عشر تمريناً عملياً</li>
-          <li>يصلك على بريدك الإلكتروني</li>
-          <li>دفع آمن عبر PayPal</li>
+          <li>زر تحميل فوري بعد الدفع</li>
+          <li>دفع آمن عبر PayPal أو البطاقة</li>
         </ul>
-        <form class="pay-form" id="payForm" novalidate>
-          <label for="buyerEmail">بريدك الإلكتروني (يصلك الكتاب عليه)</label>
-          <input id="buyerEmail" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com">
-          <p class="pay-err" id="payErr" hidden></p>
-          <button class="btn btn-amber" id="buyBtn" type="submit">متابعة إلى الدفع · ٥$ <span class="arrow">←</span></button>
-          <a class="btn paypal" id="payLink" href="#buy" target="_blank" rel="noopener" hidden>ادفع ٥$ عبر PayPal <span class="arrow">←</span></a>
-        </form>
-        <div class="thanks" id="thanks" hidden>
-          <b>أكمل الدفع في صفحة PayPal</b>
-          <span>بعد إتمام الدفع، يصلك الكتاب على <span id="thanksEmail" dir="ltr"></span>. إن لم يصلك خلال ٢٤ ساعة، تفقّد مجلد الرسائل غير المرغوبة.</span>
-        </div>
-        <div class="soon-box" id="soonBox" hidden>
-          <button class="btn btn-ghost" type="button" disabled>الدفع يُفتح قريباً</button>
-          <p class="soon">الكتاب على وشك الصدور. اقرأ الفصول المجانية الآن، وارجع قريباً.</p>
-        </div>
-        <p class="soon" id="buyNote">دفع آمن عبر PayPal · لا نرى بيانات بطاقتك</p>
+        <a class="btn btn-amber" id="buyLink" href="https://payhip.com/b/gfGci" target="_blank" rel="noopener noreferrer">اشترِ الآن · ٥$ <span class="arrow">←</span></a>
+        <p class="soon">الدفع والتحميل عبر متجر Payhip الآمن · لا نرى بيانات بطاقتك</p>
       </div>
     </div>
   </section>
@@ -280,7 +266,7 @@
         <details class="reveal"><summary>هل الكتاب ديني؟</summary><p>الكتاب إنساني قبل كل شيء. يستلهم من حكمة المتصوفة والفلاسفة ومن علم النفس الحديث، ويحترم إيمان كل قارئ، ويصلح لأي إنسان يبحث عن هدوء حقيقي.</p></details>
         <details class="reveal"><summary>هل أحتاج خبرة في التأمل؟</summary><p>لا. الكتاب يبدأ معك من الصفر. كل تمرين يأخذ بين ثلاث وعشر دقائق، ولا يحتاج إلا إلى مكان هادئ ونيّة صادقة.</p></details>
         <details class="reveal"><summary>كم صفحة؟ وكم يستغرق؟</summary><p>اثنا عشر باباً في ستة وأربعين صفحة، مع تمرين عملي في آخر كل باب. أنصحك بقراءة باب واحد كل أسبوع، فتكون رحلة ثلاثة أشهر تعيشها لا تقرؤها فقط.</p></details>
-        <details class="reveal"><summary>كيف أدفع؟ وكيف يصلني الكتاب؟</summary><p>تدفع عبر PayPal أو البطاقة على صفحة PayPal الآمنة. لا يُطلب منك أي رقم بطاقة على هذه الصفحة. بعد الدفع يصلك الكتاب على بريدك.</p></details>
+        <details class="reveal"><summary>كيف أدفع؟ وكيف يصلني الكتاب؟</summary><p>تكبس «اشترِ الآن» وتدفع عبر PayPal أو البطاقة في صفحة دفع آمنة. بعد الدفع مباشرة يظهر لك زر تحميل الكتاب، وتصلك نسخة احتياطية على بريدك أيضاً. لا يُطلب منك أي رقم بطاقة على هذه الصفحة.</p></details>
       </div>
     </div>
   </section>
@@ -297,6 +283,6 @@
 <button class="sound" id="sound" type="button" aria-pressed="false"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="soundLabel">صوت الموج</span></button>
 
 <script src="assets/js/three.min.js"></script>
-<script src="assets/js/app.js?v=2"></script>
+<script src="assets/js/app.js?v=3"></script>
 </body>
 </html>

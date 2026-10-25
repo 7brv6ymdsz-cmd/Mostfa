@@ -1,35 +1,18 @@
 "use strict";
 if (window.top !== window.self) { document.documentElement.hidden = true; throw new Error('framed'); }
 // ===== إعدادات الدفع =====
-// رقم التاجر في PayPal (Merchant ID) أو بريد الحساب الذي يستلم المال
-const PAYPAL_EMAIL = "SRDWG2BE4NWME";
-// أو رابط صفحة Payhip/Gumroad إن وُجد (يُستعمل بدل PayPal ويرسل الكتاب تلقائياً)
-const BUY_URL = "";
-const PRICE = 5, CURRENCY = "USD", ITEM = "Sakina - eBook (PDF)";
+// صفحة المنتج في Payhip: تتحقق من الدفع وتعطي المشتري رابط تحميل خاصاً به
+const BUY_URL = "https://payhip.com/b/gfGci";
 
 const $ = id => document.getElementById(id);
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ar = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
 
-// payment
+// payment: Payhip handles checkout, verification and the download
 (function(){
-  const form = $('payForm'), email = $('buyerEmail'), err = $('payErr'), steps = [...$('steps').children];
-  const ready = !!(BUY_URL || PAYPAL_EMAIL);
-  if (BUY_URL) $('buyNote').textContent = 'دفع آمن · يصلك الكتاب فوراً بعد الدفع';
-  if (!ready){ form.hidden = true; $('buyNote').hidden = true; $('soonBox').hidden = false; $('steps').hidden = true; return; }
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    const v = email.value.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ err.textContent = 'اكتب بريداً صحيحاً حتى يصلك الكتاب عليه، مثل name@gmail.com'; err.hidden = false; email.focus(); return; }
-    if (!ready){ err.textContent = 'الدفع لم يُفتح بعد. ارجع قريباً، الكتاب على وشك الصدور.'; err.hidden = false; return; }
-    const url = BUY_URL || ('https://www.paypal.com/cgi-bin/webscr?' + new URLSearchParams({
-      cmd:'_xclick', business:PAYPAL_EMAIL, item_name:ITEM, amount:PRICE, currency_code:CURRENCY, custom:v, no_shipping:'1', charset:'utf-8', return:new URL('thanks.html', location.href).href, cancel_return:location.href.split('#')[0] + '#buy'
-    }));
-    const pay = $('payLink'); pay.href = url; pay.hidden = false; $('buyBtn').hidden = true; pay.focus();
-    $('thanksEmail').textContent = v;
-  });
-  $('payLink').addEventListener('click', () => { steps[1].classList.add('done'); $('thanks').hidden = false; });
-  email.addEventListener('input', () => { err.hidden = true; $('payLink').hidden = true; $('buyBtn').hidden = false; });
+  const link = $('buyLink');
+  if (!/^https:\/\/payhip\.com\/b\/[A-Za-z0-9]+$/.test(BUY_URL)) { link.removeAttribute('href'); link.setAttribute('aria-disabled','true'); link.textContent = 'الدفع يُفتح قريباً'; return; }
+  link.href = BUY_URL;
 })();
 
 // offer card: gentle 3D tilt (mouse only)
