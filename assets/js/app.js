@@ -12,10 +12,9 @@ document.addEventListener('pointerdown', e => {
   btn.appendChild(d); setTimeout(() => d.remove(), 950);
 });
 
-// scroll: nav, active link, the lit path, reading bar
+// scroll: nav, active link, the lit path
 const navShell = $('navShell'), links = [...document.querySelectorAll('.nav ul a[href^="#"]:not(.btn)')];
 const pathList = $('pathList'), walked = $('walked'), stones = [...document.querySelectorAll('.stone')];
-const paper = $('paper'), readBar = $('readBar');
 function onScroll(){
   navShell.classList.toggle('scrolled', scrollY > 10);
   let cur = null;
@@ -25,23 +24,8 @@ function onScroll(){
   const walk = Math.min(1, Math.max(0, (mid - pr.top) / pr.height));
   walked.style.setProperty('--walk', walk);
   stones.forEach(s => { const r = s.getBoundingClientRect(); s.classList.toggle('lit', r.top + r.height/2 < mid); });
-  const rr = paper.getBoundingClientRect();
-  readBar.style.transform = `scaleX(${Math.min(1, Math.max(0, (innerHeight*.5 - rr.top) / rr.height))})`;
 }
 addEventListener('scroll', onScroll, {passive:true}); addEventListener('resize', onScroll); onScroll();
-
-// tabs with a sliding moon pill
-const tabs = [...document.querySelectorAll('.tab')], ind = $('tabInd');
-function placeInd(t){ const p = t.parentElement.getBoundingClientRect(), r = t.getBoundingClientRect(); ind.style.right = (p.right - r.right) + 'px'; ind.style.width = r.width + 'px'; }
-tabs.forEach(t => t.addEventListener('click', () => {
-  tabs.forEach(o => { const on = o === t, panel = $(o.getAttribute('aria-controls'));
-    o.setAttribute('aria-selected', on); panel.hidden = !on;
-    if (on){ panel.classList.remove('enter'); void panel.offsetWidth; panel.classList.add('enter'); } });
-  placeInd(t); if (paper.getBoundingClientRect().top < 0) paper.scrollIntoView({behavior: reduce ? 'auto' : 'smooth'});
-  onScroll();
-}));
-const placeCurrent = () => placeInd(tabs.find(t => t.getAttribute('aria-selected') === 'true'));
-placeCurrent(); document.fonts && document.fonts.ready.then(placeCurrent); addEventListener('resize', placeCurrent);
 
 // breathing moon: 4s in, 6s out, three breaths
 (function(){

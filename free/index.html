@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#091214">
+<title>اقرأ سَكينة مجاناً</title>
+<meta name="description" content="اقرأ مقدمة كتاب سَكينة وأول بابين كاملين مجاناً، بلا تسجيل ولا دفع.">
+<link rel="canonical" href="https://7brv6ymdsz-cmd.github.io/Mostfa/free/">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ar_AR">
+<meta property="og:title" content="اقرأ سَكينة مجاناً · المقدمة وأول بابين">
+<meta property="og:description" content="رسالة إلى من أتعبه الطريق. ابدأ القراءة الآن، بلا تسجيل.">
+<meta property="og:url" content="https://7brv6ymdsz-cmd.github.io/Mostfa/free/">
+<meta property="og:image" content="https://7brv6ymdsz-cmd.github.io/Mostfa/assets/img/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="../assets/fonts/amiri-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/style.css?v=4">
+<link rel="stylesheet" href="../assets/css/buy.css?v=2">
+<link rel="stylesheet" href="../assets/css/free.css?v=1">
+</head>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+<div class="glow" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="nav-shell" id="navShell">
+    <div class="wrap">
+      <nav class="nav" aria-label="القائمة">
+        <a class="brand" href="../"><span class="moon-dot"></span>سَكينة</a>
+        <ul>
+          <li><a href="../">عن الكتاب</a></li>
+          <li><a href="../#path">الأبواب</a></li>
+          <li><a href="./" aria-current="page">اقرأ مجاناً</a></li>
+          <li class="keep"><a class="btn btn-moon" href="../buy/">اقتنِ الكتاب</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+  <div class="wrap f-hero">
+    <span class="eyebrow settle" style="--i:0">اقرأ مجاناً</span>
+    <h1 class="settle" style="--i:1">ابدأ الرحلة من هنا</h1>
+    <p class="settle" style="--i:2">المقدمة وأول بابين كاملين، بلا تسجيل ولا دفع. اقرأ على مهلك.</p>
+    <a class="resume" id="resume" href="#" hidden>تابع من حيث توقفت ←</a>
+    <div class="ch-cards settle" style="--i:3"><a class="ch-card" href="#intro" data-go="intro"><svg class="ring" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19"/><circle class="fill" cx="22" cy="22" r="19" pathLength="1"/></svg><span class="cc-label">مقدمة</span><b>رسالة إلى من أتعبه الطريق</b><small>٣ دقائق · <span class="cc-state" data-state="intro">لم تبدأ</span></small></a><a class="ch-card" href="#ch1" data-go="ch1"><svg class="ring" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19"/><circle class="fill" cx="22" cy="22" r="19" pathLength="1"/></svg><span class="cc-label">الباب الأول</span><b>الضجيج</b><small>٤ دقائق · <span class="cc-state" data-state="ch1">لم تبدأ</span></small></a><a class="ch-card" href="#ch2" data-go="ch2"><svg class="ring" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19"/><circle class="fill" cx="22" cy="22" r="19" pathLength="1"/></svg><span class="cc-label">الباب الثاني</span><b>الشاهد</b><small>٤ دقائق · <span class="cc-state" data-state="ch2">لم تبدأ</span></small></a></div>
+  </div>
+</header>
+
+<div class="r-bar" id="rbar">
+  <div class="wrap r-bar-in">
+    <div class="seg" role="tablist" aria-label="الفصول المجانية">
+      <button type="button" role="tab" data-go="intro" aria-selected="true">المقدمة</button>
+      <button type="button" role="tab" data-go="ch1" aria-selected="false">الباب الأول</button>
+      <button type="button" role="tab" data-go="ch2" aria-selected="false">الباب الثاني</button>
+    </div>
+    <div class="tools">
+      <button class="tool" type="button" id="fsDown" aria-label="تصغير الخط">أ−</button>
+      <button class="tool" type="button" id="fsUp" aria-label="تكبير الخط">أ+</button>
+      <button class="tool lbl" type="button" id="inkBtn" aria-pressed="false" title="وضع القراءة الليلي">☾<span> ليلي</span></button>
+    </div>
+  </div>
+  <div class="r-progress" aria-hidden="true"><i id="rprog"></i></div>
+</div>
+
+<main class="room" id="room">
+  <div class="wrap">
+    <div class="sheet" id="sheet">
+<article class="chapter" id="c-intro" data-key="intro" hidden>
+<header class="opener"><div class="opener-num" aria-hidden="true"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="56"/><circle cx="60" cy="60" r="44"/></svg><span>✦</span></div><span class="opener-label">مقدمة</span><h2>رسالة إلى من أتعبه الطريق</h2><p class="opener-lede">قبل أن تبدأ، توقّف لحظة. خذ نفَساً واحداً بطيئاً. هذا هو الكتاب كله، والباقي شرح.</p><div class="opener-meta"><span>⏱ ٣ دقائق قراءة</span><span class="free-chip">مجاناً</span></div></header>
+<div class="prose"><p>أكتب هذه الصفحات لك أنت، الذي فتح هذا الكتاب لأن شيئاً في داخله لم يعد يحتمل. ربما لم يحدث لك شيء كبير. لا كارثة ولا فاجعة. فقط تعبٌ يتراكم بصمت، يوماً بعد يوم، حتى صار الهدوء ذكرى بعيدة لا تعرف متى فقدتها.</p>
+          <p>نحن جيل يعرف كل شيء عن العالم، ولا يعرف شيئاً تقريباً عن داخله. نعرف أخبار مدن لم نزرها، وأسماء أشخاص لن نلتقيهم، وآراء الجميع في كل شيء. لكن حين نجلس وحدنا في غرفة صامتة، دون هاتف ولا شاشة، نشعر بشيء يشبه الذعر. كأن الصمت عدو. كأن البقاء مع أنفسنا عقوبة.</p>
+          <p>لماذا يخيفنا الصمت إلى هذا الحد؟ لأن الصمت مرآة. وفي المرآة نرى ما هربنا منه طويلاً: الحزن الذي لم نسمح له أن يُبكى، والغضب الذي ابتلعناه كي نبدو لطفاء، والسؤال الذي نؤجله منذ سنوات: هل هذه هي الحياة التي أريدها فعلاً؟</p>
+          <figure class="pull"><blockquote>السلام الداخلي ليس غياب العاصفة.<br>هو أن تعرف أين تقف حين تهبّ.</blockquote><button class="copy-q" type="button">انسخ الاقتباس</button></figure>
+          <p>هذا الكتاب لن يعطيك وصفة سحرية. لن يقول لك فكّر بإيجابية وكل شيء سيكون بخير، لأن هذا ليس صحيحاً، وأنت تعرف أنه ليس صحيحاً. الأشياء لن تكون دائماً بخير. سيمرض من نحب، وسنخسر أشياء، وسنُخذَل، وسنَخذُل. السؤال ليس كيف نمنع هذا. السؤال هو: كيف نبقى أحياء من الداخل ونحن نعبر كل هذا؟</p>
+          <p>تعلّمت معظم ما في هذه الصفحات بالطريقة الصعبة. في ليالٍ لم أنم فيها، وفي صباحات استيقظت فيها ولا أعرف لماذا أنا حزين. وتعلّمته من حكماء عاشوا قبلنا بقرون، كتبوا عن النفس وأحوالها بعمق ما زال يدهشني. قال أحدهم: «من عرف نفسه فقد عرف ربّه». وأنا أفهمها اليوم هكذا: الطريق إلى كل ما هو عظيم يبدأ من الداخل، لا من الخارج.</p>
+          <p>اقرأ هذا الكتاب ببطء. لا تقرأه لتنتهي منه. اقرأ باباً واحداً، ثم أغلق الكتاب وعِش معه يوماً أو يومين. افعل التمرين في آخره ولو مرة واحدة. الأفكار التي تُقرأ ولا تُعاش تبقى حبراً على ورق. والأفكار التي تُعاش تصبح جزءاً منك.</p>
+          <p>لست مكسوراً. أنت فقط متعب. والتعب لا يحتاج إلى إصلاح. يحتاج إلى راحة، وإلى عودة.</p>
+          <p>فلنبدأ.</p></div>
+<footer class="ch-end"><div class="done-mark" aria-hidden="true">✓</div><p class="done-text">أنهيت المقدمة</p><a class="next-card" href="#ch1" data-go="ch1"><span>التالي</span><b>الباب الأول: الضجيج</b><i aria-hidden="true">←</i></a></footer>
+</article>
+<article class="chapter" id="c-ch1" data-key="ch1" hidden>
+<header class="opener"><div class="opener-num" aria-hidden="true"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="56"/><circle cx="60" cy="60" r="44"/></svg><span>١</span></div><span class="opener-label">الباب الأول</span><h2>الضجيج</h2><p class="opener-lede">من أين يأتي كل هذا الصخب؟</p><div class="opener-meta"><span>⏱ ٤ دقائق قراءة</span><span class="free-chip">مجاناً</span></div></header>
+<div class="prose"><p>جرّب هذا الآن: أغمض عينيك عشر ثوانٍ وحاول ألا تفكر في شيء.</p>
+          <p>لم تستطع، أليس كذلك؟ قبل أن تصل إلى الثانية الخامسة، جاءتك فكرة عن شيء نسيت أن تفعله، ثم تذكرت كلمة قالها لك أحدهم البارحة، ثم سألت نفسك لماذا تفعل هذا التمرين أصلاً. هذا هو الضجيج. وهو لم يبدأ حين أغمضت عينيك. كان هناك طوال الوقت، لكنك لم تكن تسمعه لأنك كنت مشغولاً.</p>
+          <p>تمرّ في ذهن الإنسان آلاف الأفكار كل يوم، وأغلبها مكرّر: الأفكار نفسها، المخاوف نفسها، الحوارات المتخيّلة نفسها، تدور كأسطوانة لا تتوقف. ومعظمها لا يتعلق بما يحدث الآن. يتعلق بما حدث ولن يتغير، أو بما قد يحدث ولن يحدث غالباً.</p>
+          <p>العقل ليس عدوك. العقل أداة رائعة، صُمّمت لتحميك. منذ آلاف السنين كان أجدادنا يعيشون بين الوحوش والمجاعات، وكان العقل الذي يتوقع الخطر ويتذكر الأذى هو العقل الذي ينجو. ورثنا هذا العقل نفسه، لكننا نعيش في عالم مختلف. لم يعد هناك نمر خلف الشجرة، فصار العقل يخترع النمور: رسالة لم يُرَدّ عليها، نظرة من زميل، رقم في حساب البنك، صورة لحياة شخص آخر تبدو أجمل من حياتك.</p>
+          <figure class="pull"><blockquote>العقل الذي لا يجد خطراً يصنعه.<br>والقلب الذي لا يجد راحة ينساها.</blockquote><button class="copy-q" type="button">انسخ الاقتباس</button></figure>
+          <p>ثم جاء العالم الحديث وزاد الطين بلّة. صرنا نحمل في جيوبنا آلة مصمّمة بعناية كي لا نتركها أبداً. كل إشعار يَعِد بشيء، وكل تمريرة للشاشة تبحث عن شيء لا نعرف ما هو. نملأ كل فراغ: في الطابور، في المصعد، قبل النوم. لم نعد نترك لأنفسنا لحظة واحدة فارغة. وفي اللحظات الفارغة تحديداً كانت النفس ترتاح وتهضم ما مرّ بها، كما يرتاح البحر بين موجتين.</p>
+          <p>لكن هناك ضجيج أعمق من الهاتف وأقدم منه. ضجيج الأصوات التي سكنتنا ونحن صغار. صوت يقول: لست كافياً. وصوت يقول: يجب أن تُرضي الجميع. وصوت يقول: إن ارتحت فأنت كسول، وإن فرحت فسيحدث شيء سيئ. هذه الأصوات ليست صوتك. هي أصداء. جاءت من أب متعب، أو أم خائفة، أو معلّم قاسٍ، أو مجتمع لا يرحم. حملتها معك سنوات حتى ظننت أنها أنت.</p>
+          <p>الخطوة الأولى نحو السكينة ليست أن تُسكت هذا الضجيج. لا أحد يستطيع أن يُسكت البحر بالصراخ عليه. الخطوة الأولى أبسط من ذلك بكثير، وأصعب: أن تسمعه. أن تنتبه إليه. أن تقول لنفسك بهدوء: «آه، هذا هو الضجيج مرة أخرى».</p>
+          <p>حين تسمّي الشيء، تخرج قليلاً منه. حين تقول «أنا أشعر بالقلق»، أنت لم تعد القلق نفسه. أنت من يلاحظ القلق. وهذه المسافة الصغيرة، مسافة شعرة بينك وبين أفكارك، هي الباب الذي سنعبر منه في الباب القادم.</p>
+          <p>لا تحاول أن تُصلح شيئاً هذا الأسبوع. فقط استمع. كمن يجلس على شاطئ ويسمع الموج دون أن يطلب منه أن يتوقف.</p>
+          <div class="practice"><div class="practice-head"><span class="practice-icon" aria-hidden="true">✦</span><h4>تمرين الباب الأول: دفتر الضجيج</h4></div><ol><li><label><input type="checkbox" data-k="ch1-0"><span>اختر وقتاً ثابتاً كل مساء، عشر دقائق فقط.</span></label></li><li><label><input type="checkbox" data-k="ch1-1"><span>اكتب كل الأفكار التي تدور في رأسك كما هي، دون ترتيب ولا تصحيح ولا حكم.</span></label></li><li><label><input type="checkbox" data-k="ch1-2"><span>في نهاية الأسبوع، اقرأ ما كتبت، وضع خطاً تحت الأفكار التي تكررت أكثر من مرة.</span></label></li><li><label><input type="checkbox" data-k="ch1-3"><span>اسأل نفسك عن كل فكرة متكررة: صوت من هذا؟ متى سمعته أول مرة؟</span></label></li></ol><p class="practice-note">علّم كل خطوة حين تنجزها. نحفظ تقدّمك على جهازك.</p></div></div>
+<footer class="ch-end"><div class="done-mark" aria-hidden="true">✓</div><p class="done-text">أنهيت الباب الأول</p><a class="next-card" href="#ch2" data-go="ch2"><span>التالي</span><b>الباب الثاني: الشاهد</b><i aria-hidden="true">←</i></a></footer>
+</article>
+<article class="chapter" id="c-ch2" data-key="ch2" hidden>
+<header class="opener"><div class="opener-num" aria-hidden="true"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="56"/><circle cx="60" cy="60" r="44"/></svg><span>٢</span></div><span class="opener-label">الباب الثاني</span><h2>الشاهد</h2><p class="opener-lede">أنت لست أفكارك. أنت السماء التي تمرّ فيها الغيوم.</p><div class="opener-meta"><span>⏱ ٤ دقائق قراءة</span><span class="free-chip">مجاناً</span></div></header>
+<div class="prose"><p>انظر إلى السماء في يوم غائم. الغيوم تأتي وتذهب. بعضها أبيض خفيف، وبعضها رمادي ثقيل يحمل المطر، وبعضها أسود يحمل الرعد. لكن هل رأيت يوماً غيمة تؤذي السماء؟ هل تلطّخت السماء بغيمة مرّت فيها؟</p>
+          <p>السماء تبقى سماء. واسعة، صافية خلف كل شيء، حتى في أشد العواصف. والطيار الذي يخترق الغيوم يعرف هذا جيداً: فوق الغيوم، دائماً، شمس.</p>
+          <p>هذه هي الحقيقة التي يدور حولها هذا الكتاب كله: في داخلك مكان لا تصل إليه العواصف. ليس لأنك قوي، ولا لأنك محظوظ، بل لأن هذا المكان هو أنت في جوهرك. والقلق والحزن والغضب والخوف غيوم. حقيقية، ومؤلمة أحياناً، لكنها ليست أنت.</p>
+          <figure class="pull"><blockquote>الفكرة التي تراقبها<br>لا تستطيع أن تكون أنت.</blockquote><button class="copy-q" type="button">انسخ الاقتباس</button></figure>
+          <p>في الباب الأول تعلّمت أن تسمع الضجيج. الآن سنسأل سؤالاً أعمق: من الذي يسمع؟</p>
+          <p>حين تقول «أنا حزين»، هناك حزن، وهناك من يعرف أن هناك حزناً. حين تلاحظ أن فكرة قلق مرّت في رأسك، هناك فكرة، وهناك من لاحظها. هذا الذي يلاحظ، هذا الشاهد الصامت خلف كل التجارب، هو ما سمّاه الحكماء بأسماء كثيرة: القلب، والسرّ، والروح، والذات الحقيقية. لا يهمّ الاسم. المهم أن تتعرّف إليه.</p>
+          <p>تخيّل أنك تجلس في سينما وتشاهد فيلماً مؤثراً. تبكي حين يموت البطل، ويخفق قلبك حين يطارده الأشرار. أنت داخل القصة تماماً. ثم فجأة تُضاء الأنوار، وتتذكر: أنا في صالة سينما. هذه شاشة. أنا هنا، آمن، في كرسيّي. الفيلم لم يتوقف، والمشاعر لم تختفِ، لكن شيئاً تغيّر. صرت تعرف أين أنت.</p>
+          <p>معظمنا يعيش حياته كلها داخل الفيلم. نصدّق كل فكرة، ونتبع كل شعور كأنه أمر واجب التنفيذ. يقول العقل «أنت فاشل» فنشعر بالفشل. يقول «الناس يكرهونك» فننكمش. يقول «سيحدث شيء سيئ» فنعيش الكارثة قبل أن تحدث، وأحياناً نعيشها مئة مرة وهي لا تحدث أبداً.</p>
+          <p>أن تصبح شاهداً لا يعني أن تصبح بارداً أو بعيداً عن مشاعرك. على العكس. الشاهد هو الوحيد القادر على أن يشعر بكل شيء دون أن يغرق. يستطيع أن يحزن دون أن يصير الحزن، وأن يغضب دون أن يحرقه الغضب. كالأم التي تحتضن طفلها وهو يبكي: لا تبكي معه بنفس الهلع، ولا تتركه وحده. تبقى حاضرة وهادئة وواسعة، حتى يهدأ.</p>
+          <p>هكذا ستتعلم أن تحتضن نفسك.</p>
+          <p>في البداية سيبدو الأمر غريباً. ستنسى مراراً، وتجد نفسك وقد ابتلعتك فكرة وأخذتك بعيداً ساعة كاملة. لا بأس. اللحظة التي تنتبه فيها إلى أنك نسيت هي لحظة عودة. وكل عودة، مهما كانت صغيرة، تقوّي العضلة. لا أحد يتعلم السباحة من أول مرة. لكن الماء، بعد حين، يتعلّم أن يحملك.</p>
+          <div class="practice"><div class="practice-head"><span class="practice-icon" aria-hidden="true">✦</span><h4>تمرين الباب الثاني: سمِّ الغيمة</h4></div><ol><li><label><input type="checkbox" data-k="ch2-0"><span>حين تشعر بشعور قوي اليوم، توقّف ثلاث ثوانٍ.</span></label></li><li><label><input type="checkbox" data-k="ch2-1"><span>بدل أن تقول «أنا قلق»، قل في سرّك: «هناك قلق يمرّ الآن».</span></label></li><li><label><input type="checkbox" data-k="ch2-2"><span>لاحظ أين تشعر به في جسدك: في الصدر؟ في المعدة؟ في الحلق؟</span></label></li><li><label><input type="checkbox" data-k="ch2-3"><span>خذ نفَساً بطيئاً، وتخيّل نفسك السماء، والقلق غيمة تعبر. لا تطردها. اتركها تمرّ.</span></label></li></ol><p class="practice-note">علّم كل خطوة حين تنجزها. نحفظ تقدّمك على جهازك.</p></div></div>
+<footer class="ch-end"><div class="done-mark" aria-hidden="true">✓</div><p class="done-text">أنهيت الباب الثاني</p></footer>
+</article>
+    </div>
+<section class="teaser" id="teaser" hidden>
+  <div class="teaser-text">
+    <span class="opener-label">الباب الثالث</span>
+    <h2>النَّفَس</h2>
+    <p>أول شيء فعلته حين جئت إلى هذا العالم أنك أخذت نفَساً. وآخر شيء ستفعله حين تغادره أنك ستُخرج نفَساً. وبين النفَس الأول والأخير، تتنفس أكثر من عشرين ألف مرة كل يوم، دون أن تنتبه إلى واحدة منها تقريباً.</p>
+    <p>النفَس هو الشيء الوحيد في جسدك الذي يعمل وحده، ويمكنك في الوقت نفسه أن تتحكم فيه. قلبك يدقّ دون إذنك، ومعدتك تهضم دون أن تسألك. أما النفَس فيقف على الحدود بين ما تملكه وما لا تملكه. ولهذا كان، في كل التقاليد الروحية تقريباً، الباب الأول إلى الداخل. في العربية، النَّفَس والنَّفْس من جذر واحد. كأن اللغة نفسها تقول لنا: من أراد أن يعرف نفسه، فليبدأ من نفَسه.</p>
+  </div>
+  <div class="lock-card">
+    <div class="lock-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+    <h3>عشرة أبواب أخرى بانتظارك</h3>
+    <p>النَّفَس، والقبول، والجرح، والصفح، والتعلّق، والخلوة، والآن، والامتنان، والفناء، والعودة. ومع كل باب تمرين تعيشه.</p>
+    <div class="price-row" style="justify-content:center"><span class="price-tag">٩٫٩٩$</span><span class="price-meta">دفعة واحدة<br>تحميل فوري</span></div>
+    <a class="btn btn-buy" href="../buy/">أكمل الكتاب <span class="arrow">←</span></a>
+  </div>
+</section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="btn btn-ghost" href="../">العودة إلى صفحة الكتاب</a>
+    <small>سَكينة · كتاب في السلام الداخلي · جميع الحقوق محفوظة للمؤلف</small>
+  </div>
+</footer>
+
+<div class="buybar" id="buybar" role="region" aria-label="أكمل الكتاب">
+  <div class="bb-text"><b>أكمل سَكينة · ٩٫٩٩$</b><span>عشرة أبواب أخرى · تحميل فوري</span></div>
+  <a class="btn btn-buy" href="../buy/">أكمل الكتاب</a>
+</div>
+
+<script src="../assets/js/free.js?v=2"></script>
+</body>
+</html>
