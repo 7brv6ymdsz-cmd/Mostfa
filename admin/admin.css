@@ -1,3 +1,4 @@
+[hidden]{display:none!important}
 /* Layout: the book's night palette, re-cut as an operator's desk: summary tiles, a 30-day bar strip, then the buyer ledger */
 :root{
   --night:#091214; --panel:#0F1C1F; --panel-2:#13242A; --line:rgba(237,230,214,.10);
@@ -21,7 +22,7 @@ h1,h2{margin:0;text-wrap:balance}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:.78rem;border:1px solid var(--line);color:var(--muted)}
 .pill i{width:7px;height:7px;border-radius:50%;background:var(--faint)}
 .pill.ok i{background:var(--good)} .pill.wait i{background:var(--warn)}
-.btn{font:inherit;font-weight:500;border-radius:10px;padding:9px 16px;border:1px solid var(--line);background:var(--panel-2);color:var(--moon);cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn{justify-content:center;font:inherit;font-weight:500;border-radius:10px;padding:9px 16px;border:1px solid var(--line);background:var(--panel-2);color:var(--moon);cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .btn:hover{border-color:rgba(237,230,214,.3)}
 .btn.primary{background:var(--amber);color:var(--amber-ink);border-color:var(--amber)}
 .btn.sm{padding:5px 10px;font-size:.82rem;border-radius:8px}
@@ -89,3 +90,4 @@ details.fees .row2{margin-top:10px}
 .lock-card p{margin:0;color:var(--muted);font-size:.9rem}
 .lock-card input{text-align:center;font-size:1.2rem;letter-spacing:.2em;direction:ltr}
 .hidden-input{display:none}
+.forgot{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid rgba(229,140,131,.35);border-radius:12px}

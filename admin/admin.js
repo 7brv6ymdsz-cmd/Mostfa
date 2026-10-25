@@ -34,6 +34,11 @@ if (setup){
 }
 if (!window.crypto?.subtle){ $('lockErr').textContent = 'هذا المتصفح لا يدعم التشفير. افتح الصفحة في Safari حديث.'; $('lockErr').hidden = false; $('lockBtnSubmit').disabled = true; }
 
+if (setup) $('forgotBtn').hidden = true;
+$('forgotBtn').addEventListener('click', () => { $('forgotBox').hidden = false; $('forgotBtn').hidden = true; });
+$('forgotNo').addEventListener('click', () => { $('forgotBox').hidden = true; $('forgotBtn').hidden = false; });
+$('forgotYes').addEventListener('click', () => { try { localStorage.removeItem(STORE); } catch(_) {} location.reload(); });
+
 $('lockForm').addEventListener('submit', async e => {
   e.preventDefault();
   const err = $('lockErr'), pin = $('pin').value;

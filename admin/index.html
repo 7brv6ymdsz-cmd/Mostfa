@@ -22,6 +22,11 @@
     <input id="pin2" type="password" inputmode="numeric" autocomplete="new-password" placeholder="أعد كتابة الرمز" aria-label="تأكيد الرمز" hidden>
     <p class="err" id="lockErr" hidden></p>
     <button class="btn primary" type="submit" id="lockBtnSubmit">فتح</button>
+    <button class="btn" type="button" id="forgotBtn">نسيت الرمز؟</button>
+    <div class="forgot" id="forgotBox" hidden>
+      <p class="err">سيُحذف كل ما سجّلته في هذه الصفحة على هذا الجهاز، ثم تختار رمزاً جديداً. لا يمكن التراجع.</p>
+      <div class="actions" style="justify-content:center"><button class="btn primary" type="button" id="forgotYes">احذف واختر رمزاً جديداً</button><button class="btn" type="button" id="forgotNo">إلغاء</button></div>
+    </div>
     <p class="note" id="lockNote">البيانات مشفّرة ومحفوظة على هذا الجهاز فقط، ولا تُرسل إلى أي مكان.</p>
   </form>
 </div>
