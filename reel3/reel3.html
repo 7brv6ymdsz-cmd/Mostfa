@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>سكينة · ٣ علامات</title>
+<style>
+@font-face{font-family:"Aref Ruqaa";font-weight:700;src:url(../assets/fonts/aref-ruqaa-arabic-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Amiri";font-weight:400;src:url(../assets/fonts/amiri-arabic-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Plex";font-weight:500;src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Plex";font-weight:600;src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2) format("woff2")}
+html,body{margin:0;background:#000;overflow:hidden;display:grid;place-items:center;height:100vh}
+#c{height:100vh;width:auto}
+#g{display:none}
+</style>
+</head>
+<body>
+<canvas id="g"></canvas>
+<canvas id="c"></canvas>
+<script id="fs" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+uniform vec2 uRes; uniform vec3 uRo, uTa, uOrbC; uniform float uWt, uStorm, uLight, uCover, uMoon, uRipT, uSat, uTime, uRoll, uWarm;
+uniform vec4 uOrb; uniform vec2 uRipC;
+out vec4 o;
+const vec3 MOON = normalize(vec3(0.0, 0.30, 1.0));
+const float CL = 15.0;
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float h31(vec3 p){ p = fract(p * .1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+  return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + 1.), f.x), f.y); }
+float fbm(vec2 p){ float s = 0., a = .5; for (int i = 0; i < 5; i++){ s += a * noise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= .5; } return s; }
+
+float waves(vec2 p){
+  float s = uStorm, w = uWt, h = 0.;
+  float w1 = 1. - abs(sin(dot(p, vec2(.24, .97)) * .26 + w * .9));
+  float w2 = 1. - abs(sin(dot(p, vec2(-.7, .71)) * .43 + w * 1.25));
+  h += s * (1.7 * pow(w1, 2.6) + .85 * pow(w2, 2.6) + .22 * sin(dot(p, vec2(.92, .38)) * .95 + w * 1.9) + .1 * sin(dot(p, vec2(-.2, .98)) * 1.8 + w * 2.6));
+  h += (.035 + .2 * s) * (noise(p * 1.3 + vec2(w * .5, w * .3)) - .5);
+  if (uRipT >= 0.){ float r = length(p - uRipC), k = r - uRipT * 2.6; h += .09 * exp(-k * k * .6) * sin(k * 6.) * exp(-uRipT * .3); }
+  return h;
+}
+vec3 skyCol(vec3 rd){
+  float y = max(rd.y, 0.);
+  vec3 col = mix(vec3(.055, .095, .105), vec3(.008, .018, .024), pow(y, .45));
+  vec3 q = rd * 330., id = floor(q); float st = h31(id); vec3 fq = fract(q) - .5;
+  float tw = .6 + .4 * sin(uTime * 3. + st * 60.);
+  col += vec3(1., .96, .88) * smoothstep(.14, .0, length(fq)) * step(.9965, st) * tw * (1. - min(uStorm, 1.)) * smoothstep(0., .08, rd.y);
+  float md = dot(rd, MOON);
+  float disc = smoothstep(.99952, .99962, md);
+  vec2 mp = vec2(rd.x - MOON.x, rd.y - MOON.y) * 80.;
+  vec3 mc = vec3(1., .96, .88) * (1.45 - .25 * fbm(mp * 1.3));
+  float vis = 1. - .97 * min(uStorm, 1.);
+  col = mix(col, mc * (.8 + .4 * uMoon), disc * vis);
+  col += vec3(.95, .9, .8) * pow(max(md, 0.), 900.) * .9 * uMoon * vis + vec3(.45, .5, .5) * pow(max(md, 0.), 20.) * .07 * uMoon * vis;
+  if (uStorm > .01){
+    vec2 cp = rd.xz / (rd.y + .12) * 1.4 + vec2(uWt * .03, uWt * .05);
+    float c = fbm(cp), cov = smoothstep(.25, .65, c) * min(uStorm, 1.);
+    vec3 cc = mix(vec3(.025, .04, .045), vec3(.11, .13, .14), c) + uLight * vec3(.75, .8, 1.) * c * 1.4;
+    col = mix(col, cc, cov * .96 * smoothstep(-.05, .12, rd.y));
+    col += uLight * .12 * vec3(.7, .75, .95) * (1. - y);
+  }
+  return col;
+}
+vec3 orbGlow(vec3 ro, vec3 rd, float tmax){
+  if (uOrb.w <= 0.) return vec3(0);
+  vec3 oc = uOrb.xyz - ro; float t = max(dot(oc, rd), 0.); if (t > tmax) return vec3(0);
+  float d = length(oc - rd * t);
+  return uOrbC * uOrb.w * (.0016 / (d * d + .0004) + .06 * exp(-d * 1.2));
+}
+vec3 water(vec3 ro, vec3 rd, out float tt){
+  tt = -1.;
+  if (rd.y >= -.0005) return vec3(0);
+  float maxH = 2.8 * uStorm + .25, t = max(0., (ro.y - maxH) / -rd.y);
+  for (int i = 0; i < 56; i++){
+    vec3 p = ro + rd * t; float d = p.y - waves(p.xz);
+    if (d < .004 * t + .002){ tt = t; break; }
+    t += max(.03, d * .55 / max(-rd.y, .08)); if (t > 600.){ break; }
+  }
+  if (tt < 0.) tt = t;
+  vec3 p = ro + rd * tt; float e = .04 + tt * .003;
+  vec3 n = normalize(vec3(waves(p.xz - vec2(e, 0)) - waves(p.xz + vec2(e, 0)), 2. * e, waves(p.xz - vec2(0, e)) - waves(p.xz + vec2(0, e))));
+  n = normalize(mix(n, vec3(0, 1, 0), smoothstep(80., 500., tt)));
+  vec3 r = reflect(rd, n); r.y = abs(r.y);
+  float fres = .02 + .98 * pow(1. - max(dot(n, -rd), 0.), 5.);
+  vec3 deep = vec3(.006, .022, .026) + uLight * vec3(.03, .035, .05);
+  vec3 col = mix(deep, skyCol(r), fres) + orbGlow(p, r, 100.) * .8;
+  col += uStorm * smoothstep(1.35, 2.2, p.y) * vec3(.2, .23, .25) * (.4 + fbm(p.xz * 1.7 + uWt));
+  col += uLight * .08 * vec3(.6, .65, .85);
+  vec3 hz = mix(vec3(.05, .085, .095), vec3(.09, .1, .11), uStorm) + uLight * vec3(.2, .22, .3);
+  return mix(col, hz, 1. - exp(-tt * (.006 + .02 * uStorm)));
+}
+void main(){
+  vec2 uv = (gl_FragCoord.xy - .5 * uRes) / uRes.y;
+  uv = mat2(cos(uRoll), -sin(uRoll), sin(uRoll), cos(uRoll)) * uv;
+  vec3 ro = uRo, f = normalize(uTa - ro), r = normalize(cross(vec3(0, 1, 0), f)), u = cross(f, r);
+  vec3 rd = normalize(f * 1.25 + uv.x * r + uv.y * u);
+  vec3 col; float tw;
+  if (ro.y > CL && rd.y < 0.){
+    float tc = (ro.y - CL) / -rd.y; vec3 pc = ro + rd * tc;
+    float d = fbm(pc.xz * .03 + vec2(uTime * .012, uTime * .02)) + .3 * fbm(pc.xz * .11 - uTime * .02);
+    float dens = smoothstep(1.15 - uCover * 1.25, 1.4 - uCover * 1.25, d);
+    vec2 fh = normalize(rd.xz + 1e-4), mh = normalize(MOON.xz);
+    float k = pow(max(dot(fh, mh), 0.), 6.);
+    vec3 cc = mix(vec3(.08, .1, .115), vec3(.5, .53, .55), smoothstep(.45, 1.1, d)) * (.55 + .9 * k);
+    cc = mix(cc, vec3(.06, .095, .105), 1. - exp(-tc * .0045));
+    vec3 below = water(ro, rd, tw);
+    col = mix(below, cc, dens);
+  } else {
+    col = rd.y > 0. ? skyCol(rd) : water(ro, rd, tw);
+  }
+  col += orbGlow(ro, rd, 1e4);
+  float fin = clamp(1. - abs(ro.y - (CL - 1.)) / 4.5, 0., 1.) * uCover;
+  col = mix(col, vec3(.32, .36, .38) * (.7 + uLight), fin * .97);
+  // the false calm of "smiling in front of everyone": warm, golden
+  col = mix(col, col * vec3(1.45, 1.08, .68) + vec3(.045, .025, .0), uWarm * .75);
+  float l = dot(col, vec3(.3, .59, .11));
+  col = mix(col, vec3(l) * vec3(.85, .97, 1.1), uSat * .75);
+  col = 1. - exp(-col * 2.2);
+  o = vec4(pow(col, vec3(.82)), 1.);
+}
+</script>
+<script>
+// Sakina — "3 signs" reel, same raymarched world as reel2 (storm → rewind → false calm → above the clouds → still lake).
+const W = 1080, H = 1920, CX = W / 2, T_END = 31;
+const COL = { night:'#091214', moon:'#EDE6D6', muted:'#9DAEA8', faint:'#6E817B', amber:'#E0AE6A' };
+const F = { display:'"Aref Ruqaa"', read:'"Amiri"', ui:'"Plex"' };
+const moonA = a => `rgba(237,230,214,${a})`, amberA = a => `rgba(224,174,106,${a})`;
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), lerp = (a, b, k) => a + (b - a) * k, seg = (t, a, b) => clamp((t - a) / (b - a));
+const eOutExpo = k => k >= 1 ? 1 : 1 - Math.pow(2, -10 * k), eInOut = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+const eSine = k => -(Math.cos(Math.PI * k) - 1) / 2, eOutCubic = k => 1 - Math.pow(1 - k, 3);
+const eOutBack = k => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); };
+const TAU = Math.PI * 2;
+function hash(a, b = 0){ let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function layer(w = W, h = H){ const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
+const AR = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+
+// ── WebGL ──
+const G = document.getElementById('g'); G.width = W; G.height = H;
+const gl = G.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
+function sh(type, src){ const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+const prog = gl.createProgram();
+gl.attachShader(prog, sh(gl.VERTEX_SHADER, '#version 300 es\nin vec2 p;void main(){gl_Position=vec4(p,0,1);}'));
+gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, document.getElementById('fs').textContent));
+gl.linkProgram(prog); gl.useProgram(prog);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(prog, n);
+
+const C = document.getElementById('c'); C.width = W; C.height = H; const X = C.getContext('2d');
+const [BL, bl] = layer(W / 4, H / 4);
+
+function txt(c, s, x, y, size, fam, color, o = {}){
+  c.save(); c.font = `${o.w || 400} ${size}px ${fam}`; c.textAlign = o.align || 'center'; c.textBaseline = 'middle'; c.direction = o.dir || 'rtl';
+  c.globalAlpha = o.a ?? 1; if (o.glow){ c.shadowColor = o.glowC || color; c.shadowBlur = o.glow; }
+  c.fillStyle = color; c.fillText(s, x, y); c.restore();
+}
+function measure(s, size, fam, w = 400){ X.save(); X.font = `${w} ${size}px ${fam}`; const m = X.measureText(s).width; X.restore(); return m; }
+function title(c, s, y, size, p, out, o = {}){
+  if (p <= 0 || out <= 0) return;
+  const e = eOutCubic(clamp(p)); c.save(); c.filter = `blur(${(1 - e) * 16}px)`;
+  txt(c, s, o.x ?? CX, y + (1 - e) * 40, size, o.fam || F.display, o.col || COL.moon, { w: o.w || 700, a: e * out, glow: o.glow ?? 40, glowC: o.glowC || moonA(.35), align: o.align });
+  c.restore();
+}
+
+// ── timeline from the voice-over ──
+let TM, LS, LE; const K = {};
+function wordAt(line, prefix){ const w = TM.words.find(w => w.line === line && w.w.replace(/[^ء-ي]/g, '').startsWith(prefix)); return w ? w.s : LS[line]; }
+function cues(){
+  LS = TM.lines.map(l => l.s); LE = TM.lines.map(l => l.e);
+  K.hookSub = wordAt(0, 'تقول'); K.hookEven = wordAt(0, 'حتى');
+  K.grab = wordAt(1, 'تمسك'); K.eyes = wordAt(1, 'قبل');
+  K.win = wordAt(2, 'وتنتصر');
+  K.smile = wordAt(3, 'تضحك'); K.door = wordAt(3, 'وحين'); K.noise = wordAt(3, 'يعود');
+  K.notWeak = wordAt(4, 'لست'); K.way = wordAt(5, 'طريق'); K.link = wordAt(7, 'والرابط');
+  K.rise = LS[4] - .2; K.top = K.rise + 1.9; K.down = K.way - .25; K.low = K.down + 1.7;
+  K.end = T_END - 2.3;
+}
+// camera travel and the sea's clock are integrated so speed changes (and the rewind) stay continuous
+const DT = 1 / 240; let ZT, WT;
+const ramp = (t, a, b, fi = .3, fo = .3) => Math.min(seg(t, a, a + fi), 1 - seg(t, b - fo, b));
+function vel(t){
+  if (t < LS[1]) return 5;
+  if (t < LS[2]) return 3;
+  if (t < LS[3]) return lerp(3, -3.4, ramp(t, LS[2], LS[3], .35, .3));
+  if (t < K.rise) return 1.8;
+  if (t < K.top) return 6;
+  if (t < K.down) return 3;
+  return lerp(3, .9, eInOut(seg(t, K.down, K.low)));
+}
+function wrate(t){
+  if (t >= LS[2] && t < LS[3]) return lerp(1, -2.8, ramp(t, LS[2], LS[3], .3, .35));
+  if (t >= K.noise && t < K.rise) return 1.35;
+  return 1;
+}
+function integrate(){ const n = Math.ceil(T_END / DT) + 2; ZT = new Float64Array(n); WT = new Float64Array(n);
+  for (let i = 1; i < n; i++){ const t = (i - .5) * DT; ZT[i] = ZT[i - 1] + vel(t) * DT; WT[i] = WT[i - 1] + wrate(t) * DT; } }
+const look = (A, t) => { const x = clamp(t, 0, T_END) / DT, i = Math.floor(x), f = x - i; return lerp(A[i], A[Math.min(i + 1, A.length - 1)], f); };
+const yStorm = t => t < LS[1] ? 3.6 + Math.sin(t * 2.2) * .35 : lerp(3.6 + Math.sin(LS[1] * 2.2) * .35, 3.25, eInOut(seg(t, LS[1], LS[1] + 1))) + Math.sin(t * 1.7) * .22 * seg(t, LS[1], LS[1] + 1);
+const yTop = t => 27 + Math.sin(t * .6) * .3;
+
+function world(t){
+  const s = {};
+  s.wt = look(WT, t);
+  let storm = 1;
+  if (t >= LS[1] && t < LS[3]) storm = .9;
+  if (t >= LS[3]){ const calm = eInOut(seg(t, K.smile - .1, K.smile + .45)), back = eOutExpo(seg(t, K.noise - .05, K.noise + .35)); storm = lerp(lerp(.9, .1, calm), 1.3, back); }
+  if (t >= K.rise + .95) storm = 0;
+  s.storm = storm;
+  s.sat = (t >= LS[1] && t < LS[2]) ? .3 * ramp(t, LS[1], LS[2]) : (t >= LS[2] && t < LS[3]) ? .6 * ramp(t, LS[2], LS[3], .2, .3) : (t >= K.noise && t < K.rise) ? .2 : 0;
+  s.warm = (t >= LS[3] && t < LS[4]) ? seg(t, K.smile - .1, K.smile + .4) * (1 - seg(t, K.door + .15, K.door + .55)) : 0;
+  const flashes = [[.42, .9], [LS[0] + 1.75, .55], [K.noise, 1.5], [K.noise + .55, .9], [K.noise + 1.4, .6]];
+  s.light = 0; for (const [ft, a] of flashes){ const d = t - ft; if (d >= 0 && d < .5) s.light += a * Math.exp(-d * 9) * (.6 + .4 * Math.sin(d * 80)); }
+  const z = look(ZT, t); let y, ty;
+  if (t < K.rise){ y = yStorm(t); ty = y - .98; }
+  else if (t < K.top){ const k = eInOut(seg(t, K.rise, K.top)), y0 = yStorm(K.rise); y = lerp(y0, 27, k); ty = y + lerp(-.98, .1, k); }
+  else if (t < K.down){ y = lerp(27, yTop(t), seg(t, K.top, K.top + .5)); ty = y + lerp(.1, .3, seg(t, K.top, K.down)); }
+  else { const k = eInOut(seg(t, K.down, K.low)), y0 = yTop(K.down); y = lerp(y0, 1.7, k); ty = lerp(y0 + .3, 2.25, k); }
+  let sx = 0, sy = 0, a = 0;
+  if (t < LS[1]) a = .08;
+  if (t >= LS[2] && t < LS[3]) a = .03;
+  if (t >= K.noise && t < K.rise) a = .13 * (1 - seg(t, K.noise + 1.2, K.rise));
+  if (a){ sx = (hash(Math.floor(t * 24), 1) - .5) * a; sy = (hash(Math.floor(t * 24), 2) - .5) * a; }
+  s.ro = [sx, y + sy, z]; s.ta = [sx * .5, ty, z + 10];
+  s.roll = t < LS[1] ? Math.sin(t * 1.7) * .03 : (t >= K.noise && t < K.rise) ? Math.sin(t * 2.3) * .035 * (1 - seg(t, K.noise + 1.2, K.rise)) : 0;
+  s.cover = t < K.down ? 1 : 1 - eInOut(seg(t, K.down, K.down + 1.2));
+  s.moon = 1;
+  s.ripT = t > LS[6] + .1 ? t - (LS[6] + .1) : -1; s.ripC = [0, look(ZT, LS[6]) + 16];
+  s.orb = [0, 0, 0, 0]; s.orbC = [1, .72, .38];
+  if (t > LS[8] - .2){ const k = eInOut(seg(t, LS[8], LS[8] + 3)), z0 = look(ZT, LS[8]); s.orb = [lerp(-1.2, .3, k), lerp(.25, 6.5, k), z0 + lerp(9, 40, k), 1.2 * seg(t, LS[8] - .2, LS[8] + .4)]; }
+  return s;
+}
+function drawGL(t, s){
+  gl.viewport(0, 0, W, H);
+  gl.uniform2f(U('uRes'), W, H); gl.uniform3f(U('uRo'), ...s.ro); gl.uniform3f(U('uTa'), ...s.ta); gl.uniform3f(U('uOrbC'), ...s.orbC);
+  gl.uniform1f(U('uWt'), s.wt); gl.uniform1f(U('uStorm'), s.storm); gl.uniform1f(U('uLight'), s.light); gl.uniform1f(U('uCover'), s.cover);
+  gl.uniform1f(U('uMoon'), s.moon); gl.uniform1f(U('uRipT'), s.ripT); gl.uniform2f(U('uRipC'), ...s.ripC); gl.uniform1f(U('uSat'), s.sat);
+  gl.uniform1f(U('uTime'), t); gl.uniform1f(U('uRoll'), s.roll); gl.uniform4f(U('uOrb'), ...s.orb); gl.uniform1f(U('uWarm'), s.warm);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm = a => { const l = Math.hypot(...a); return [a[0] / l, a[1] / l, a[2] / l]; };
+const MOON = norm([0, .30, 1]);
+function project(s, p, isDir){
+  const ro = s.ro, f = norm(sub(s.ta, ro)), r = norm(cross([0, 1, 0], f)), u = cross(f, r);
+  const d = isDir ? p : sub(p, ro); const z = dot(d, f); if (z <= 0) return null;
+  let x = dot(d, r) / z * 1.25, y = dot(d, u) / z * 1.25;
+  const c = Math.cos(-s.roll), sn = Math.sin(-s.roll); [x, y] = [c * x - sn * y, sn * x + c * y];
+  return [CX + x * H, H / 2 - y * H];
+}
+
+// ── 2D layers ──
+const RAIN = Array.from({ length: 420 }, (_, i) => ({ x: hash(i, 1) * W * 1.3 - W * .15, y: hash(i, 2), sp: .8 + hash(i, 3) * .7, l: 40 + hash(i, 4) * 90, a: .15 + hash(i, 5) * .35, d: hash(i, 6) }));
+function rainAmt(t){
+  let a = 1;
+  if (t >= LS[3]) a = (1 - seg(t, K.smile - .1, K.smile + .3)) + seg(t, K.noise - .05, K.noise + .2) * 1.25;
+  return a * (1 - seg(t, K.rise + .2, K.rise + 1.1));
+}
+function rain(c, t, s){
+  const amt = rainAmt(t); if (amt <= .01) return;
+  const rew = t >= LS[2] && t < LS[3] && wrate(t) < 0;
+  c.save(); c.lineCap = 'round';
+  for (const r of RAIN){
+    const y = (((r.y + s.wt * 1.6 * r.sp) % 1 + 1) % 1) * (H + 300) - 150, x = r.x - (y / H) * 260 * r.sp;
+    c.strokeStyle = moonA(r.a * amt); c.lineWidth = 1.2 + r.d * 1.8;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x - r.l * .27, y + r.l * (rew ? -1 : 1)); c.stroke();
+  }
+  c.restore();
+}
+// hook: a giant 3 over the storm, from the very first frame
+function hook(c, t){
+  const out = 1 - seg(t, LS[1] - .4, LS[1] - .08); if (out <= 0) return;
+  const e = eOutExpo(seg(t, 0, .6));
+  c.save(); c.translate(CX, 640); const sc = lerp(1.18, 1, e); c.scale(sc, sc);
+  txt(c, AR(3), 0, 0, 560, F.display, COL.amber, { w: 700, a: out, glow: 70, glowC: amberA(.55) }); c.restore();
+  txt(c, 'علامات', CX, 980, 150, F.display, COL.moon, { w: 700, a: out, glow: 30, glowC: moonA(.3) });
+  title(c, 'أنك مُتعَب من الداخل', 1120, 64, seg(t, K.hookSub - .05, K.hookSub + .35), out, { fam: F.read, w: 400, glow: 0 });
+  title(c, 'حتى لو لم تشعر', 1215, 46, seg(t, K.hookEven - .05, K.hookEven + .35), out, { fam: F.ui, w: 600, col: COL.amber, glow: 0 });
+}
+// three story-style segments: one per sign
+function signBar(c, t){
+  const vis = 1 - seg(t, LS[4] - .3, LS[4] + .1); if (vis <= 0) return;
+  const sw = 270, gap = 22, x0 = CX + (sw * 3 + gap * 2) / 2;
+  for (let k = 0; k < 3; k++){
+    const xr = x0 - k * (sw + gap), p = seg(t, LS[k + 1], LE[k + 1]);
+    c.fillStyle = moonA(.2 * vis); c.beginPath(); c.roundRect(xr - sw, 62, sw, 7, 4); c.fill();
+    if (p > 0){ c.fillStyle = amberA(vis); c.beginPath(); c.roundRect(xr - sw * p, 62, sw * p, 7, 4); c.fill(); }
+  }
+}
+// big numeral for the current sign
+function numeral(c, t){
+  for (let k = 1; k <= 3; k++){
+    const t0 = LS[k] - .1, t1 = LS[k + 1] - .05; if (t < t0 || t > t1) continue;
+    const e = eOutExpo(seg(t, t0, t0 + .5)), out = 1 - seg(t, t1 - .3, t1);
+    c.save(); c.filter = `blur(${(1 - e) * 14}px)`;
+    txt(c, AR(k), W - 170 + (1 - e) * 140, 330, 280, F.display, COL.amber, { w: 700, a: e * out, glow: 50, glowC: amberA(.5) });
+    c.restore();
+    c.fillStyle = amberA(.8 * out); c.fillRect(W - 170 - 50 * e, 490, 100 * e, 3);
+  }
+}
+const POSTS = ['٣ رسائل جديدة', 'تذكير: اجتماع ٩:٠٠', '١٢ إشعاراً', 'مكالمة فائتة', 'موعد التسليم اليوم', '٤٧ رسالة غير مقروءة', 'هل رأيت هذا؟'];
+// sign 1: the phone lights up before the eyes open
+function phone(c, t){
+  const t0 = LS[1] - .15, t1 = LS[2] + .05; if (t < t0 || t > t1) return;
+  const inn = eOutExpo(seg(t, t0, t0 + .7)), out = eInOut(seg(t, t1 - .4, t1)), on = seg(t, K.grab - .05, K.grab + .1);
+  const w = 400, h = 800, y = lerp(H + 520, 920, inn) + out * 1100, tilt = lerp(.14, -.04, inn) + Math.sin(t * 1.3) * .015;
+  c.save(); c.translate(CX, y); c.rotate(tilt);
+  if (on > 0){ const g = c.createRadialGradient(0, 0, 60, 0, 0, 950); g.addColorStop(0, `rgba(170,205,255,${.34 * on})`); g.addColorStop(1, 'rgba(170,205,255,0)');
+    c.globalCompositeOperation = 'screen'; c.fillStyle = g; c.fillRect(-950, -950, 1900, 1900); c.globalCompositeOperation = 'source-over'; }
+  c.fillStyle = '#0a1012'; c.strokeStyle = moonA(.35); c.lineWidth = 3; c.beginPath(); c.roundRect(-w / 2, -h / 2, w, h, 58); c.fill(); c.stroke();
+  c.save(); c.beginPath(); c.roundRect(-w / 2 + 16, -h / 2 + 16, w - 32, h - 32, 44); c.clip();
+  c.fillStyle = '#030607'; c.fillRect(-w / 2, -h / 2, w, h);
+  if (on > 0){
+    const sg = c.createLinearGradient(0, -h / 2, 0, h / 2); sg.addColorStop(0, `rgba(48,84,130,${on})`); sg.addColorStop(1, `rgba(12,22,44,${on})`); c.fillStyle = sg; c.fillRect(-w / 2, -h / 2, w, h);
+    txt(c, '٦:٠٠', 0, -h / 2 + 140, 104, F.ui, `rgba(236,243,255,${on})`, { w: 600, dir: 'ltr' });
+    const cnt = clamp((t - K.grab) / .19, 0, POSTS.length);
+    for (let i = 0; i < Math.ceil(cnt); i++){
+      const k = eOutBack(seg(t, K.grab + i * .19, K.grab + i * .19 + .26)), slot = cnt - 1 - i, py = -h / 2 + 270 + Math.max(0, slot) * 88;
+      if (py > h / 2) continue;
+      c.save(); c.translate(0, py); c.scale(k, k); c.globalAlpha = on;
+      c.fillStyle = 'rgba(255,255,255,.13)'; c.beginPath(); c.roundRect(-(w - 70) / 2, -36, w - 70, 72, 22); c.fill();
+      c.fillStyle = i % 3 ? COL.amber : '#ff6a5c'; c.beginPath(); c.arc((w - 70) / 2 - 34, 0, 9, 0, TAU); c.fill();
+      txt(c, POSTS[i], (w - 70) / 2 - 58, 2, 26, F.ui, '#EEF3FF', { w: 500, align: 'right' }); c.restore();
+    }
+  }
+  c.restore(); c.restore();
+  // ...and the eyes are still closed
+  const ey = seg(t, K.eyes - .05, K.eyes + .3) * (1 - out);
+  if (ey > 0){ c.save(); c.globalAlpha = ey; c.strokeStyle = COL.moon; c.lineWidth = 7; c.lineCap = 'round';
+    for (const sx of [-105, 105]){ c.beginPath(); c.arc(CX + sx, 330, 62, .12 * Math.PI, .88 * Math.PI); c.stroke();
+      for (let l = -1; l <= 1; l++){ const a = Math.PI / 2 + l * .45; c.beginPath(); c.moveTo(CX + sx + Math.cos(a) * 62, 330 + Math.sin(a) * 62); c.lineTo(CX + sx + Math.cos(a) * 84, 330 + Math.sin(a) * 84); c.stroke(); } }
+    c.restore(); }
+}
+// sign 2: replaying the old argument, rewinding, and winning it — in your head
+const CHAT = [['o', 'لماذا قلتَ ذلك؟'], ['m', 'لأنك لم تسمعني.'], ['o', 'أنت تبالغ دائماً.'], ['m', 'بل أنت من بدأ!'], ['o', 'لم أقصد ذلك.'], ['m', 'كان عليّ أن أقول…']];
+function bubble(c, side, s, y, a, glow){
+  const w = measure(s, 40, F.ui, 500) + 72, h = 92, x = side === 'm' ? W - 110 - w : 110;
+  c.save(); c.globalAlpha = a;
+  if (glow){ c.shadowColor = amberA(.7); c.shadowBlur = 40 * glow; }
+  c.fillStyle = side === 'm' ? amberA(.18) : moonA(.1); c.strokeStyle = side === 'm' ? amberA(.85) : moonA(.32); c.lineWidth = 2.5;
+  c.beginPath(); c.roundRect(x, y - h / 2, w, h, 40); c.fill(); c.stroke(); c.restore();
+  txt(c, s, x + w / 2, y + 2, 40, F.ui, COL.moon, { w: 500, a });
+  return [x, w];
+}
+function chat(c, t){
+  const t0 = LS[2] - .1, t1 = LS[3] + .05; if (t < t0 || t > t1) return;
+  const inn = eOutExpo(seg(t, t0, t0 + .5)), out = seg(t, t1 - .35, t1), a = inn * (1 - out), won = t >= K.win;
+  c.save(); c.beginPath(); c.rect(0, 560, W, 720); c.clip();
+  if (!won){
+    // the tape runs backwards: messages slide down and repeat
+    const off = (t - t0) * 620;
+    for (let i = -2; i < 10; i++){
+      const m = CHAT[((i % CHAT.length) + CHAT.length) % CHAT.length], y = 600 + i * 124 + (off % (124 * CHAT.length)) - 124 * CHAT.length * 0;
+      if (y < 500 || y > 1340) continue; bubble(c, m[0], m[1], y, a * .9, 0);
+    }
+  } else {
+    const p1 = eOutBack(seg(t, K.win, K.win + .3)), p2 = eOutBack(seg(t, K.win + .45, K.win + .75));
+    bubble(c, 'o', 'أنت تبالغ دائماً.', 720, a * .5, 0);
+    if (p1 > 0){ c.save(); c.translate(CX, 880); c.scale(p1, p1); c.translate(-CX, -880); bubble(c, 'm', 'وهذه المرة… قلتُ كل شيء.', 880, a, .6); c.restore(); }
+    if (p2 > 0){ c.save(); c.translate(CX, 1040); c.scale(p2, p2); c.translate(-CX, -1040); bubble(c, 'o', 'معك حق.', 1040, a, 0); c.restore(); }
+    // a little crown for the winner
+    const cr = eOutBack(seg(t, K.win + .6, K.win + .9));
+    if (cr > 0){ c.save(); c.translate(W - 190, 790); c.scale(cr, cr); c.rotate(-.18); c.fillStyle = COL.amber; c.shadowColor = amberA(.8); c.shadowBlur = 30;
+      c.beginPath(); c.moveTo(-46, 22); c.lineTo(-46, -14); c.lineTo(-22, 6); c.lineTo(0, -28); c.lineTo(22, 6); c.lineTo(46, -14); c.lineTo(46, 22); c.closePath(); c.fill(); c.restore(); }
+  }
+  c.restore();
+  // replay counter
+  const n = won ? 38 : Math.min(37, 30 + Math.floor((t - t0) * 2.4));
+  c.save(); c.globalAlpha = a; c.fillStyle = COL.moon;
+  const rx = 150, ry = 330;
+  for (const dx of [0, 34]){ c.beginPath(); c.moveTo(rx + dx, ry); c.lineTo(rx + dx + 30, ry - 20); c.lineTo(rx + dx + 30, ry + 20); c.closePath(); c.fill(); }
+  c.restore();
+  txt(c, 'إعادة ×' + AR(n), rx + 90, ry + 2, 40, F.ui, won ? COL.amber : COL.moon, { w: 600, a, align: 'left', dir: 'rtl' });
+}
+// sign 3: smiling in the light, the door shuts, the noise returns
+function smileDoor(c, t){
+  const t0 = K.smile - .2, t1 = K.noise + .7; if (t < t0 || t > t1) return;
+  const inn = eOutExpo(seg(t, K.smile - .15, K.smile + .35)), close = eInOut(seg(t, K.door, K.door + .55)), gone = seg(t, K.noise, K.noise + .5), cy = 880;
+  const dw = 540 * (1 - close), dh = 940;
+  if (dw > 2){ const g = c.createLinearGradient(0, cy - dh / 2, 0, cy + dh / 2); g.addColorStop(0, amberA(.62 * inn)); g.addColorStop(1, amberA(.16 * inn));
+    c.save(); c.shadowColor = amberA(.85); c.shadowBlur = 90 * inn; c.fillStyle = g; c.beginPath(); c.roundRect(CX - dw / 2, cy - dh / 2, dw, dh, [Math.min(dw / 2, 270), Math.min(dw / 2, 270), 6, 6]); c.fill(); c.restore(); }
+  // door frame
+  c.save(); c.globalAlpha = inn * (1 - gone); c.strokeStyle = moonA(.5); c.lineWidth = 4; c.beginPath(); c.roundRect(CX - 280, cy - dh / 2 - 10, 560, dh + 10, [280, 280, 0, 0]); c.stroke(); c.restore();
+  const fa = inn * (1 - gone);
+  if (fa > 0){
+    const jx = t > K.noise ? (hash(Math.floor(t * 30), 5) - .5) * 40 * gone * 3 : 0;
+    c.save(); c.globalAlpha = fa; c.translate(jx, 0); c.strokeStyle = close > .5 ? COL.moon : '#2a1a08'; c.lineWidth = 8; c.lineCap = 'round';
+    c.fillStyle = close > .5 ? 'rgba(9,18,20,.6)' : amberA(.0);
+    c.beginPath(); c.arc(CX, cy, 175, 0, TAU); c.fill(); c.stroke();
+    const k = 1 - close;
+    for (const sx of [-62, 62]){ c.beginPath(); c.moveTo(CX + sx - 28, cy - 38); c.quadraticCurveTo(CX + sx, cy - 38 - 32 * k, CX + sx + 28, cy - 38); c.stroke(); }
+    const m = lerp(64, -26, close); c.beginPath(); c.moveTo(CX - 84, cy + 52); c.quadraticCurveTo(CX, cy + 52 + m, CX + 84, cy + 52); c.stroke();
+    c.restore();
+  }
+}
+// the noise comes back: thoughts fly at the camera
+const THOUGHTS = ['لماذا قلتُ ذلك','ماذا لو','متأخر','يجب','غداً','لم يحدث','كان عليّ','لا وقت','الكل ينتظر','هل أخطأت؟','قلق','مرة أخرى','ماذا يظنون','لم أنم','الفاتورة','لم يرد','ربما'];
+function thoughts(c, t){
+  const a0 = K.noise, a1 = K.rise + .2; if (t < a0 || t > a1 + 1.3) return;
+  for (let i = 0; i < 24; i++){
+    const st = a0 + hash(i, 9) * (a1 - a0 - .2), k = (t - st) / 1.3; if (k < 0 || k > 1) continue;
+    const z = lerp(1, .2, k), x = CX + (hash(i, 10) - .5) * W * .9 / z * .5, y = 860 + (hash(i, 11) - .5) * H * .55 / z * .5, sz = 40 / z;
+    if (sz > 200) continue;
+    c.save(); c.filter = `blur(${Math.max(0, (k - .55) * 30)}px)`;
+    txt(c, THOUGHTS[i % THOUGHTS.length], x, y, sz, F.ui, i % 5 ? COL.moon : COL.amber, { w: 600, a: Math.sin(Math.PI * k) * .85 });
+    c.restore();
+  }
+}
+// book (same object as the site)
+const [COVER, cvc] = layer(560, 820), [COVER2, cv2] = layer(560, 820);
+function paintCover(){
+  const w = 560, h = 820, g = cvc.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#16302F'); g.addColorStop(1, '#081314');
+  cvc.fillStyle = g; cvc.fillRect(0, 0, w, h);
+  const r = rng(77); for (let i = 0; i < 140; i++){ cvc.fillStyle = moonA(r() * .5); cvc.beginPath(); cvc.arc(r() * w, r() * h * .55, r() * 1.3 + .2, 0, TAU); cvc.fill(); }
+  cvc.strokeStyle = amberA(.55); cvc.lineWidth = 1.5; cvc.strokeRect(28, 28, w - 56, h - 56);
+  const mg = cvc.createRadialGradient(w / 2, 230, 0, w / 2, 230, 220); mg.addColorStop(0, moonA(.35)); mg.addColorStop(1, moonA(0)); cvc.fillStyle = mg; cvc.fillRect(0, 0, w, h);
+  cvc.fillStyle = '#F2ECDF'; cvc.beginPath(); cvc.arc(w / 2, 230, 58, 0, TAU); cvc.fill();
+  txt(cvc, 'سَكينة', w / 2, 440, 150, F.display, COL.moon, { w: 700 });
+  txt(cvc, 'رحلة العودة إلى الداخل', w / 2, 528, 32, F.read, COL.muted);
+  txt(cvc, 'اثنا عشر باباً', w / 2, 730, 22, F.ui, COL.amber, { w: 500 });
+}
+function drawBook(c, cx, cy, th, sweep, sc, a){
+  const cw = 560, ch = 820, T = 70, D = 1800;
+  cv2.clearRect(0, 0, cw, ch); cv2.drawImage(COVER, 0, 0);
+  if (sweep > 0 && sweep < 1){ const x = lerp(-300, cw + 300, sweep), g = cv2.createLinearGradient(x - 160, 0, x + 160, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,245,225,.3)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    cv2.save(); cv2.globalCompositeOperation = 'lighter'; cv2.fillStyle = g; cv2.fillRect(0, 0, cw, ch); cv2.restore(); }
+  c.save(); c.globalAlpha = a; c.translate(cx, cy); c.scale(sc, sc); c.translate(-cx, -cy);
+  const P = (xl, zl, yl) => { const xr = xl * Math.cos(th) + zl * Math.sin(th), zr = -xl * Math.sin(th) + zl * Math.cos(th), f = D / (D + zr); return [cx + xr * f, cy + yl * f, f]; };
+  c.save(); c.filter = 'blur(40px)'; c.fillStyle = 'rgba(0,0,0,.7)'; c.beginPath(); c.ellipse(cx + 30, cy + ch / 2 + 40, cw * .6, 50, 0, 0, TAU); c.fill(); c.restore();
+  const A = P(cw / 2, 0, -ch / 2), B = P(cw / 2, T, -ch / 2), Dd = P(cw / 2, T, ch / 2), E = P(cw / 2, 0, ch / 2);
+  c.fillStyle = '#071314'; c.beginPath(); c.moveTo(A[0], A[1]); c.lineTo(B[0], B[1]); c.lineTo(Dd[0], Dd[1]); c.lineTo(E[0], E[1]); c.closePath(); c.fill();
+  const N = 120; for (let k = 0; k < N; k++){ const p0 = P(lerp(-cw / 2, cw / 2, k / N), 0, -ch / 2), p1 = P(lerp(-cw / 2, cw / 2, (k + 1) / N), 0, -ch / 2), hh = ch * p0[2];
+    c.drawImage(COVER2, k / N * cw, 0, cw / N + .6, ch, p0[0], cy - hh / 2, p1[0] - p0[0] + .6, hh); }
+  c.strokeStyle = moonA(.35); c.lineWidth = 2; c.beginPath(); c.moveTo(A[0], A[1]); c.lineTo(E[0], E[1]); c.stroke();
+  c.restore();
+}
+function book(c, t){
+  const bk = seg(t, LS[6] - .25, LS[6] + .6) * (1 - seg(t, LS[8] - .25, LS[8] + .25)); if (bk <= 0) return;
+  bl.filter = 'blur(3px)'; bl.drawImage(C, 0, 0, W / 4, H / 4); bl.filter = 'none';
+  c.save(); c.globalAlpha = eSine(bk); c.imageSmoothingQuality = 'high'; c.drawImage(BL, 0, 0, W, H); c.fillStyle = 'rgba(5,10,12,.45)'; c.fillRect(0, 0, W, H); c.restore();
+  const en = eOutExpo(seg(t, LS[6] - .1, LS[6] + 1.3)), cta = eInOut(seg(t, LS[7] - .2, LS[7] + .5));
+  drawBook(c, CX, lerp(lerp(860, 760, en), 700, cta), lerp(1.1, .32, en) + Math.sin(t * 1.1) * .05, seg(t, LS[6] + .6, LS[6] + 1.8), lerp(.98, .74, cta), bk);
+  const bp = eOutBack(seg(t, LS[7], LS[7] + .4));
+  if (bp > 0){ const label = 'اقرأ المقدّمة مجاناً', w = measure(label, 56, F.ui, 600) + 130, hh = 120, y = 1125;
+    c.save(); c.globalAlpha = bk; c.translate(CX, y); c.scale(bp, bp);
+    c.shadowColor = amberA(.5); c.shadowBlur = 50; c.fillStyle = COL.amber; c.beginPath(); c.roundRect(-w / 2, -hh / 2, w, hh, hh / 2); c.fill(); c.shadowBlur = 0;
+    const sw = seg(t, LS[7] + .5, LS[7] + 1.2); if (sw > 0 && sw < 1){ c.clip(); const sx = lerp(w, -w, sw), g = c.createLinearGradient(sx - 80, 0, sx + 80, 0);
+      g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(-w / 2, -hh / 2, w, hh); }
+    c.restore(); txt(c, label, CX, y + 4, 56 * bp, F.ui, '#1A1208', { w: 600, a: bk }); }
+  const lb = eOutCubic(seg(t, K.link - .05, K.link + .35));
+  if (lb > 0){ const bob = Math.sin(t * 7) * 10; c.save(); c.globalAlpha = lb * bk; c.strokeStyle = COL.moon; c.lineWidth = 6; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(CX, 245 + bob); c.lineTo(CX, 150 + bob); c.moveTo(CX - 36, 186 + bob); c.lineTo(CX, 150 + bob); c.lineTo(CX + 36, 186 + bob); c.stroke(); c.restore();
+    txt(c, 'الرابط في البايو', CX, 300 + bob * .3, 46, F.ui, COL.moon, { w: 600, a: lb * bk }); }
+}
+// save: a bookmark draws itself and fills with light
+function save(c, t){
+  const t0 = LS[8] - .1; if (t < t0) return;
+  const a = seg(t, t0, t0 + .3) * (1 - seg(t, K.end, K.end + .45)); if (a <= 0) return;
+  const draw = eInOut(seg(t, LS[8], LS[8] + .55)), fill = eOutBack(seg(t, LS[8] + .55, LS[8] + .9)), cy = 790;
+  const path = () => { c.beginPath(); c.moveTo(CX - 110, cy - 150); c.lineTo(CX + 110, cy - 150); c.lineTo(CX + 110, cy + 150); c.lineTo(CX, cy + 80); c.lineTo(CX - 110, cy + 150); c.closePath(); };
+  c.save(); c.globalAlpha = a; c.lineWidth = 7; c.lineJoin = 'round'; c.strokeStyle = COL.moon; c.setLineDash([1100 * draw, 2400]); path(); c.stroke(); c.setLineDash([]);
+  if (fill > 0){ c.save(); c.translate(CX, cy); c.scale(fill, fill); c.translate(-CX, -cy); c.shadowColor = amberA(.7); c.shadowBlur = 60; c.fillStyle = COL.amber; path(); c.fill(); c.restore();
+    c.strokeStyle = '#1A1208'; c.lineWidth = 12; c.lineCap = 'round'; c.beginPath(); c.moveTo(CX - 42, cy - 20); c.lineTo(CX - 8, cy + 14); c.lineTo(CX + 50, cy - 50); c.stroke(); }
+  c.restore();
+  txt(c, 'تم الحفظ', CX, cy + 230, 44, F.ui, COL.amber, { w: 600, a: a * clamp(fill) });
+}
+function endCard(c, t){
+  const ec = eOutCubic(seg(t, K.end, K.end + .8)); if (ec <= 0) return;
+  c.fillStyle = `rgba(5,10,12,${.55 * ec})`; c.fillRect(0, 0, W, H);
+  title(c, 'سَكينة', 780, 240, ec, 1, { glow: 50, glowC: moonA(.5) });
+  txt(c, 'رحلة العودة إلى الداخل', CX, 940, 52, F.read, COL.muted, { a: ec });
+  txt(c, 'المقدّمة مجانية · الرابط في البايو', CX, 1060, 40, F.ui, COL.amber, { w: 500, a: seg(t, K.end + .4, K.end + .9) });
+}
+// captions: line soft, spoken words bright, current word amber (the hook uses its own title)
+function captions(c, t){
+  const line = TM.lines.find(l => t >= l.s - .1 && t < l.e + .45); if (!line || line.i === 0) return;
+  if (t > K.end) return;
+  const ws = TM.words.filter(w => w.line === line.i), size = 72, sp = size * .34;
+  const inn = eOutCubic(seg(t, line.s - .1, line.s + .2)), out = 1 - seg(t, line.e + .25, line.e + .45);
+  const rows = [[]]; let rw = 0; for (const w of ws){ const m = measure(w.w, size, F.ui, 600); if (rw + m > 900 && rows[rows.length - 1].length){ rows.push([]); rw = 0; } rows[rows.length - 1].push({ ...w, m }); rw += m + sp; }
+  const y0 = 1420 - (rows.length - 1) * size * .65;
+  rows.forEach((row, ri) => { const tw = row.reduce((a, w) => a + w.m, 0) + sp * (row.length - 1); let x = CX + tw / 2;
+    row.forEach(w => { const said = t >= w.s - .04, on = said && t < w.e + .05, k = eOutCubic(seg(t, w.s - .04, w.s + .16));
+      c.save(); c.globalAlpha = inn * out; c.translate(x - w.m / 2, y0 + ri * size * 1.3 + (1 - inn) * 20 - k * 4);
+      c.shadowColor = 'rgba(0,0,0,.85)'; c.shadowBlur = 24;
+      txt(c, w.w, 0, 0, size, F.ui, on ? COL.amber : said ? COL.moon : moonA(.38), { w: 600 });
+      c.restore(); x -= w.m + sp; }); });
+}
+// tape rewind look while the argument replays backwards
+function vhs(c, t){
+  if (!(t >= LS[2] + .05 && t < K.win)) return;
+  const k = ramp(t, LS[2] + .05, K.win, .2, .1), f = Math.floor(t * 30);
+  for (let n = 0; n < 7; n++){ if (hash(n, f) > .55) continue;
+    const y = hash(n, f + 1) * H, h = 8 + hash(n, f + 2) * 60, dx = (hash(n, f + 3) - .5) * 70 * k; c.drawImage(c.canvas, 0, y, W, h, dx, y, W, h); }
+  const ty = ((t * 900) % (H + 200)) - 100; const g = c.createLinearGradient(0, ty - 40, 0, ty + 40);
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, `rgba(255,255,255,${.16 * k})`); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, ty - 40, W, 80);
+  c.fillStyle = `rgba(0,0,0,${.18 * k})`; for (let y = 0; y < H; y += 4) c.fillRect(0, y, W, 1.5);
+}
+function glitch(c, t){
+  const g = seg(t, K.noise - .02, K.noise + .1) * (1 - seg(t, K.noise + .5, K.noise + 1)); if (g <= 0) return; const f = Math.floor(t * 30);
+  for (let n = 0; n < 8; n++){ if (hash(n, f + 50) > .6 * g + .1) continue; const y = hash(n, f + 51) * H, h = 10 + hash(n, f + 52) * 90; c.drawImage(c.canvas, 0, y, W, h, (hash(n, f + 53) - .5) * 160 * g, y, W, h); }
+}
+const GRAIN = Array.from({ length: 6 }, (_, k) => { const [c, g] = layer(256, 256); const d = g.createImageData(256, 256); const r = rng(100 + k);
+  for (let i = 0; i < d.data.length; i += 4){ const v = r() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); return c; });
+
+function render(t){
+  const s = world(t);
+  drawGL(t, s);
+  X.setTransform(1, 0, 0, 1, 0, 0); X.filter = 'none'; X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
+  X.drawImage(G, 0, 0);
+  bl.clearRect(0, 0, W / 4, H / 4); bl.filter = 'contrast(2.6) brightness(.85) blur(12px)'; bl.drawImage(G, 0, 0, W / 4, H / 4); bl.filter = 'none';
+  X.save(); X.globalCompositeOperation = 'screen'; X.globalAlpha = .55; X.drawImage(BL, 0, 0, W, H); X.restore();
+  const mp = project(s, MOON, true), vis = (1 - Math.min(1, s.storm)) * (s.ro[1] > 0 ? 1 : 0);
+  if (mp && vis > 0 && mp[1] > -50 && mp[1] < H){ const g = X.createLinearGradient(mp[0] - 520, 0, mp[0] + 520, 0);
+    g.addColorStop(0, 'rgba(180,210,230,0)'); g.addColorStop(.5, `rgba(200,225,240,${.22 * vis})`); g.addColorStop(1, 'rgba(180,210,230,0)');
+    X.save(); X.globalCompositeOperation = 'screen'; X.fillStyle = g; X.fillRect(mp[0] - 520, mp[1] - 2, 1040, 4); X.restore(); }
+  if (s.orb[3] > 0){ const op = project(s, s.orb.slice(0, 3), false); if (op){ const g = X.createLinearGradient(op[0] - 300, 0, op[0] + 300, 0);
+    g.addColorStop(0, 'rgba(224,174,106,0)'); g.addColorStop(.5, `rgba(240,190,120,${.3 * s.orb[3]})`); g.addColorStop(1, 'rgba(224,174,106,0)');
+    X.save(); X.globalCompositeOperation = 'screen'; X.fillStyle = g; X.fillRect(op[0] - 300, op[1] - 2, 600, 4); X.restore(); } }
+  rain(X, t, s);
+  hook(X, t); numeral(X, t); phone(X, t); chat(X, t); smileDoor(X, t); thoughts(X, t);
+  title(X, 'لستَ ضعيفاً', 700, 170, seg(t, K.notWeak - .05, K.notWeak + .5), 1 - seg(t, K.way - .5, K.way - .1), { glow: 60, glowC: moonA(.5) });
+  title(X, 'طريقُ العودة', 660, 140, seg(t, K.way, K.way + .6), 1 - seg(t, LS[6] - .45, LS[6] - .05), { glow: 50 });
+  book(X, t); save(X, t); endCard(X, t);
+  vhs(X, t); glitch(X, t);
+  captions(X, t); signBar(X, t);
+  if (s.light > .05){ X.fillStyle = `rgba(210,225,255,${Math.min(.35, s.light * .2)})`; X.fillRect(0, 0, W, H); }
+  const v = X.createRadialGradient(CX, H / 2, H * .28, CX, H / 2, H * .78); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)'); X.fillStyle = v; X.fillRect(0, 0, W, H);
+  const f = Math.floor(t * 30); X.save(); X.globalCompositeOperation = 'overlay'; X.globalAlpha = .08; X.fillStyle = X.createPattern(GRAIN[f % 6], 'repeat');
+  X.translate(-hash(f, 1) * 256, -hash(f, 2) * 256); X.fillRect(0, 0, W + 256, H + 256); X.restore();
+  X.fillStyle = moonA(.12); X.fillRect(0, 0, W, 6); X.fillStyle = COL.amber; X.fillRect(W - W * t / T_END, 0, W * t / T_END, 6);
+  const fo = seg(t, T_END - .35, T_END); if (fo > 0){ X.fillStyle = `rgba(0,0,0,${fo})`; X.fillRect(0, 0, W, H); }
+}
+window.render = render; window.T_END = T_END;
+window.ready = (async () => {
+  TM = await (await fetch('timing.json')).json(); cues(); integrate();
+  await Promise.all(['700 40px "Aref Ruqaa"', '400 40px "Amiri"', '500 40px "Plex"', '600 40px "Plex"'].map(f => document.fonts.load(f, 'سكينة ٣')));
+  paintCover(); render(0); return true;
+})();
+if (!location.search.includes('render')){ const t0 = performance.now(); window.ready.then(function loop(){ render(((performance.now() - t0) / 1000) % T_END); requestAnimationFrame(loop); }); }
+</script>
+</body>
+</html>
