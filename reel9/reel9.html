@@ -42,7 +42,7 @@ const REEL = {
   },
   overlays(c, t, s){
     screenTime(c, t); noise(c, t); phoneFlip(c, t); twoLights(c, t, s); timer(c, t);
-    title(c, 'حين يصمت كل شيء', 640, 100, seg(t, K.silent - .05, K.silent + .4), 1 - seg(t, K.diff - .3, K.diff), { fam: F.read, w: 400, glow: 0, col: '#C9D3D0' });
+    title(c, 'حين يصمت كل شيء', 330, 100, seg(t, K.silent - .05, K.silent + .4), 1 - seg(t, K.diff - .3, K.diff), { fam: F.read, w: 400, glow: 0, col: '#C9D3D0' });
     book(c, t, { start: LS[5], cta: LS[6], end: LS[7], link: K.link, label: 'الباب الثامن · الخلوة' });
     save(c, t); endCard(c, t, K.end);
   },
@@ -95,10 +95,10 @@ function phoneFlip(c, t){
 function twoLights(c, t, s){
   const a = seg(t, K.diff - .1, K.diff + .4) * (1 - seg(t, LS[4] - .3, LS[4] + .1)); if (a <= 0) return;
   const al = seg(t, K.alone - .1, K.alone + .3), ws = seg(t, K.withSelf - .1, K.withSelf + .3);
-  const p = project(s, [-1.6, .25, zAt(K.self) + 16]); if (p && al > 0){ const g = c.createRadialGradient(p[0], p[1], 0, p[0], p[1], 60);
-    g.addColorStop(0, `rgba(170,190,200,${.8 * a * al})`); g.addColorStop(1, 'rgba(170,190,200,0)'); c.fillStyle = g; c.fillRect(p[0] - 60, p[1] - 60, 120, 120);
-    txt(c, 'وحيداً', p[0], p[1] - 110, 44, F.ui, '#B8C4C8', { w: 600, a: a * al }); }
-  const q = project(s, s.orb.slice(0, 3)); if (q && ws > 0) txt(c, 'مع نفسك', q[0], q[1] - 110, 44, F.ui, COL.amber, { w: 600, a: a * ws, glow: 20, glowC: amberA(.5) });
+  const p = project(s, [-1.6, .25, zAt(K.self) + 16]); if (p && al > 0){ const g = c.createRadialGradient(p[0], p[1], 0, p[0], p[1], 80);
+    g.addColorStop(0, `rgba(185,205,215,${.95 * a * al})`); g.addColorStop(.25, `rgba(185,205,215,${.35 * a * al})`); g.addColorStop(1, 'rgba(170,190,200,0)'); c.fillStyle = g; c.fillRect(p[0] - 80, p[1] - 80, 160, 160);
+    txt(c, 'وحيداً', p[0], p[1] - 180, 56, F.ui, '#C3CED2', { w: 600, a: a * al }); }
+  const q = project(s, s.orb.slice(0, 3)); if (q && ws > 0) txt(c, 'مع نفسك', q[0], q[1] - 180, 56, F.ui, COL.amber, { w: 600, a: a * ws, glow: 20, glowC: amberA(.5) });
 }
 // a five-minute timer that has already started
 function timer(c, t){
