@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>سكينة · ريل سينمائي</title>
+<style>
+@font-face{font-family:"Aref Ruqaa";font-weight:700;src:url(../assets/fonts/aref-ruqaa-arabic-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Amiri";font-weight:400;src:url(../assets/fonts/amiri-arabic-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Plex";font-weight:500;src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Plex";font-weight:600;src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2) format("woff2")}
+html,body{margin:0;background:#000;overflow:hidden;display:grid;place-items:center;height:100vh}
+#c{height:100vh;width:auto}
+#g{display:none}
+</style>
+</head>
+<body>
+<canvas id="g"></canvas>
+<canvas id="c"></canvas>
+<script id="fs" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+uniform vec2 uRes; uniform vec3 uRo, uTa; uniform float uWt, uStorm, uLight, uCover, uMoon, uRipT, uSat, uTime, uRoll;
+uniform vec4 uOrb; uniform vec2 uRipC;
+out vec4 o;
+const vec3 MOON = normalize(vec3(0.0, 0.30, 1.0));
+const float CL = 15.0;
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float h31(vec3 p){ p = fract(p * .1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+  return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + 1.), f.x), f.y); }
+float fbm(vec2 p){ float s = 0., a = .5; for (int i = 0; i < 5; i++){ s += a * noise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= .5; } return s; }
+
+float waves(vec2 p){
+  float s = uStorm, w = uWt, h = 0.;
+  float w1 = 1. - abs(sin(dot(p, vec2(.24, .97)) * .26 + w * .9));
+  float w2 = 1. - abs(sin(dot(p, vec2(-.7, .71)) * .43 + w * 1.25));
+  h += s * (1.7 * pow(w1, 2.6) + .85 * pow(w2, 2.6) + .22 * sin(dot(p, vec2(.92, .38)) * .95 + w * 1.9) + .1 * sin(dot(p, vec2(-.2, .98)) * 1.8 + w * 2.6));
+  h += (.035 + .2 * s) * (noise(p * 1.3 + vec2(w * .5, w * .3)) - .5);
+  if (uRipT >= 0.){ float r = length(p - uRipC), k = r - uRipT * 2.6; h += .09 * exp(-k * k * .6) * sin(k * 6.) * exp(-uRipT * .3); }
+  return h;
+}
+vec3 skyCol(vec3 rd){
+  float y = max(rd.y, 0.);
+  vec3 col = mix(vec3(.055, .095, .105), vec3(.008, .018, .024), pow(y, .45));
+  vec3 q = rd * 330., id = floor(q); float st = h31(id); vec3 fq = fract(q) - .5;
+  float tw = .6 + .4 * sin(uTime * 3. + st * 60.);
+  col += vec3(1., .96, .88) * smoothstep(.14, .0, length(fq)) * step(.9965, st) * tw * (1. - min(uStorm, 1.)) * smoothstep(0., .08, rd.y);
+  float md = dot(rd, MOON);
+  float disc = smoothstep(.99952, .99962, md);
+  vec2 mp = vec2(rd.x - MOON.x, rd.y - MOON.y) * 80.;
+  vec3 mc = vec3(1., .96, .88) * (1.45 - .25 * fbm(mp * 1.3));
+  float vis = 1. - .97 * min(uStorm, 1.);
+  col = mix(col, mc * (.8 + .4 * uMoon), disc * vis);
+  col += vec3(.95, .9, .8) * pow(max(md, 0.), 900.) * .9 * uMoon * vis + vec3(.45, .5, .5) * pow(max(md, 0.), 20.) * .07 * uMoon * vis;
+  if (uStorm > .01){
+    vec2 cp = rd.xz / (rd.y + .12) * 1.4 + vec2(uWt * .03, uWt * .05);
+    float c = fbm(cp), cov = smoothstep(.25, .65, c) * min(uStorm, 1.);
+    vec3 cc = mix(vec3(.025, .04, .045), vec3(.11, .13, .14), c) + uLight * vec3(.75, .8, 1.) * c * 1.4;
+    col = mix(col, cc, cov * .96 * smoothstep(-.05, .12, rd.y));
+    col += uLight * .12 * vec3(.7, .75, .95) * (1. - y);
+  }
+  return col;
+}
+vec3 orbGlow(vec3 ro, vec3 rd, float tmax){
+  if (uOrb.w <= 0.) return vec3(0);
+  vec3 oc = uOrb.xyz - ro; float t = max(dot(oc, rd), 0.); if (t > tmax) return vec3(0);
+  float d = length(oc - rd * t);
+  return vec3(1., .72, .38) * uOrb.w * (.0016 / (d * d + .0004) + .06 * exp(-d * 1.2));
+}
+vec3 water(vec3 ro, vec3 rd, out float tt){
+  tt = -1.;
+  if (rd.y >= -.0005) return vec3(0);
+  float maxH = 2.8 * uStorm + .25, t = max(0., (ro.y - maxH) / -rd.y);
+  for (int i = 0; i < 56; i++){
+    vec3 p = ro + rd * t; float d = p.y - waves(p.xz);
+    if (d < .004 * t + .002){ tt = t; break; }
+    t += max(.03, d * .55 / max(-rd.y, .08)); if (t > 600.){ break; }
+  }
+  if (tt < 0.) tt = t;
+  vec3 p = ro + rd * tt; float e = .04 + tt * .003;
+  vec3 n = normalize(vec3(waves(p.xz - vec2(e, 0)) - waves(p.xz + vec2(e, 0)), 2. * e, waves(p.xz - vec2(0, e)) - waves(p.xz + vec2(0, e))));
+  n = normalize(mix(n, vec3(0, 1, 0), smoothstep(80., 500., tt)));
+  vec3 r = reflect(rd, n); r.y = abs(r.y);
+  float fres = .02 + .98 * pow(1. - max(dot(n, -rd), 0.), 5.);
+  vec3 deep = vec3(.006, .022, .026) + uLight * vec3(.03, .035, .05);
+  vec3 col = mix(deep, skyCol(r), fres) + orbGlow(p, r, 100.) * .8;
+  col += uStorm * smoothstep(1.35, 2.2, p.y) * vec3(.2, .23, .25) * (.4 + fbm(p.xz * 1.7 + uWt));
+  col += uLight * .08 * vec3(.6, .65, .85);
+  vec3 hz = mix(vec3(.05, .085, .095), vec3(.09, .1, .11), uStorm) + uLight * vec3(.2, .22, .3);
+  return mix(col, hz, 1. - exp(-tt * (.006 + .02 * uStorm)));
+}
+void main(){
+  vec2 uv = (gl_FragCoord.xy - .5 * uRes) / uRes.y;
+  uv = mat2(cos(uRoll), -sin(uRoll), sin(uRoll), cos(uRoll)) * uv;
+  vec3 ro = uRo, f = normalize(uTa - ro), r = normalize(cross(vec3(0, 1, 0), f)), u = cross(f, r);
+  vec3 rd = normalize(f * 1.25 + uv.x * r + uv.y * u);
+  vec3 col; float tw;
+  if (ro.y > CL && rd.y < 0.){
+    float tc = (ro.y - CL) / -rd.y; vec3 pc = ro + rd * tc;
+    float d = fbm(pc.xz * .03 + vec2(uTime * .012, uTime * .02)) + .3 * fbm(pc.xz * .11 - uTime * .02);
+    float dens = smoothstep(1.15 - uCover * 1.25, 1.4 - uCover * 1.25, d);
+    vec2 fh = normalize(rd.xz + 1e-4), mh = normalize(MOON.xz);
+    float k = pow(max(dot(fh, mh), 0.), 6.);
+    vec3 cc = mix(vec3(.08, .1, .115), vec3(.5, .53, .55), smoothstep(.45, 1.1, d)) * (.55 + .9 * k);
+    cc = mix(cc, vec3(.06, .095, .105), 1. - exp(-tc * .0045));
+    vec3 below = water(ro, rd, tw);
+    col = mix(below, cc, dens);
+  } else {
+    col = rd.y > 0. ? skyCol(rd) : water(ro, rd, tw);
+  }
+  col += orbGlow(ro, rd, 1e4);
+  // flying through the cloud deck
+  float fin = clamp(1. - abs(ro.y - (CL - 1.)) / 4.5, 0., 1.) * uCover;
+  col = mix(col, vec3(.32, .36, .38) * (.7 + uLight), fin * .97);
+  // frozen time: cold and drained
+  float l = dot(col, vec3(.3, .59, .11));
+  col = mix(col, vec3(l) * vec3(.85, .97, 1.1), uSat * .75);
+  col = 1. - exp(-col * 2.2);
+  o = vec4(pow(col, vec3(.82)), 1.);
+}
+</script>
+<script>
+// Sakina — cinematic 30s vertical. A raymarched sea (storm → frozen → above the clouds → still lake) with 2D type on top.
+const W = 1080, H = 1920, CX = W / 2, T_END = 30;
+const COL = { night:'#091214', moon:'#EDE6D6', muted:'#9DAEA8', faint:'#6E817B', amber:'#E0AE6A' };
+const F = { display:'"Aref Ruqaa"', read:'"Amiri"', ui:'"Plex"' };
+const moonA = a => `rgba(237,230,214,${a})`, amberA = a => `rgba(224,174,106,${a})`;
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), lerp = (a, b, k) => a + (b - a) * k, seg = (t, a, b) => clamp((t - a) / (b - a));
+const eOutExpo = k => k >= 1 ? 1 : 1 - Math.pow(2, -10 * k), eInOut = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+const eSine = k => -(Math.cos(Math.PI * k) - 1) / 2, eOutCubic = k => 1 - Math.pow(1 - k, 3);
+const eOutBack = k => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); };
+const TAU = Math.PI * 2;
+function hash(a, b = 0){ let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function layer(w = W, h = H){ const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
+
+// ── WebGL ──
+const G = document.getElementById('g'); G.width = W; G.height = H;
+const gl = G.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
+function sh(type, src){ const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+const prog = gl.createProgram();
+gl.attachShader(prog, sh(gl.VERTEX_SHADER, '#version 300 es\nin vec2 p;void main(){gl_Position=vec4(p,0,1);}'));
+gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, document.getElementById('fs').textContent));
+gl.linkProgram(prog); gl.useProgram(prog);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(prog, n);
+
+const C = document.getElementById('c'); C.width = W; C.height = H; const X = C.getContext('2d');
+const [BL, bl] = layer(W / 4, H / 4);   // bloom / blur buffer
+
+function txt(c, s, x, y, size, fam, color, o = {}){
+  c.save(); c.font = `${o.w || 400} ${size}px ${fam}`; c.textAlign = o.align || 'center'; c.textBaseline = 'middle'; c.direction = 'rtl';
+  c.globalAlpha = o.a ?? 1; if (o.glow){ c.shadowColor = o.glowC || color; c.shadowBlur = o.glow; }
+  c.fillStyle = color; c.fillText(s, x, y); c.restore();
+}
+function measure(s, size, fam, w = 400){ X.save(); X.font = `${w} ${size}px ${fam}`; const m = X.measureText(s).width; X.restore(); return m; }
+
+let TM, LS;
+const FREEZE = () => LS[1] + .12;
+// ── camera + world keyframes ──
+function world(t){
+  const fz = FREEZE(), un = LS[5], rise = LS[8] - .45, top = rise + 1.9, down = LS[11], low = down + 1.6;
+  const s = {};
+  // wave clock: runs, stops dead at the freeze, then restarts harder
+  s.wt = t < fz ? t : t < un ? fz : fz + (t - un) * lerp(.4, 1.35, seg(t, un, un + .8));
+  s.storm = t < un ? 1 : t < rise + .95 ? lerp(1, 1.2, seg(t, un, rise)) : 0;
+  s.sat = t < fz ? 0 : t < un ? eOutExpo(seg(t, fz, fz + .25)) : 1 - eOutExpo(seg(t, un, un + .4));
+  const flashes = [[.38, .9], [fz, 1.4], [un + .05, 1], [8.6, .7], [9.7, .8]];
+  s.light = 0; for (const [ft, a] of flashes){ const d = t - ft; if (d >= 0 && d < .5) s.light += a * Math.exp(-d * 9) * (.6 + .4 * Math.sin(d * 80)); }
+  if (t > fz && t < un) s.light *= 1;
+  // camera
+  let z, y, ty, roll = 0, sx = 0, sy = 0;
+  const zf = fz * 5;
+  if (t < fz){ z = t * 5; y = 3.6 + Math.sin(t * 2.2) * .35; ty = 2.6; }
+  else if (t < un){ const k = t - fz, push = eOutExpo(seg(t, LS[4] - .1, LS[4] + .8)) * 7; z = zf + k * .9 + push; y = lerp(3.6, 2.9, eInOut(seg(t, fz, un))); ty = 2.4; roll = Math.sin(k * .7) * .04; }
+  else if (t < rise){ const k = t - un; z = zf + (un - fz) * .9 + 7 + k * 4.2; y = 3.7 + Math.sin(k * 3.1) * .45; ty = 2.8; }
+  else if (t < top){ const k = eInOut(seg(t, rise, top)); const z0 = zf + (un - fz) * .9 + 7 + (rise - un) * 4.2; z = z0 + (t - rise) * 6; y = lerp(3.7, 27, k); ty = y + lerp(.8, .1, k); }
+  else if (t < down){ const z0 = zf + (un - fz) * .9 + 7 + (rise - un) * 4.2 + (top - rise) * 6; z = z0 + (t - top) * 3; y = 27 + Math.sin(t * .6) * .3; ty = y + lerp(.1, .3, eInOut(seg(t, top, down))); }
+  else { const z0 = zf + (un - fz) * .9 + 7 + (rise - un) * 4.2 + (top - rise) * 6 + (down - top) * 3; const k = eInOut(seg(t, down, low)); z = z0 + (t - down) * lerp(3, .9, k); y = lerp(27, 1.7, k); ty = lerp(27.3, 2.25, k); }
+  if (t < un + 3.7 && (t < fz || t > un)){ const a = t < fz ? .09 : .07 * (1 + seg(t, un, rise)); sx = (hash(Math.floor(t * 24), 1) - .5) * a; sy = (hash(Math.floor(t * 24), 2) - .5) * a; }
+  s.ro = [sx, y + sy, z]; s.ta = [sx * .5, ty, z + 10]; s.roll = roll + (t < fz ? Math.sin(t * 1.7) * .03 : 0);
+  s.cover = t < down ? 1 : 1 - eInOut(seg(t, down, down + 1.2));
+  // breath on the still lake
+  const b = eSine(seg(t, LS[12], LS[12] + 2.2)) - eSine(seg(t, LS[13] - .2, LS[13] + 2.3)) * .8;
+  s.moon = 1 + Math.max(0, b) * .8;
+  s.ripT = t > LS[13] - .2 ? t - (LS[13] - .2) : -1; s.ripC = [0, z_at(LS[13] - .2) + 16];
+  // the lantern: a light in the dark ("this is for you"), then the one you send
+  s.orb = [0, 0, 0, 0];
+  if (t > LS[4] - .2 && t < un + .3){ s.orb = [0, 2.2, z_at(LS[4]) + 34, 1.4 * seg(t, LS[4] - .2, LS[4] + .2) * (1 - seg(t, un - .1, un + .3))]; }
+  if (t > LS[17] - .2){ const k = eInOut(seg(t, LS[17], LS[17] + 3)); const z0 = z_at(LS[17]); s.orb = [lerp(-1.2, .3, k), lerp(.25, 6.5, k), z0 + lerp(9, 40, k), 1.2 * seg(t, LS[17] - .2, LS[17] + .4)]; }
+  return s;
+}
+const ZC = new Map(); function z_at(t){ const k = Math.round(t * 1000); if (!ZC.has(k)) ZC.set(k, world_z(t)); return ZC.get(k); }
+function world_z(t){ const fz = FREEZE(), un = LS[5], rise = LS[8] - .45, top = rise + 1.9, down = LS[11], low = down + 1.6, zf = fz * 5;
+  if (t < fz) return t * 5; if (t < un) return zf + (t - fz) * .9 + eOutExpo(seg(t, LS[4] - .1, LS[4] + .8)) * 7;
+  const z1 = zf + (un - fz) * .9 + 7; if (t < rise) return z1 + (t - un) * 4.2; const z2 = z1 + (rise - un) * 4.2; if (t < top) return z2 + (t - rise) * 6;
+  const z3 = z2 + (top - rise) * 6; if (t < down) return z3 + (t - top) * 3; const k = eInOut(seg(t, down, low)); return z3 + (down - top) * 3 + (t - down) * lerp(3, .9, k); }
+
+function drawGL(t, s){
+  gl.viewport(0, 0, W, H);
+  gl.uniform2f(U('uRes'), W, H); gl.uniform3f(U('uRo'), ...s.ro); gl.uniform3f(U('uTa'), ...s.ta);
+  gl.uniform1f(U('uWt'), s.wt); gl.uniform1f(U('uStorm'), s.storm); gl.uniform1f(U('uLight'), s.light); gl.uniform1f(U('uCover'), s.cover);
+  gl.uniform1f(U('uMoon'), s.moon); gl.uniform1f(U('uRipT'), s.ripT); gl.uniform2f(U('uRipC'), ...s.ripC); gl.uniform1f(U('uSat'), s.sat);
+  gl.uniform1f(U('uTime'), t); gl.uniform1f(U('uRoll'), s.roll); gl.uniform4f(U('uOrb'), ...s.orb);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+// project a direction/point to screen (matches the shader camera)
+function project(s, p, isDir){
+  const ro = s.ro, f = norm(sub(s.ta, ro)), r = norm(cross([0, 1, 0], f)), u = cross(f, r);
+  const d = isDir ? p : sub(p, ro); const z = dot(d, f); if (z <= 0) return null;
+  let x = dot(d, r) / z * 1.25, y = dot(d, u) / z * 1.25;
+  const c = Math.cos(-s.roll), sn = Math.sin(-s.roll); [x, y] = [c * x - sn * y, sn * x + c * y];
+  return [CX + x * H, H / 2 - y * H];
+}
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm = a => { const l = Math.hypot(...a); return [a[0] / l, a[1] / l, a[2] / l]; };
+const MOON = norm([0, .30, 1]);
+
+// ── 2D layers ──
+const RAIN = Array.from({ length: 420 }, (_, i) => ({ x: hash(i, 1) * W * 1.3 - W * .15, y: hash(i, 2), sp: .8 + hash(i, 3) * .7, l: 40 + hash(i, 4) * 90, a: .15 + hash(i, 5) * .35, d: hash(i, 6) }));
+function rain(c, t, s){
+  const fz = FREEZE(), un = LS[5], amt = (t < LS[8] - .2 ? 1 : 1 - seg(t, LS[8] - .2, LS[8] + .6));
+  if (amt <= 0) return;
+  const rt = s.wt; c.save(); c.lineCap = 'round';
+  for (const r of RAIN){
+    const y = ((r.y + rt * 1.6 * r.sp) % 1) * (H + 300) - 150, x = r.x - (y / H) * 260 * r.sp;
+    const frozen = t >= fz && t < un, L = frozen ? 10 + r.d * 16 : r.l;
+    c.strokeStyle = moonA(r.a * amt * (frozen ? 1.6 : 1)); c.lineWidth = frozen ? 2.2 + r.d * 2 : 1.2 + r.d * 1.8;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x - L * .27, y + L); c.stroke();
+    if (frozen && r.d > .55){ c.fillStyle = moonA(.5 * amt); c.beginPath(); c.arc(x - L * .27, y + L, 2.2, 0, TAU); c.fill(); }
+  }
+  c.restore();
+}
+const THOUGHTS = ['ليش قلت هيك','ماذا لو','متأخر','لازم','بكرا','ما صار','كان لازم','ما في وقت','الكل ناطر','غلطت؟','قلق','مرة تانية','شو بيفكروا','ما نمت','الفاتورة','ما رد','يمكن'];
+function thoughts(c, t){
+  const a0 = LS[5], a1 = LS[8] - .2; if (t < a0 || t > a1 + .4) return;
+  for (let i = 0; i < 26; i++){
+    const st = a0 + hash(i, 9) * (a1 - a0 - .4), k = (t - st) / 1.3; if (k < 0 || k > 1) continue;
+    const z = lerp(1, .2, k), x = CX + (hash(i, 10) - .5) * W * .9 / z * .5, y = 800 + (hash(i, 11) - .5) * H * .6 / z * .5, sz = 40 / z;
+    if (sz > 200) continue;
+    c.save(); c.filter = `blur(${Math.max(0, (k - .55) * 30)}px)`;
+    txt(c, THOUGHTS[i % THOUGHTS.length], x, y, sz, F.ui, i % 5 ? COL.moon : COL.amber, { w: 600, a: Math.sin(Math.PI * k) * .85 });
+    c.restore();
+  }
+}
+function title(c, s, y, size, p, out, o = {}){
+  if (p <= 0 || out <= 0) return;
+  const e = eOutCubic(clamp(p)); c.save(); c.filter = `blur(${(1 - e) * 16}px)`;
+  txt(c, s, CX, y + (1 - e) * 40, size, o.fam || F.display, o.col || COL.moon, { w: 700, a: e * out, glow: o.glow ?? 40, glowC: o.glowC || moonA(.35) });
+  c.restore();
+}
+// captions: whole line visible softly, spoken words brighten, current word in amber
+const TITLE_LINES = new Set([0, 8, 9, 14]);
+function captions(c, t){
+  const line = TM.lines.find(l => t >= l.s - .1 && t < l.e + .5 + (l.i === 12 ? 1.4 : 0)); if (!line || TITLE_LINES.has(line.i)) return;
+  if (line.i === 17 && t > 28) return;
+  const ws = TM.words.filter(w => w.line === line.i), size = 74, sp = size * .34;
+  const inn = eOutCubic(seg(t, line.s - .1, line.s + .2)), out = 1 - seg(t, line.e + .3, line.e + .5 + (line.i === 12 ? 1.4 : 0));
+  const rows = [[]]; let rw = 0; for (const w of ws){ const m = measure(w.w, size, F.ui, 600); if (rw + m > 880 && rows[rows.length - 1].length){ rows.push([]); rw = 0; } rows[rows.length - 1].push({ ...w, m }); rw += m + sp; }
+  const y0 = 1400 - (rows.length - 1) * size * .65;
+  rows.forEach((row, ri) => { const tw = row.reduce((a, w) => a + w.m, 0) + sp * (row.length - 1); let x = CX + tw / 2;
+    row.forEach(w => { const said = t >= w.s - .04, on = said && t < w.e + .05, k = eOutCubic(seg(t, w.s - .04, w.s + .16));
+      c.save(); c.globalAlpha = inn * out; c.translate(x - w.m / 2, y0 + ri * size * 1.3 + (1 - inn) * 20 - k * 4);
+      c.shadowColor = 'rgba(0,0,0,.85)'; c.shadowBlur = 24;
+      txt(c, w.w, 0, 0, size, F.ui, on ? COL.amber : said ? COL.moon : moonA(.38), { w: 600 });
+      c.restore(); x -= w.m + sp; }); });
+}
+
+// book (same object as the site)
+const [COVER, cvc] = layer(560, 820), [COVER2, cv2] = layer(560, 820);
+function paintCover(){
+  const w = 560, h = 820, g = cvc.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#16302F'); g.addColorStop(1, '#081314');
+  cvc.fillStyle = g; cvc.fillRect(0, 0, w, h);
+  const r = rng(77); for (let i = 0; i < 140; i++){ cvc.fillStyle = moonA(r() * .5); cvc.beginPath(); cvc.arc(r() * w, r() * h * .55, r() * 1.3 + .2, 0, TAU); cvc.fill(); }
+  cvc.strokeStyle = amberA(.55); cvc.lineWidth = 1.5; cvc.strokeRect(28, 28, w - 56, h - 56);
+  const mg = cvc.createRadialGradient(w / 2, 230, 0, w / 2, 230, 220); mg.addColorStop(0, moonA(.35)); mg.addColorStop(1, moonA(0)); cvc.fillStyle = mg; cvc.fillRect(0, 0, w, h);
+  cvc.fillStyle = '#F2ECDF'; cvc.beginPath(); cvc.arc(w / 2, 230, 58, 0, TAU); cvc.fill();
+  txt(cvc, 'سَكينة', w / 2, 440, 150, F.display, COL.moon, { w: 700 });
+  txt(cvc, 'رحلة العودة إلى الداخل', w / 2, 528, 32, F.read, COL.muted);
+  txt(cvc, 'اثنا عشر باباً', w / 2, 730, 22, F.ui, COL.amber, { w: 500 });
+}
+function drawBook(c, cx, cy, th, sweep, sc, a){
+  const cw = 560, ch = 820, T = 70, D = 1800;
+  cv2.clearRect(0, 0, cw, ch); cv2.drawImage(COVER, 0, 0);
+  if (sweep > 0 && sweep < 1){ const x = lerp(-300, cw + 300, sweep), g = cv2.createLinearGradient(x - 160, 0, x + 160, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,245,225,.3)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    cv2.save(); cv2.globalCompositeOperation = 'lighter'; cv2.fillStyle = g; cv2.fillRect(0, 0, cw, ch); cv2.restore(); }
+  c.save(); c.globalAlpha = a; c.translate(cx, cy); c.scale(sc, sc); c.translate(-cx, -cy);
+  const P = (xl, zl, yl) => { const xr = xl * Math.cos(th) + zl * Math.sin(th), zr = -xl * Math.sin(th) + zl * Math.cos(th), f = D / (D + zr); return [cx + xr * f, cy + yl * f, f]; };
+  c.save(); c.filter = 'blur(40px)'; c.fillStyle = 'rgba(0,0,0,.7)'; c.beginPath(); c.ellipse(cx + 30, cy + ch / 2 + 40, cw * .6, 50, 0, 0, TAU); c.fill(); c.restore();
+  const A = P(cw / 2, 0, -ch / 2), B = P(cw / 2, T, -ch / 2), Dd = P(cw / 2, T, ch / 2), E = P(cw / 2, 0, ch / 2);
+  c.fillStyle = '#071314'; c.beginPath(); c.moveTo(A[0], A[1]); c.lineTo(B[0], B[1]); c.lineTo(Dd[0], Dd[1]); c.lineTo(E[0], E[1]); c.closePath(); c.fill();
+  const N = 120; for (let k = 0; k < N; k++){ const p0 = P(lerp(-cw / 2, cw / 2, k / N), 0, -ch / 2), p1 = P(lerp(-cw / 2, cw / 2, (k + 1) / N), 0, -ch / 2), hh = ch * p0[2];
+    c.drawImage(COVER2, k / N * cw, 0, cw / N + .6, ch, p0[0], cy - hh / 2, p1[0] - p0[0] + .6, hh); }
+  // moonlight rim on the spine edge
+  c.strokeStyle = moonA(.35); c.lineWidth = 2; c.beginPath(); c.moveTo(A[0], A[1]); c.lineTo(E[0], E[1]); c.stroke();
+  c.restore();
+}
+
+function overlays(c, t, s){
+  const fz = FREEZE();
+  rain(c, t, s);
+  // hook title
+  const hk = (1 - seg(t, LS[1] + .9, LS[2] - .05));
+  if (hk > 0){ const fr = t >= fz; c.save(); c.translate(CX, 760);
+    if (!fr){ c.translate((hash(Math.floor(t * 30), 3) - .5) * 14, (hash(Math.floor(t * 30), 4) - .5) * 14); }
+    txt(c, 'استنّى', 0, 0, 230, F.display, COL.moon, { w: 700, a: hk, glow: fr ? 60 : 20, glowC: fr ? 'rgba(200,225,255,.6)' : moonA(.3) }); c.restore(); }
+  thoughts(c, t);
+  // key lines as titles
+  title(c, 'إنت مو أفكارك', 700, 120, seg(t, LS[8] - .05, LS[8] + .5), 1 - seg(t, LS[9] - .25, LS[9]));
+  title(c, 'إنت السما', 640, 190, seg(t, LS[9], LS[9] + .6), 1 - seg(t, LS[11] - .5, LS[11] + .2), { glow: 60, glowC: moonA(.5) });
+  title(c, 'والأفكار… غيوم', 820, 60, seg(t, LS[10], LS[10] + .6), 1 - seg(t, LS[11] - .5, LS[11] + .2), { fam: F.read, col: COL.muted, glow: 0 });
+  // breath guide
+  const show = seg(t, LS[12] - .1, LS[12] + .3) * (1 - seg(t, LS[14] - .6, LS[14] - .2));
+  if (show > 0){ const inh = t < LS[13] - .2, prog = inh ? seg(t, LS[12], LS[12] + 2.2) : seg(t, LS[13] - .2, LS[13] + 2.3), n = inh ? 4 : 6;
+    txt(c, inh ? 'شهيق' : 'زفير', CX, 1580, 54, F.ui, amberA(show), { w: 600 });
+    c.fillStyle = moonA(.18 * show); c.fillRect(CX - 160, 1648, 320, 3); c.fillStyle = amberA(show); c.fillRect(CX + 160 - 320 * prog, 1648, 320 * prog, 3);
+    txt(c, AR(Math.min(n, Math.floor(prog * n) + 1)), CX, 1700, 40, F.ui, moonA(.7 * show), { w: 500 }); }
+  // book + CTA
+  const bk = seg(t, LS[14] - .25, LS[14] + .6) * (1 - seg(t, LS[17] - .3, LS[17] + .2));
+  if (bk > 0){
+    // depth of field: soften the world behind the book
+    bl.filter = 'blur(3px)'; bl.drawImage(C, 0, 0, W / 4, H / 4); bl.filter = 'none';
+    c.save(); c.globalAlpha = eSine(bk); c.imageSmoothingQuality = 'high'; c.drawImage(BL, 0, 0, W, H); c.fillStyle = 'rgba(5,10,12,.45)'; c.fillRect(0, 0, W, H); c.restore();
+    const en = eOutExpo(seg(t, LS[14] - .1, LS[14] + 1.3)), cta = eInOut(seg(t, LS[15] - .2, LS[15] + .5));
+    drawBook(c, CX, lerp(lerp(860, 760, en), 640, cta), lerp(1.1, .32, en) + Math.sin(t * 1.1) * .05, seg(t, LS[14] + .6, LS[14] + 1.8), lerp(.98, .74, cta), bk);
+    title(c, 'سَكينة', 1330, 150, seg(t, LS[14] + .7, LS[14] + 1.3) * (1 - cta), bk, { glow: 40 });
+    txt(c, 'كتاب في السلام الداخلي · ١٢ باباً', CX, 1440, 40, F.ui, amberA(bk * seg(t, LS[14] + 1, LS[14] + 1.5) * (1 - cta)), { w: 500 });
+    const bp = eOutBack(seg(t, LS[15], LS[15] + .4));
+    if (bp > 0){ const label = 'اقرأ المقدّمة مجاناً', w = measure(label, 56, F.ui, 600) + 130, hh = 120, y = 1090;
+      c.save(); c.globalAlpha = bk; c.translate(CX, y); c.scale(bp, bp);
+      c.shadowColor = amberA(.5); c.shadowBlur = 50; c.fillStyle = COL.amber; c.beginPath(); c.roundRect(-w / 2, -hh / 2, w, hh, hh / 2); c.fill(); c.shadowBlur = 0;
+      const sw = seg(t, LS[15] + .5, LS[15] + 1.2); if (sw > 0 && sw < 1){ c.clip(); const sx = lerp(w, -w, sw), g = c.createLinearGradient(sx - 80, 0, sx + 80, 0);
+        g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(-w / 2, -hh / 2, w, hh); }
+      c.restore(); txt(c, label, CX, y + 4, 56 * bp, F.ui, '#1A1208', { w: 600, a: bk }); }
+    const lb = eOutCubic(seg(t, LS[16], LS[16] + .4));
+    if (lb > 0){ const bob = Math.sin(t * 7) * 10; c.save(); c.globalAlpha = lb * bk; c.strokeStyle = COL.moon; c.lineWidth = 6; c.lineCap = 'round'; c.lineJoin = 'round';
+      c.beginPath(); c.moveTo(CX, 300 + bob); c.lineTo(CX, 200 + bob); c.moveTo(CX - 36, 236 + bob); c.lineTo(CX, 200 + bob); c.lineTo(CX + 36, 236 + bob); c.stroke(); c.restore();
+      txt(c, 'الرابط بالبايو', CX, 350 + bob * .3, 46, F.ui, COL.moon, { w: 600, a: lb * bk }); }
+  }
+  // end card
+  const ec = eOutCubic(seg(t, 28.0, 28.8));
+  if (ec > 0){ c.fillStyle = `rgba(5,10,12,${.55 * ec})`; c.fillRect(0, 0, W, H);
+    title(c, 'سَكينة', 780, 240, ec, 1, { glow: 50, glowC: moonA(.5) });
+    txt(c, 'رحلة العودة إلى الداخل', CX, 940, 52, F.read, COL.muted, { a: ec });
+    txt(c, 'احفظ الفيديو · وابعتو لحدا بتحبو', CX, 1060, 40, F.ui, COL.amber, { w: 500, a: seg(t, 28.4, 28.9) }); }
+}
+const AR = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+const GRAIN = Array.from({ length: 6 }, (_, k) => { const [c, g] = layer(256, 256); const d = g.createImageData(256, 256); const r = rng(100 + k);
+  for (let i = 0; i < d.data.length; i += 4){ const v = r() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); return c; });
+
+function render(t){
+  const s = world(t);
+  drawGL(t, s);
+  X.setTransform(1, 0, 0, 1, 0, 0); X.filter = 'none'; X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
+  X.drawImage(G, 0, 0);
+  // bloom
+  bl.clearRect(0, 0, W / 4, H / 4); bl.filter = 'contrast(2.6) brightness(.85) blur(12px)'; bl.drawImage(G, 0, 0, W / 4, H / 4); bl.filter = 'none';
+  X.save(); X.globalCompositeOperation = 'screen'; X.globalAlpha = .55; X.drawImage(BL, 0, 0, W, H); X.restore();
+  // anamorphic streak on the moon
+  const mp = project(s, MOON, true), vis = (1 - Math.min(1, s.storm)) * (s.ro[1] > 0 ? 1 : 0);
+  if (mp && vis > 0 && mp[1] > -50 && mp[1] < H){ const g = X.createLinearGradient(mp[0] - 520, 0, mp[0] + 520, 0);
+    g.addColorStop(0, 'rgba(180,210,230,0)'); g.addColorStop(.5, `rgba(200,225,240,${.22 * vis * s.moon})`); g.addColorStop(1, 'rgba(180,210,230,0)');
+    X.save(); X.globalCompositeOperation = 'screen'; X.fillStyle = g; X.fillRect(mp[0] - 520, mp[1] - 2, 1040, 4); X.restore(); }
+  if (s.orb[3] > 0){ const op = project(s, s.orb.slice(0, 3), false); if (op){ const g = X.createLinearGradient(op[0] - 300, 0, op[0] + 300, 0);
+    g.addColorStop(0, 'rgba(224,174,106,0)'); g.addColorStop(.5, `rgba(240,190,120,${.3 * s.orb[3]})`); g.addColorStop(1, 'rgba(224,174,106,0)');
+    X.save(); X.globalCompositeOperation = 'screen'; X.fillStyle = g; X.fillRect(op[0] - 300, op[1] - 2, 600, 4); X.restore(); } }
+  overlays(X, t, s);
+  captions(X, t);
+  // lightning flash on top, cut flash at the freeze
+  if (s.light > .05){ X.fillStyle = `rgba(210,225,255,${Math.min(.35, s.light * .2)})`; X.fillRect(0, 0, W, H); }
+  // grade: vignette, grain, letterbox-free progress line
+  const v = X.createRadialGradient(CX, H / 2, H * .28, CX, H / 2, H * .78); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)'); X.fillStyle = v; X.fillRect(0, 0, W, H);
+  const f = Math.floor(t * 30); X.save(); X.globalCompositeOperation = 'overlay'; X.globalAlpha = .08; X.fillStyle = X.createPattern(GRAIN[f % 6], 'repeat');
+  X.translate(-hash(f, 1) * 256, -hash(f, 2) * 256); X.fillRect(0, 0, W + 256, H + 256); X.restore();
+  X.fillStyle = moonA(.12); X.fillRect(0, 0, W, 6); X.fillStyle = COL.amber; X.fillRect(W - W * t / T_END, 0, W * t / T_END, 6);
+  const fo = seg(t, T_END - .35, T_END); if (fo > 0){ X.fillStyle = `rgba(0,0,0,${fo})`; X.fillRect(0, 0, W, H); }
+}
+window.render = render; window.T_END = T_END;
+window.ready = (async () => {
+  TM = await (await fetch('timing.json')).json(); LS = TM.lines.map(l => l.s);
+  await Promise.all(['700 40px "Aref Ruqaa"', '400 40px "Amiri"', '500 40px "Plex"', '600 40px "Plex"'].map(f => document.fonts.load(f, 'سكينة')));
+  paintCover(); render(0); return true;
+})();
+if (!location.search.includes('render')){ const t0 = performance.now(); window.ready.then(function loop(){ render(((performance.now() - t0) / 1000) % T_END); requestAnimationFrame(loop); }); }
+</script>
+</body>
+</html>
