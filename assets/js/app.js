@@ -1,7 +1,7 @@
 "use strict";
 // ===== إعدادات الدفع =====
 // رقم التاجر في PayPal (Merchant ID) أو بريد الحساب الذي يستلم المال
-const PAYPAL_EMAIL = "";
+const PAYPAL_EMAIL = "SRDWG2BE4NWME";
 // أو رابط صفحة Payhip/Gumroad إن وُجد (يُستعمل بدل PayPal ويرسل الكتاب تلقائياً)
 const BUY_URL = "";
 const PRICE = 5, CURRENCY = "USD", ITEM = "Sakina - eBook (PDF)";
