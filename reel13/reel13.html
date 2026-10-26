@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>سكينة · النَّفَس</title>
+<link rel="stylesheet" href="../shared/reel.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="../shared/sakina.js"></script>
+<script>
+// Reel 13 "the breath" (chapter 3): a guided 4-2-6 breath. The moon blooms into a flower that opens on the
+// inhale, holds while the sea holds still, and closes on the exhale; a clock ring lights one mark per count.
+// Then the breath becomes an arch of light between body and soul.
+const { W, H, CX, COL, F, moonA, amberA, clamp, lerp, seg, eOutExpo, eInOut, eSine, eOutCubic, eOutBack, TAU, hash, AR,
+        txt, measure, title, wordAt, zAt, project, MOON, book, endCard } = Sakina;
+let LS, LE, P, COUNTS; const K = {};
+const REEL = {
+  T_END: 0,
+  cues(S){
+    LS = S.LS; LE = S.LE; P = S.TM.phases; COUNTS = S.TM.counts;
+    K.thirty = wordAt(0, 'لثلاثين'); K.notice = wordAt(0, 'ولاحظ'); K.hand = wordAt(1, 'وضع');
+    K.in = LS[2]; K.hold = LS[3]; K.out = LS[4];
+    K.breath = wordAt(5, 'النفس'); K.arch = wordAt(5, 'الجسر'); K.body = wordAt(5, 'الجسد'); K.soul = wordAt(5, 'والروح');
+    K.link = wordAt(7, 'والرابط'); K.end = S.T_END - 2.1; REEL.captions.until = K.end;
+  },
+  vel(t){ return lerp(.35, .05, still(t)); },
+  wrate(t){ return lerp(.55, .1, still(t)); },
+  world(t){
+    const s = {}; s.wt = Sakina.wtAt(t); s.storm = 0;
+    const b = breath(t), z = zAt(t), y = 1.7 + .12 * b;
+    s.ro = [0, y, z]; s.ta = [0, y + 1.6, z + 10];
+    s.moon = 1.15 + .5 * b; s.warm = .16 * still(t);
+    s.ripT = t > K.out ? t - K.out : -1; s.ripC = [0, zAt(K.out) + 22];
+    s.b = b; s.vig = .1; return s;
+  },
+  overlays(c, t, s){
+    const mp = project(s, MOON, true);
+    const ex = 1 - seg(t, P.out[1] - .2, P.out[1] + 1.1);
+    ring(c, t, mp, ex); flower(c, t, s, mp, ex); counts(c, t, mp);
+    // hook
+    txt(c, 'تمرين تنفّس', CX, 190, 44, F.ui, COL.amber, { w: 600, a: 1 - seg(t, LS[1] - .3, LS[1] + .1) });
+    title(c, '٣٠ ثانية', 1110, 170, 1, 1 - seg(t, LS[1] - .35, LS[1] + .05), { glow: 50 });
+    txt(c, 'شهيق ٤  ·  احبس ٢  ·  زفير ٦', CX, 1250, 46, F.ui, COL.moon, { w: 600, a: eOutCubic(seg(t, K.notice - .05, K.notice + .35)) * (1 - seg(t, LS[1] - .35, LS[1] + .05)) });
+    relax(c, t);
+    phaseLabel(c, t, ex);
+    arch(c, t, mp);
+    book(c, t, { start: LS[6], cta: LS[7], end: LS[8], link: K.link, label: 'الباب الثالث · النَّفَس' });
+    save(c, t); endCard(c, t, K.end);
+  },
+  captions: {},
+};
+// 0 → 1 on the inhale, held, 1 → 0 on the exhale
+function breath(t){
+  if (t < K.in + .1) return 0;
+  if (t < K.hold) return eSine(seg(t, K.in + .1, P.in[1]));
+  if (t < K.out) return 1;
+  return 1 - eSine(seg(t, K.out + .1, P.out[1]));
+}
+// how much the world holds its breath (the hold, and a calm afterglow)
+function still(t){ return seg(t, K.hold - .3, K.hold + .5) * (1 - seg(t, K.out - .1, K.out + .8)); }
+// a clock ring: twelve marks, one per count, lit as each count is spoken
+function ring(c, t, mp, ex){
+  if (!mp) return; const a = ex; if (a <= 0) return;
+  const [x, y] = mp, R = 385, draw = eInOut(seg(t, -.5, 1.4));
+  c.save(); c.globalAlpha = a; c.lineCap = 'round';
+  c.strokeStyle = moonA(.28); c.lineWidth = 3; c.beginPath(); c.arc(x, y, R, -Math.PI / 2, -Math.PI / 2 + TAU * draw); c.stroke();
+  let fill = 0; COUNTS.forEach(k => fill += seg(t, k.s, k.s + 1));
+  if (fill > 0){ c.shadowColor = amberA(.8); c.shadowBlur = 20; c.strokeStyle = COL.amber; c.lineWidth = 7;
+    c.beginPath(); c.arc(x, y, R, -Math.PI / 2, -Math.PI / 2 + TAU * fill / 12); c.stroke(); c.shadowBlur = 0; }
+  COUNTS.forEach((k, i) => { const an = (i + 1) / 12 * TAU - Math.PI / 2, on = seg(t, k.s + .85, k.s + 1.05), show = seg(t, -.3 + i * .1, i * .1);
+    if (show <= 0) return;
+    c.fillStyle = on > 0 ? `rgba(${Math.round(lerp(237, 224, on))},${Math.round(lerp(230, 174, on))},${Math.round(lerp(214, 106, on))},${lerp(.5, 1, on)})` : moonA(.5);
+    c.beginPath(); c.arc(x + Math.cos(an) * R, y + Math.sin(an) * R, lerp(6, 11, on) * show, 0, TAU); c.fill(); });
+  c.restore();
+}
+// the breathing flower around the moon: six petals that open, turn and close with the breath; the moon is its heart
+function flower(c, t, s, mp, ex){
+  if (!mp) return; const a = ex; if (a <= 0) return;
+  const [x, y] = mp, b = s.b;
+  // a heartbeat while the hand rests on the chest
+  const hb = t > K.hand && t < K.in + .5 ? (() => { const u = ((t - K.hand) % .95); return Math.exp(-u * u * 160) + .6 * Math.exp(-(u - .22) * (u - .22) * 160); })() * (1 - seg(t, K.in, K.in + .5)) : 0;
+  const idle = Math.sin(t * 1.3) * .03 * (1 - b), R = lerp(200, 340, b) * (1 + idle) * lerp(.6, 1, ex);
+  const pr = R * .5, d = lerp(pr * .35, pr, b), rot = b * Math.PI / 3 + t * .06, hold = still(t);
+  const g = c.createRadialGradient(x, y, 0, x, y, R * 1.9); g.addColorStop(0, moonA(.16 * a * (1 + b))); g.addColorStop(1, moonA(0)); c.fillStyle = g; c.fillRect(x - R * 1.9, y - R * 1.9, R * 3.8, R * 3.8);
+  c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = a;
+  for (let i = 0; i < 6; i++){ const an = rot + i / 6 * TAU, px = x + Math.cos(an) * d, py = y + Math.sin(an) * d;
+    const pg = c.createRadialGradient(px, py, pr * .1, px, py, pr);
+    const warm = i % 2 ? hold * .6 : hold * .3, col = (al) => `rgba(${Math.round(lerp(150, 236, warm))},${Math.round(lerp(196, 190, warm))},${Math.round(lerp(204, 130, warm))},${al})`;
+    pg.addColorStop(0, i % 2 ? moonA(.04) : col(.04)); pg.addColorStop(.8, i % 2 ? moonA(.2 + .1 * b) : col(.2 + .1 * b)); pg.addColorStop(1, i % 2 ? moonA(.03) : col(.03));
+    c.fillStyle = pg; c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fill();
+    c.strokeStyle = moonA(.16 + .1 * b); c.lineWidth = 2; c.stroke(); }
+  if (hb > 0){ const hg = c.createRadialGradient(x, y, 0, x, y, 260); hg.addColorStop(0, amberA(.6 * hb)); hg.addColorStop(1, amberA(0)); c.fillStyle = hg; c.fillRect(x - 260, y - 260, 520, 520); }
+  c.restore();
+  // the moon, a little fuller as the lungs fill
+  const mr = lerp(70, lerp(108, 128, b) * (1 + hb * .05), ex);
+  const mg = c.createRadialGradient(x - mr * .3, y - mr * .3, mr * .1, x, y, mr); mg.addColorStop(0, '#FBF7EE'); mg.addColorStop(1, '#CFC6B2');
+  c.save(); c.globalAlpha = a; c.shadowColor = hb > .05 ? amberA(.9) : moonA(.8); c.shadowBlur = 50 + 40 * b; c.fillStyle = mg; c.beginPath(); c.arc(x, y, mr, 0, TAU); c.fill(); c.shadowBlur = 0; c.clip();
+  [[-.3, -.2, .18], [.25, .1, .12], [-.05, .35, .09], [.35, -.32, .07]].forEach(([u, v, r]) => { c.fillStyle = 'rgba(150,140,120,.14)'; c.beginPath(); c.arc(x + u * mr, y + v * mr, r * mr, 0, TAU); c.fill(); });
+  c.restore();
+}
+// the spoken counts, written on the moon, with a soft pulse ring on each
+function counts(c, t, mp){
+  if (!mp) return; const [x, y] = mp;
+  COUNTS.forEach(k => { const u = t - k.s; if (u < -.05 || u > 1) return;
+    const p = eOutBack(seg(u, -.05, .25)), a = seg(u, -.05, .1) * (1 - seg(u, .7, .95));
+    c.save(); c.translate(x, y); c.scale(lerp(.6, 1, p), lerp(.6, 1, p));
+    txt(c, AR(k.n), 0, 6, 140, F.ui, '#1E2A2B', { w: 600, a: a * .9 }); c.restore();
+    const q = seg(u, 0, .9); c.save(); c.globalAlpha = (1 - q) * .5; c.strokeStyle = k.phase === 'hold' ? COL.amber : COL.moon; c.lineWidth = 3;
+    c.beginPath(); c.arc(x, y, 140 + q * 240, 0, TAU); c.stroke(); c.restore(); });
+}
+// "relax your shoulders": the words arrive tense and settle down
+function relax(c, t){
+  const p = seg(t, LS[1] - .1, LS[1] + .25), out = 1 - seg(t, K.in - .35, K.in + .05); if (p <= 0 || out <= 0) return;
+  const settle = eOutCubic(seg(t, LS[1] + .15, LS[1] + 1.3)), shiver = (1 - settle) * Math.sin(t * 70) * 3;
+  c.save(); c.translate(shiver, lerp(-46, 0, settle)); title(c, 'أرخِ كتفيك', 1110, 130, p, out, { glow: 40 }); c.restore();
+  txt(c, 'ويدك على صدرك', CX, 1250, 46, F.ui, COL.amber, { w: 600, a: seg(t, K.hand, K.hand + .4) * out });
+}
+// inhale / hold / exhale under the flower
+function phaseLabel(c, t, ex){
+  [[K.in, K.hold, 'شهيق'], [K.hold, K.out, 'احبس'], [K.out, P.out[1] + .2, 'زفير']].forEach(([a, b, s]) => {
+    const p = seg(t, a - .15, a + .3), out = 1 - seg(t, b - .2, b + .1); if (p > 0 && out > 0) title(c, s, 1110, 150, p, out * ex, { glow: 50 }); });
+}
+// the breath as a pointed arch of light: body at one foot, soul at the other, the moon resting on its point
+function arch(c, t, mp){
+  const a = seg(t, LS[5] - .1, LS[5] + .4) * (1 - seg(t, LS[6] + .1, LS[6] + .7)); if (a <= 0 || !mp) return;
+  const top = mp[1] + 95, foot = 1190, half = 300, R = half * 1.9;
+  // two circular arcs of radius R meeting at the top, stretched to reach the moon
+  const cR = CX + half - R, cL = CX - half + R, apex = Math.acos((R - half) / R), sc = (foot - top) / Math.sqrt(R * R - (R - half) ** 2);
+  const pt = (side, k) => { const an = side > 0 ? lerp(0, apex, k) : lerp(Math.PI, Math.PI - apex, k); return [(side > 0 ? cR : cL) + Math.cos(an) * R, foot - Math.sin(an) * R * sc]; };
+  const dR = eInOut(seg(t, K.arch - .1, K.body)), dL = eInOut(seg(t, K.body, K.soul + .2));
+  c.save(); c.globalAlpha = a; c.lineCap = 'round'; c.shadowColor = amberA(.9); c.shadowBlur = 26; c.strokeStyle = COL.amber; c.lineWidth = 6;
+  const stroke = (side, k0, k1) => { c.beginPath(); for (let i = 0; i <= 40; i++){ const p = pt(side, lerp(k0, k1, i / 40)); i ? c.lineTo(...p) : c.moveTo(...p); } c.stroke(); };
+  if (dR > 0) stroke(1, 0, dR); if (dL > 0) stroke(-1, 1, 1 - dL);
+  // the breath is the bright head of the line, from body up to the moon and down to soul, then it rests there
+  if (dR > 0){ const pos = dR < 1 ? pt(1, dR) : pt(-1, 1 - dL), pulse = dL >= 1 ? .8 + .2 * Math.sin(t * 5) : 1;
+    const g = c.createRadialGradient(pos[0], pos[1], 0, pos[0], pos[1], 80); g.addColorStop(0, `rgba(255,238,205,${.95 * pulse})`); g.addColorStop(1, amberA(0));
+    c.shadowBlur = 0; c.fillStyle = g; c.fillRect(pos[0] - 80, pos[1] - 80, 160, 160); }
+  c.restore();
+  title(c, 'النَّفَس', 960, 160, seg(t, K.breath - .05, K.breath + .4), a, { glow: 60, glowC: amberA(.45), col: '#F3DDB0' });
+  txt(c, 'الجسد', CX + half, foot + 80, 88, F.display, COL.moon, { w: 700, a: a * seg(t, K.body - .05, K.body + .3), glow: 20, glowC: 'rgba(0,0,0,.8)' });
+  txt(c, 'الروح', CX - half, foot + 80, 88, F.display, COL.moon, { w: 700, a: a * seg(t, K.soul - .05, K.soul + .3), glow: 20, glowC: 'rgba(0,0,0,.8)' });
+}
+// save: a bookmark draws itself and fills with light
+function save(c, t){
+  const t0 = LS[8] - .1; if (t < t0) return;
+  const a = seg(t, t0, t0 + .3) * (1 - seg(t, K.end, K.end + .45)); if (a <= 0) return;
+  const draw = eInOut(seg(t, LS[8], LS[8] + .55)), fill = eOutBack(seg(t, LS[8] + .55, LS[8] + .9)), cy = 900;
+  const path = () => { c.beginPath(); c.moveTo(CX - 110, cy - 150); c.lineTo(CX + 110, cy - 150); c.lineTo(CX + 110, cy + 150); c.lineTo(CX, cy + 80); c.lineTo(CX - 110, cy + 150); c.closePath(); };
+  c.save(); c.globalAlpha = a; c.lineWidth = 7; c.lineJoin = 'round'; c.strokeStyle = COL.moon; c.setLineDash([1100 * draw, 2400]); path(); c.stroke(); c.setLineDash([]);
+  if (fill > 0){ c.save(); c.translate(CX, cy); c.scale(fill, fill); c.translate(-CX, -cy); c.shadowColor = amberA(.7); c.shadowBlur = 60; c.fillStyle = COL.amber; path(); c.fill(); c.restore();
+    c.strokeStyle = '#1A1208'; c.lineWidth = 12; c.lineCap = 'round'; c.beginPath(); c.moveTo(CX - 42, cy - 20); c.lineTo(CX - 8, cy + 14); c.lineTo(CX + 50, cy - 50); c.stroke(); }
+  c.restore();
+  txt(c, 'تم الحفظ', CX, cy + 230, 44, F.ui, COL.amber, { w: 600, a: a * clamp(fill) });
+}
+window.ready = fetch('timing.json').then(r => r.json()).then(tm => { REEL.T_END = Math.round((tm.T + 2.6) * 10) / 10; Sakina.start(REEL); return window.ready; });
+</script>
+</body>
+</html>
