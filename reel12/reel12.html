@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>سكينة · المرة الأخيرة</title>
+<link rel="stylesheet" href="../shared/reel.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="../shared/sakina.js"></script>
+<script>
+// Reel 12 "the last time" (impermanence, chapter 11): paper lanterns of "last times" drift away on the lake,
+// the last one goes out; then a steady candle, and a golden dawn on "because it matters".
+const { W, H, CX, COL, F, moonA, amberA, clamp, lerp, seg, eOutExpo, eInOut, eOutCubic, eOutBack, TAU, hash,
+        txt, measure, title, wordAt, zAt, project, book, endCard } = Sakina;
+let LS, LE; const K = {};
+const REEL = {
+  T_END: 0,
+  cues(S){
+    LS = S.LS; LE = S.LE;
+    const lasts = S.TM.words.filter(w => w.line === 1 && w.w.startsWith('آخر'));
+    K.hug = lasts[0] ? lasts[0].s : LS[1]; K.laugh = lasts[1] ? lasts[1].s : LS[1] + 1.8;
+    K.evening = LS[2]; K.repeat = wordAt(2, 'سيتكرر'); K.notsad = LS[3]; K.teacher = LS[4]; K.live = LS[5]; K.matters = wordAt(5, 'لأنها');
+    K.link = wordAt(7, 'والرابط'); K.end = S.T_END - 2.1; REEL.captions.until = K.end;
+  },
+  vel(){ return .45; },
+  wrate(){ return .55; },
+  world(t){
+    const s = {}; s.wt = Sakina.wtAt(t); s.storm = .05;
+    const dawn = seg(t, K.notsad, K.matters + .6) * (1 - .6 * seg(t, LS[6], LS[6] + 1));
+    s.warm = .45 * dawn; s.sat = .2 * seg(t, K.evening, K.repeat + .5) * (1 - seg(t, K.notsad, K.notsad + .8));
+    const z = zAt(t), y = 1.0, ty = y + .06;
+    s.ro = [0, y, z]; s.ta = [0, ty, z + 10]; s.moon = 1 - .3 * dawn;
+    // the first lantern is a real light on the water, drifting away
+    const ha = 1 - seg(t, LS[1] + .4, LS[1] + 1.4);
+    if (ha > 0){ const zz = zAt(0) + 9 + t * .9; s.orb = [.15 + Math.sin(t * .7) * .1, .2 + Math.sin(t * 1.6) * .04, zz, 1.15 * ha]; }
+    // the one you send rises at the end
+    if (t > LS[8] - .2){ const k = eInOut(seg(t, LS[8], LS[8] + 3)), z0 = zAt(LS[8]); s.orb = [lerp(-.8, .2, k), lerp(.25, 6.2, k), z0 + lerp(9, 38, k), 1.2 * seg(t, LS[8] - .2, LS[8] + .4)]; }
+    s.ripT = t > K.teacher ? (t - K.teacher) % 3.2 : -1; s.ripC = [0, zAt(K.teacher) + 8];
+    s.dawn = dawn;
+    return s;
+  },
+  overlays(c, t, s){
+    dawnGlow(c, t, s);
+    title(c, 'للمرة الأخيرة', 600, 140, 1, 1 - seg(t, LS[1] - .3, LS[1] + .1), { glow: 40 });
+    lanterns(c, t, s); candle(c, t, s);
+    title(c, 'معلّمٌ صامت', 560, 140, seg(t, K.teacher - .05, K.teacher + .5), 1 - seg(t, K.live - .3, K.live + .1), { glow: 40 });
+    title(c, 'لأنها تهمّ', 560, 150, seg(t, K.matters - .05, K.matters + .45), 1 - seg(t, LS[6] - .45, LS[6] - .05), { glow: 60, glowC: amberA(.55), col: '#F3DDB0' });
+    book(c, t, { start: LS[6], cta: LS[7], end: LS[8], link: K.link, label: 'الباب الحادي عشر · الفناء' });
+    endCard(c, t, K.end);
+  },
+  captions: {},
+};
+// a paper lantern on the water: glow, ribs, and a broken reflection beneath it
+function lantern(c, p, sc, a, label){
+  if (!p || a <= .01) return;
+  const g = c.createRadialGradient(p[0], p[1], 0, p[0], p[1], 150 * sc); g.addColorStop(0, amberA(.55 * a)); g.addColorStop(1, amberA(0));
+  c.fillStyle = g; c.fillRect(p[0] - 150 * sc, p[1] - 150 * sc, 300 * sc, 300 * sc);
+  for (let k = 0; k < 6; k++){ c.fillStyle = amberA(.2 * a * (1 - k / 6)); const w = (30 - k * 3.5) * sc; c.fillRect(p[0] - w / 2 + Math.sin(k * 1.7) * 3 * sc, p[1] + 26 * sc + k * 15 * sc, w, 5 * sc); }
+  c.save(); c.globalAlpha = a; c.fillStyle = 'rgb(255,214,150)'; c.shadowColor = amberA(.9); c.shadowBlur = 30 * sc;
+  c.beginPath(); c.roundRect(p[0] - 19 * sc, p[1] - 30 * sc, 38 * sc, 48 * sc, 12 * sc); c.fill(); c.shadowBlur = 0;
+  c.strokeStyle = 'rgba(150,90,40,.55)'; c.lineWidth = 2 * sc; for (const dx of [-8, 0, 8]){ c.beginPath(); c.moveTo(p[0] + dx * sc, p[1] - 28 * sc); c.lineTo(p[0] + dx * sc, p[1] + 16 * sc); c.stroke(); }
+  c.fillStyle = '#3a2a1a'; c.fillRect(p[0] - 14 * sc, p[1] - 36 * sc, 28 * sc, 7 * sc); c.fillRect(p[0] - 14 * sc, p[1] + 16 * sc, 28 * sc, 6 * sc);
+  c.restore();
+  if (label) txt(c, label, p[0], p[1] - 110 * Math.max(.8, sc), 44, F.ui, COL.moon, { w: 600, a, glow: 16, glowC: 'rgba(0,0,0,.8)' });
+}
+// "last times": each lantern appears on its words and drifts away; the last ordinary evening flickers out
+function lanterns(c, t, s){
+  // the hook lantern is the 3D light; label it
+  if (s.orb[3] > 0 && t < LS[2]){ const p = project(s, s.orb.slice(0, 3)); if (p) txt(c, 'لحظة عادية', p[0], p[1] - 120, 42, F.ui, COL.moon, { w: 600, a: s.orb[3] * (1 - seg(t, LS[1] - .3, LS[1] + .2)) * .9 }); }
+  const items = [[K.hug, 'آخر حضن', -1.5, 9], [K.laugh, 'آخر ضحكة', 1.4, 10], [K.evening, 'آخر مساء عادي', -.1, 8]];
+  items.forEach(([t0, label, x, dz], i) => {
+    if (t < t0 - .2) return;
+    const out = i < 2 ? 1 - seg(t, K.notsad - .6, K.notsad) : 1 - seg(t, K.repeat + .2, K.repeat + .9);
+    const flick = i === 2 ? (t > K.repeat - .2 ? .55 + .45 * Math.sin(t * 38) * Math.sin(t * 13) : 1) : 1;
+    const a = seg(t, t0 - .2, t0 + .4) * out * flick; if (a <= 0) return;
+    const z = zAt(t0) + dz + (t - t0) * .8, p = project(s, [x + (t - t0) * .08 * (i ? 1 : -1), .15 + Math.sin(t * 1.5 + i) * .04, z]);
+    lantern(c, p, p ? Math.min(2.2, 15 / p[2]) : 1, a, label);
+  });
+}
+// a candle floating on the water: steady, not going out
+function candle(c, t, s){
+  const a = seg(t, K.teacher - .3, K.teacher + .4) * (1 - seg(t, LS[6] - .4, LS[6])); if (a <= 0) return;
+  const p = project(s, [0, .1, zAt(K.teacher) + 8]); if (!p) return; const sc = Math.min(1.8, 9 / p[2]), x = p[0], y = p[1];
+  const bright = 1 + .6 * seg(t, K.matters, K.matters + .8);
+  const g = c.createRadialGradient(x, y - 60 * sc, 0, x, y - 60 * sc, 260 * sc * bright); g.addColorStop(0, amberA(.5 * a)); g.addColorStop(1, amberA(0)); c.fillStyle = g; c.fillRect(x - 280 * sc * bright, y - 340 * sc * bright, 560 * sc * bright, 560 * sc * bright);
+  c.save(); c.globalAlpha = a;
+  c.fillStyle = 'rgba(60,80,70,.9)'; c.beginPath(); c.ellipse(x, y + 6 * sc, 46 * sc, 10 * sc, 0, 0, TAU); c.fill();
+  const cg = c.createLinearGradient(x - 16 * sc, 0, x + 16 * sc, 0); cg.addColorStop(0, '#d9cfbc'); cg.addColorStop(.5, '#f6efe0'); cg.addColorStop(1, '#bfb5a2');
+  c.fillStyle = cg; c.fillRect(x - 16 * sc, y - 70 * sc, 32 * sc, 74 * sc);
+  c.strokeStyle = '#2a2018'; c.lineWidth = 2 * sc; c.beginPath(); c.moveTo(x, y - 70 * sc); c.lineTo(x, y - 80 * sc); c.stroke();
+  const fl = 1 + Math.sin(t * 9) * .04 + Math.sin(t * 23) * .02, fx = x + Math.sin(t * 5) * 1.5 * sc, h = 46 * sc * fl * bright ** .3;
+  c.fillStyle = 'rgba(255,220,150,.95)'; c.shadowColor = amberA(.9); c.shadowBlur = 30 * sc;
+  c.beginPath(); c.moveTo(fx, y - 80 * sc - h); c.bezierCurveTo(fx + 14 * sc, y - 80 * sc - h * .45, fx + 10 * sc, y - 82 * sc, fx, y - 80 * sc); c.bezierCurveTo(fx - 10 * sc, y - 82 * sc, fx - 14 * sc, y - 80 * sc - h * .45, fx, y - 80 * sc - h); c.fill();
+  c.restore();
+  for (let k = 0; k < 6; k++){ c.fillStyle = amberA(.18 * a * (1 - k / 6)); const w = (40 - k * 5) * sc; c.fillRect(x - w / 2, y + 16 * sc + k * 14 * sc, w, 5 * sc); }
+}
+// dawn: a golden glow climbing from the horizon
+function dawnGlow(c, t, s){
+  if (s.dawn <= 0) return; const hz = project(s, [0, 0, 1], true); if (!hz) return; const y = hz[1];
+  const g = c.createLinearGradient(0, y - 700, 0, y + 40); g.addColorStop(0, 'rgba(240,180,110,0)'); g.addColorStop(.7, `rgba(240,180,110,${.22 * s.dawn})`); g.addColorStop(1, `rgba(255,200,130,${.42 * s.dawn})`);
+  c.save(); c.globalCompositeOperation = 'screen'; c.fillStyle = g; c.fillRect(0, y - 700, W, 740);
+  const r = c.createRadialGradient(CX, y, 0, CX, y, 520); r.addColorStop(0, `rgba(255,210,140,${.45 * s.dawn})`); r.addColorStop(1, 'rgba(255,210,140,0)'); c.fillStyle = r; c.fillRect(CX - 520, y - 520, 1040, 1040);
+  c.restore();
+}
+window.ready = fetch('timing.json').then(r => r.json()).then(tm => { REEL.T_END = Math.round((tm.T + 2.6) * 10) / 10; Sakina.start(REEL); return window.ready; });
+</script>
+</body>
+</html>
