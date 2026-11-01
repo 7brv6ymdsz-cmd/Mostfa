@@ -38,6 +38,10 @@
     messages: '<path d="M4 19.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8z"/><path d="M8.5 9h7M8.5 12.5h4.5"/>',
     questions: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/>',
     send: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+    inventory: '<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10M7.5 5l9 4"/>',
+    team: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 11l1.5 1.5L21 10"/>',
+    activity: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+    bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
     image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     import: '<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>',
@@ -122,7 +126,7 @@
   const must = D.must;
   const cloudApi = {
     async loadAll() {
-      const [st, cats, prods, ords, cps, rvs, convs, qs] = await Promise.all([
+      const [st, cats, prods, ords, cps, rvs, convs, qs, notes] = await Promise.all([
         sb.from('settings').select('data').eq('id', 1).maybeSingle(),
         sb.from('categories').select('*').order('sort'),
         sb.from('products').select('*').order('sort').order('id', { ascending: false }),
@@ -131,8 +135,9 @@
         sb.from('reviews').select('*').order('created_at', { ascending: false }).limit(500),
         sb.from('conversations').select('id,user_id,name,contact,subject,order_id,product_id,status,unread_admin,last_message,created_at,updated_at').order('updated_at', { ascending: false }).limit(500),
         sb.from('product_questions').select('*').order('created_at', { ascending: false }).limit(500),
+        sb.from('admin_notifications').select('*').order('created_at', { ascending: false }).limit(50),
       ]);
-      const bad = [st, cats, prods, ords, cps, rvs, convs, qs].find((r) => r.error);
+      const bad = [st, cats, prods, ords, cps, rvs, convs, qs, notes].find((r) => r.error);
       if (bad) throw new Error(D.friendly(bad.error));
       state = {
         settings: (st.data && st.data.data) || {},
@@ -143,6 +148,8 @@
         reviews: rvs.data,
         conversations: convs.data,
         questions: qs.data,
+        notifications: notes.data,
+        role: (state && state.role) || 'owner',
         publishedHash: null,
       };
       migrate();
@@ -183,6 +190,13 @@
     async freshConversations(since) {
       return must(await sb.from('conversations').select('id,user_id,name,contact,subject,order_id,product_id,status,unread_admin,last_message,created_at,updated_at').gt('updated_at', new Date(since).toISOString()).order('updated_at', { ascending: false }));
     },
+    async listStaff() { return must(await sb.rpc('list_staff')); },
+    async addStaff(email, role) { must(await sb.rpc('add_staff', { p_email: email, p_role: role })); },
+    async removeStaff(uid) { must(await sb.rpc('remove_staff', { p_user: uid })); },
+    async movements(pid) { return must(await sb.from('stock_movements').select('*').eq('product_id', pid).order('at', { ascending: false }).limit(50)); },
+    async adjustStock(pid, delta, reason, note) { return must(await sb.rpc('adjust_stock', { p_product: pid, p_delta: delta, p_reason: reason, p_note: note || '' })); },
+    async audit(limit = 200) { return must(await sb.from('audit_log').select('*').order('at', { ascending: false }).limit(limit)); },
+    async markNotes(ids) { if (ids.length) must(await sb.from('admin_notifications').update({ read: true }).in('id', ids)); },
     async newOrders(since) {
       return must(await sb.from('orders').select('*').gt('created_at', new Date(since).toISOString()).order('created_at', { ascending: false })).map((o) => ({ ...D.orderFromRow(o), stockApplied: o.stock_applied }));
     },
@@ -210,6 +224,9 @@
           if (current === 'orders') renderOrderList(); else if (current === 'dashboard') VIEWS.dashboard();
           refreshBadges();
         }
+        const lastNote = (state.notifications || []).reduce((m, x) => Math.max(m, x.id), 0);
+        const fresh2 = must(await sb.from('admin_notifications').select('*').gt('id', lastNote).order('id', { ascending: false }));
+        if (fresh2.length) { state.notifications.unshift(...fresh2); paintBell(); toast(fresh2[0].title); }
         const lastConv = (state.conversations || []).reduce((m, c) => Math.max(m, new Date(c.updated_at).getTime()), 0) || Date.now() - 864e5;
         const changed = await cloudApi.freshConversations(lastConv);
         if (changed.length) {
@@ -280,7 +297,10 @@
       $('#outBtn').onclick = async () => { await D.auth.signOut(); location.reload(); };
       throw new Error('not_admin');
     }
+    state = { role: 'owner' };
+    const role = must(await sb.rpc('my_role')) || 'owner';
     await cloudApi.loadAll();
+    state.role = role;
     // first time on the server: offer to bring the local catalog along
     if (!state.products.length && !state.categories.length) state.offerImport = true;
     enterApp();
@@ -371,6 +391,7 @@
     { id: 'dashboard', t: 'الرئيسية', k: 'نظرة عامة' },
     { id: 'orders', t: 'الطلبات', k: 'المبيعات' },
     { id: 'products', t: 'المنتجات', k: 'الكتالوج' },
+    { id: 'inventory', t: 'المخزون', k: 'الكتالوج' },
     { id: 'customers', t: 'العملاء', k: 'المبيعات' },
     { id: 'messages', t: 'الرسائل', k: 'خدمة العملاء' },
     { id: 'questions', t: 'أسئلة المنتجات', k: 'خدمة العملاء' },
@@ -378,25 +399,41 @@
     { id: 'coupons', t: 'الكوبونات', k: 'التسويق' },
     { id: 'reviews', t: 'التقييمات', k: 'التسويق' },
     { id: 'settings', t: 'الإعدادات', k: 'المتجر' },
+    { id: 'team', t: 'الفريق والصلاحيات', k: 'المتجر' },
+    { id: 'activity', t: 'سجل النشاط', k: 'المتجر' },
     { id: 'server', t: 'السيرفر والحسابات', k: 'المتجر' },
     { id: 'publish', t: 'النشر', k: 'المتجر' },
   ];
+  // what each staff role may open (the database enforces the same rules)
+  const ROLE_PAGES = {
+    owner: null,
+    manager: ['dashboard', 'orders', 'products', 'inventory', 'customers', 'messages', 'questions', 'payments', 'coupons', 'reviews', 'settings', 'activity', 'server'],
+    inventory: ['dashboard', 'products', 'inventory'],
+    support: ['dashboard', 'orders', 'customers', 'messages', 'questions', 'reviews'],
+  };
+  const ROLE_NAMES = { owner: 'المالك', manager: 'مدير', inventory: 'مسؤول مخزون', support: 'خدمة عملاء' };
+  const LOCAL_HIDDEN = ['team', 'activity'];
+  const canOpen = (id) => (CLOUD ? (!ROLE_PAGES[state.role || 'owner'] || ROLE_PAGES[state.role].includes(id)) && (id !== 'team' || (state.role || 'owner') === 'owner') : !LOCAL_HIDDEN.includes(id));
+  const can = (...roles) => !CLOUD || (state.role || 'owner') === 'owner' || roles.includes(state.role);
   const VIEWS = {};
   let current = null;
   function route() {
     if (!state) return;
     const [id, arg] = (location.hash.slice(1) || 'dashboard').split('/');
-    const nav = NAV.find((n) => n.id === id) || NAV[0];
+    const nav = NAV.find((n) => n.id === id && canOpen(n.id)) || NAV[0];
     current = nav.id;
     const newCount = state.orders.filter((o) => o.status === 'new').length;
     const pendingRv = state.reviews.filter((r) => r.status === 'pending').length;
     const unreadMsg = (state.conversations || []).filter((c) => c.unread_admin && c.status !== 'closed').length;
     const pendingQ = (state.questions || []).filter((q) => q.status === 'pending').length;
-    $('#sideNav').innerHTML = NAV.filter((n) => n.id !== 'publish').map((n) => `<a href="#${n.id}" class="${n.id === current ? 'on' : ''}" ${n.id === current ? 'aria-current="page"' : ''}>${ic(n.id)}<span>${n.t}</span>${n.id === 'orders' && newCount ? `<em>${num(newCount)}</em>` : n.id === 'reviews' && pendingRv ? `<em>${num(pendingRv)}</em>` : n.id === 'messages' && unreadMsg ? `<em>${num(unreadMsg)}</em>` : n.id === 'questions' && pendingQ ? `<em>${num(pendingQ)}</em>` : ''}</a>`).join('');
+    $('#sideNav').innerHTML = NAV.filter((n) => n.id !== 'publish' && canOpen(n.id)).map((n) => `<a href="#${n.id}" class="${n.id === current ? 'on' : ''}" ${n.id === current ? 'aria-current="page"' : ''}>${ic(n.id)}<span>${n.t}</span>${n.id === 'orders' && newCount ? `<em>${num(newCount)}</em>` : n.id === 'reviews' && pendingRv ? `<em>${num(pendingRv)}</em>` : n.id === 'messages' && unreadMsg ? `<em>${num(unreadMsg)}</em>` : n.id === 'questions' && pendingQ ? `<em>${num(pendingQ)}</em>` : ''}</a>`).join('');
     $('#topTitle').textContent = nav.t;
     $('#topKicker').textContent = nav.k;
     $('#topActions').innerHTML = '';
     $('#publishBtn').classList.toggle('on', current === 'publish');
+    paintBell();
+    $('#roleBadge').hidden = !CLOUD || (state.role || 'owner') === 'owner';
+    $('#roleBadge').textContent = ROLE_NAMES[state.role] || '';
     closeSheet();
     VIEWS[current](arg ? decodeURIComponent(arg) : undefined);
     updatePublishDot();
@@ -716,7 +753,7 @@
         <div class="row-btns sheet-actions">
           <button class="btn" type="button" data-act="print" data-id="${esc(o.id)}">${ic('print')}فاتورة</button>
           ${o.status !== 'cancelled' ? `<button class="btn" type="button" data-status="cancelled">إلغاء الطلب</button>` : `<button class="btn" type="button" data-status="new">إعادة فتح</button>`}
-          <button class="btn danger-ghost" type="button" data-act="delete-order" data-id="${esc(o.id)}">${ic('trash')}حذف</button>
+          ${can() ? `<button class="btn danger-ghost" type="button" data-act="delete-order" data-id="${esc(o.id)}">${ic('trash')}حذف</button>` : ''}
         </div>
       </div>`);
     const sheet = $('#sheetInner');
@@ -840,7 +877,7 @@
             <div class="three">
               ${field(`السعر (${esc(cur())})`, `<input name="price" type="number" min="0" step="0.01" inputmode="decimal" value="${p.price}" required dir="ltr">`)}
               ${field('قبل الخصم', `<input name="compare" type="number" min="0" step="0.01" inputmode="decimal" value="${p.compare || ''}" dir="ltr" placeholder="اختياري">`)}
-              ${field('المخزون', `<input name="stock" type="number" min="0" step="1" inputmode="numeric" value="${Number.isFinite(+p.stock) ? p.stock : ''}" dir="ltr">`)}
+              ${field('المخزون', `<input name="stock" type="number" min="0" step="1" inputmode="numeric" value="${Number.isFinite(+p.stock) ? p.stock : ''}" dir="ltr" ${CLOUD && !isNew ? 'readonly title="الكمية بتتعدّل من صفحة المخزون ليتسجّل السبب"' : ''}>`, CLOUD && !isNew ? '<a href="#inventory/' + p.id + '">عدّل الكمية من المخزون</a>' : '')}
             </div>
             ${field('الوصف', `<textarea name="desc" rows="4" maxlength="2000">${esc(p.desc)}</textarea>`)}
             <div class="opts-ed">
@@ -1383,6 +1420,166 @@
     VIEWS.questions(); refreshNavBadges();
   }
 
+  /* ---------- Inventory ---------- */
+  const REASONS = { restock: 'توريد بضاعة', count: 'جرد', damage: 'تالف/مفقود', return: 'مرتجع', manual: 'تعديل يدوي', order: 'طلب', cancel: 'إلغاء طلب', reopen: 'إعادة فتح طلب', initial: 'كمية البداية' };
+  let invFilter = 'all', invQuery = '';
+  VIEWS.inventory = (arg) => {
+    const ps = state.products;
+    const th = (p) => (Number.isFinite(+p.threshold) ? +p.threshold : 5);
+    const out = ps.filter((p) => p.stock <= 0).length, low = ps.filter((p) => p.stock > 0 && p.stock <= th(p)).length;
+    const units = ps.reduce((s2, p) => s2 + Math.max(0, +p.stock || 0), 0);
+    const value = ps.reduce((s2, p) => s2 + Math.max(0, +p.stock || 0) * (+p.price || 0), 0);
+    $('#view').innerHTML = `
+      <div class="kpis">
+        <div class="kpi"><span>قطع بالمخزون</span><b>${num(units)}</b><small>${num(ps.length)} منتج</small></div>
+        <div class="kpi"><span>قيمة المخزون (بسعر البيع)</span><b>${money(value)}</b></div>
+        <button class="kpi" type="button" data-invf="low"><span>قليل</span><b>${num(low)}</b><small>تحت حد التنبيه</small></button>
+        <button class="kpi" type="button" data-invf="out"><span>نفد</span><b>${num(out)}</b></button>
+      </div>
+      <div class="toolbar"><label class="search">${ic('search')}<input type="search" id="iq" placeholder="ابحث عن منتج…" value="${esc(invQuery)}"></label></div>
+      <div class="chips" role="group">${[['all', 'الكل'], ['low', 'قليل'], ['out', 'نفد']].map(([k, t]) => `<button type="button" data-invf="${k}" aria-pressed="${invFilter === k}">${t}</button>`).join('')}</div>
+      <div id="invList"></div>
+      ${CLOUD ? '' : '<p class="muted pad">سجل حركات المخزون والتنبيهات التلقائية بيشتغلوا بعد ربط السيرفر. هون فيك تعدّل الكميات وتنشرها.</p>'}`;
+    $('#iq').addEventListener('input', (e) => { invQuery = e.target.value; renderInv(); });
+    renderInv();
+    if (arg) openStock(+arg);
+  };
+  function renderInv() {
+    const q = S.norm(invQuery), th = (p) => (Number.isFinite(+p.threshold) ? +p.threshold : 5);
+    const list = state.products.filter((p) => (invFilter === 'all' || (invFilter === 'out' ? p.stock <= 0 : p.stock > 0 && p.stock <= th(p))) && (!q || S.norm(`${p.name} ${p.store}`).includes(q)))
+      .sort((a, b) => (a.stock - th(a)) - (b.stock - th(b)));
+    $('#invList').innerHTML = list.length ? `<div class="table-card"><table class="table">
+      <thead><tr><th>المنتج</th><th class="num">الكمية</th><th class="hide-sm num">حد التنبيه</th><th>الحالة</th><th class="num">تعديل سريع</th></tr></thead>
+      <tbody>${list.map((p) => `<tr data-stock="${p.id}" tabindex="0">
+        <td><span class="inv-name">${thumb(p)}<span><b>${esc(p.name)}</b><small>${esc(p.store || '')}</small></span></span></td>
+        <td class="num"><b class="inv-qty">${num(p.stock)}</b></td>
+        <td class="hide-sm num">${num(th(p))}</td>
+        <td>${p.stock <= 0 ? '<span class="badge st-cancel">نفد</span>' : p.stock <= th(p) ? '<span class="badge st-new">قليل</span>' : '<span class="badge st-done">متوفر</span>'}</td>
+        <td class="num"><span class="qadj"><button type="button" class="icon-btn sm" data-qadj="-1" aria-label="ناقص واحد">−</button><button type="button" class="icon-btn sm" data-qadj="1" aria-label="زائد واحد">+</button></span></td>
+      </tr>`).join('')}</tbody></table></div>` : '<p class="muted pad center">ما في منتجات بهالفلتر.</p>';
+  }
+  async function adjust(pid, delta, reason, note) {
+    const p = state.products.find((x) => x.id === pid); if (!p || !delta) return;
+    if (CLOUD) { try { p.stock = await cloudDo(() => cloudApi.adjustStock(pid, delta, reason, note)); } catch { return; } }
+    else { p.stock = Math.max(0, (+p.stock || 0) + delta); save(); }
+    toast(`${p.name}: ${num(p.stock)} قطعة`);
+  }
+  async function openStock(pid) {
+    const p = state.products.find((x) => x.id === pid); if (!p) return;
+    openSheet(`
+      <div class="sheet-head"><div><p class="muted">${esc(p.store || '')}</p><h2>${esc(p.name)}</h2></div><button class="icon-btn" type="button" data-act="close-sheet" aria-label="إغلاق">${ic('close')}</button></div>
+      <div class="sheet-body">
+        <div class="inv-now"><span>الكمية الحالية</span><b>${num(p.stock)}</b></div>
+        <form class="inv-form" id="invForm" novalidate>
+          <div class="two">
+            ${field('العملية', `<select name="reason"><option value="restock">توريد بضاعة (+)</option><option value="count">جرد (تصحيح الكمية)</option><option value="damage">تالف أو مفقود (−)</option><option value="return">مرتجع للمخزون (+)</option></select>`)}
+            ${field('الكمية', '<input name="qty" type="number" min="0" step="1" inputmode="numeric" dir="ltr" required>', 'بالجرد: اكتب العدد الفعلي على الرف')}
+          </div>
+          ${field('ملاحظة', '<input name="note" maxlength="200" placeholder="مثلاً: فاتورة المورد ٢٣٤">')}
+          <button class="btn violet" type="submit">${ic('check')}حفظ</button>
+        </form>
+        <form class="inv-form" id="thForm" novalidate>
+          ${field('حد تنبيه النقص', `<input name="th" type="number" min="0" step="1" dir="ltr" value="${Number.isFinite(+p.threshold) ? p.threshold : 5}">`, 'بيوصلك تنبيه لما الكمية تنزل لهالحد')}
+          <button class="btn" type="submit">حفظ الحد</button>
+        </form>
+        <section class="block"><h3>آخر الحركات</h3><div id="movs">${CLOUD ? '<p class="muted">عم نحمّل…</p>' : '<p class="muted">السجل بيشتغل مع السيرفر.</p>'}</div></section>
+      </div>`);
+    const f = $('#invForm');
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const qty = Math.floor(+f.qty.value), reason = f.reason.value;
+      if (!(qty >= 0) || f.qty.value === '') { toast('اكتب الكمية'); f.qty.focus(); return; }
+      const delta = reason === 'count' ? qty - p.stock : reason === 'damage' ? -qty : qty;
+      if (!delta) { toast('ما في تغيير'); return; }
+      await adjust(pid, delta, reason, f.note.value.trim());
+      if (current === 'inventory') renderInv();
+      openStock(pid);
+    });
+    $('#thForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const v = Math.max(0, Math.floor(+e.target.th.value || 0));
+      let saved = { ...p, threshold: v };
+      if (CLOUD) { try { saved = await cloudDo(() => cloudApi.saveProduct(saved, false), 'انحفظ الحد'); } catch { return; } } else toast('انحفظ الحد');
+      Object.assign(p, saved); save();
+      if (current === 'inventory') VIEWS.inventory();
+    });
+    setTimeout(() => f.qty.focus(), 50);
+    if (CLOUD) {
+      try {
+        const m = await cloudApi.movements(pid);
+        const box = $('#movs'); if (!box) return;
+        box.innerHTML = m.length ? `<ul class="movs">${m.map((x) => `<li><span class="mv-delta ${x.delta > 0 ? 'up' : 'down'}">${x.delta > 0 ? '+' : '−'}${num(Math.abs(x.delta))}</span><div><b>${REASONS[x.reason] || esc(x.reason)}</b><small>${x.ref ? `<span class="oid">${esc(x.ref)}</span> · ` : ''}${esc(x.note || '')}${x.note ? ' · ' : ''}${fmtDate(new Date(x.at).getTime(), true)}</small></div><span class="mv-after">${num(x.stock_after)}</span></li>`).join('')}</ul>` : '<p class="muted">ما في حركات لسا.</p>';
+      } catch (e2) { $('#movs').innerHTML = `<p class="err">${esc(D.friendly(e2))}</p>`; }
+    }
+  }
+
+  /* ---------- Team & permissions (owner) ---------- */
+  VIEWS.team = async () => {
+    $('#view').innerHTML = '<p class="muted pad">عم نحمّل…</p>';
+    let staff = [];
+    try { staff = await cloudApi.listStaff(); } catch (e) { $('#view').innerHTML = `<p class="err pad">${esc(D.friendly(e))}</p>`; return; }
+    const me = D.auth.user && D.auth.user.id;
+    $('#view').innerHTML = `
+      <section class="card set-card">
+        <div class="set-head"><span class="set-ic">${ic('team')}</span><div><h2>أضف شخص للفريق</h2><p class="muted">لازم يكون عامل حساب بالمتجر أولاً (من صفحة «إنشاء حساب»)، وبعدين بتضيفه هون بإيميله.</p></div></div>
+        <form class="pin-form" id="staffForm" novalidate>
+          <div class="two">${field('الإيميل', '<input name="email" type="email" dir="ltr" required>')}${field('الدور', `<select name="role">${['manager', 'inventory', 'support', 'owner'].map((r) => `<option value="${r}">${ROLE_NAMES[r]}</option>`).join('')}</select>`)}</div>
+          <button class="btn violet" type="submit">${ic('plus')}إضافة</button>
+        </form>
+      </section>
+      <div class="table-card"><table class="table"><thead><tr><th>الشخص</th><th>الدور</th><th class="hide-sm">من</th><th></th></tr></thead>
+      <tbody>${staff.map((m) => `<tr><td><b>${esc(m.full_name || m.email)}</b><small dir="ltr" style="text-align:right">${esc(m.email)}</small></td>
+        <td><select class="select role-sel" data-staff="${esc(m.email)}" aria-label="الدور" ${m.user_id === me ? 'disabled' : ''}>${Object.keys(ROLE_NAMES).map((r) => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${ROLE_NAMES[r]}</option>`).join('')}</select></td>
+        <td class="hide-sm">${fmtDate(new Date(m.created_at).getTime())}</td>
+        <td class="num">${m.user_id === me ? '<span class="muted">أنت</span>' : `<button class="btn danger-ghost" type="button" data-unstaff="${esc(m.user_id)}">${ic('trash')}إزالة</button>`}</td></tr>`).join('')}</tbody></table></div>
+      <section class="card set-card"><div class="set-head"><span class="set-ic">${ic('eyeoff')}</span><div><h2>شو بيقدر يعمل كل دور؟</h2></div></div>
+        <ul class="roles-help"><li><b>المالك:</b> كل شي، وإدارة الفريق.</li><li><b>مدير:</b> كل شي ما عدا الفريق وحذف الطلبات.</li><li><b>مسؤول مخزون:</b> المنتجات والكميات والأسعار.</li><li><b>خدمة عملاء:</b> الطلبات وحالاتها، الرسائل، الأسئلة، التقييمات.</li></ul>
+        <p class="muted">نفس القواعد مفروضة بقاعدة البيانات، يعني حتى لو حدا تلاعب بالمتصفح ما بيقدر يتخطاها.</p></section>`;
+    $('#staffForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value.trim(), role = e.target.role.value;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('الإيميل مش صحيح'); return; }
+      try { await cloudDo(() => cloudApi.addStaff(email, role), `انضاف كـ${ROLE_NAMES[role]}`); } catch { return; }
+      VIEWS.team();
+    });
+    $$('.role-sel').forEach((sel) => sel.addEventListener('change', async () => {
+      try { await cloudDo(() => cloudApi.addStaff(sel.dataset.staff, sel.value), 'تغيّر الدور'); } catch { VIEWS.team(); }
+    }));
+  };
+
+  /* ---------- Activity log ---------- */
+  const ENT = { products: 'منتج', categories: 'تصنيف', coupons: 'كوبون', settings: 'الإعدادات', orders: 'طلب', admins: 'الفريق', reviews: 'تقييم', product_questions: 'سؤال' };
+  const ACT = { insert: 'أضاف', update: 'عدّل', delete: 'حذف' };
+  const FIELD = { price: 'السعر', stock: 'الكمية', name: 'الاسم', status: 'الحالة', paid: 'الدفع', hidden: 'الإخفاء', featured: 'مميز', role: 'الدور', active: 'التفعيل', value: 'القيمة', compare_at: 'السعر قبل الخصم', low_stock_threshold: 'حد التنبيه', answer: 'الجواب', note: 'ملاحظة', data: 'الإعدادات' };
+  VIEWS.activity = async () => {
+    setActions(`<button class="btn" type="button" data-act="nav-activity">${ic('refresh')}<span>تحديث</span></button>`);
+    $('#view').innerHTML = '<p class="muted pad">عم نحمّل…</p>';
+    let rows = [];
+    try { rows = await cloudApi.audit(300); } catch (e) { $('#view').innerHTML = `<p class="err pad">${esc(D.friendly(e))}</p>`; return; }
+    const val = (v) => (v === null || v === undefined ? '—' : typeof v === 'boolean' ? (v ? 'نعم' : 'لا') : esc(String(v)).slice(0, 40));
+    $('#view').innerHTML = rows.length ? `<ul class="audit">${rows.map((r) => `<li>
+      <span class="audit-ic">${ic(r.action === 'delete' ? 'trash' : r.action === 'insert' ? 'plus' : 'settings')}</span>
+      <div><p><b>${esc(r.actor_email === 'system' ? 'تعديل مباشر بقاعدة البيانات' : r.actor_email)}</b> ${ACT[r.action] || esc(r.action)} ${ENT[r.entity] || esc(r.entity)} ${r.details && r.details.name ? `«${esc(String(r.details.name))}»` : `<span class="oid">${esc(r.entity_id)}</span>`}</p>
+        ${r.action === 'update' ? `<p class="audit-diff">${Object.entries(r.details || {}).slice(0, 6).map(([k, v]) => `<span>${FIELD[k] || esc(k)}: ${val(v && v.from)} ← ${val(v && v.to)}</span>`).join('')}</p>` : ''}
+        <small>${fmtDate(new Date(r.at).getTime(), true)}</small></div></li>`).join('')}</ul>` : `<div class="card">${empty('ما في نشاط لسا', 'كل تعديل بيعمله الفريق على المنتجات والطلبات والإعدادات بيتسجّل هون.', '')}</div>`;
+  };
+
+  /* ---------- Notifications bell ---------- */
+  function paintBell() {
+    const n = (state.notifications || []).filter((x) => !x.read).length;
+    const b = $('#bellBtn'); if (!b) return;
+    b.hidden = !CLOUD;
+    $('#bellCount').hidden = !n; $('#bellCount').textContent = num(n);
+    b.setAttribute('aria-label', n ? `التنبيهات: ${num(n)} جديدة` : 'التنبيهات');
+  }
+  function openBell() {
+    const list = state.notifications || [];
+    openSheet(`<div class="sheet-head"><div><h2>التنبيهات</h2></div><button class="icon-btn" type="button" data-act="close-sheet" aria-label="إغلاق">${ic('close')}</button></div>
+      <div class="sheet-body">${list.length ? `<ul class="notes">${list.map((x) => `<li class="${x.read ? '' : 'new'}"><a href="${esc(x.link || '#dashboard')}"><span class="note-ic">${ic(x.kind.includes('stock') ? 'inventory' : 'bell')}</span><span><b>${esc(x.title)}</b><small>${esc(x.body)} · ${ago(new Date(x.created_at).getTime())}</small></span></a></li>`).join('')}</ul>` : '<p class="muted pad center">ما في تنبيهات.</p>'}</div>`);
+    const unread = list.filter((x) => !x.read).map((x) => x.id);
+    if (unread.length) cloudApi.markNotes(unread).then(() => { list.forEach((x) => { x.read = true; }); paintBell(); }, () => {});
+  }
+
   /* ---------- Coupons ---------- */
   const KIND_T = { percent: 'نسبة مئوية', fixed: 'مبلغ ثابت', shipping: 'توصيل مجاني' };
   const couponValue = (c) => (c.kind === 'percent' ? `${num(c.value)}٪` : c.kind === 'fixed' ? money(c.value) : 'توصيل مجاني');
@@ -1618,7 +1815,7 @@
   /* ---------- Global clicks ---------- */
   document.addEventListener('click', (e) => {
     if (!state) return;
-    const t = e.target.closest('[data-act],[data-order],[data-product],[data-period],[data-ofilter],[data-status],[data-customer],[data-coupon],[data-rv],[data-rvf],[data-copy-text],[data-conv],[data-cfilter],[data-conv-status],[data-quick],[data-qfilter],[data-qa-act]');
+    const t = e.target.closest('[data-act],[data-order],[data-product],[data-period],[data-ofilter],[data-status],[data-customer],[data-coupon],[data-rv],[data-rvf],[data-copy-text],[data-conv],[data-cfilter],[data-conv-status],[data-quick],[data-qfilter],[data-qa-act],[data-qadj],[data-stock],[data-invf],[data-unstaff]');
     if (!t) return;
     const d = t.dataset;
     if (d.period !== undefined) { period = +d.period; VIEWS.dashboard(); return; }
@@ -1626,6 +1823,10 @@
     if (d.status) { setStatus($('#sheetInner').dataset.sheetOrder, d.status); return; }
     if (d.order) { openOrder(d.order); return; }
     if (d.product) { if (current !== 'products') location.hash = `#products/${d.product}`; else editProduct(+d.product); return; }
+    if (d.qadj) { const pid = +t.closest('[data-stock]').dataset.stock; adjust(pid, +d.qadj, d.qadj > 0 ? 'restock' : 'manual').then(renderInv); return; }
+    if (d.stock) { openStock(+d.stock); return; }
+    if (d.invf) { invFilter = d.invf; if (current !== 'inventory') location.hash = '#inventory'; else VIEWS.inventory(); return; }
+    if (d.unstaff) { confirmBox('تزيل هالشخص من الفريق؟', 'رح يرجع زبون عادي وما بيقدر يفتح اللوحة.', 'إزالة', async () => { try { await cloudDo(() => cloudApi.removeStaff(d.unstaff), 'انشال من الفريق'); } catch { return; } VIEWS.team(); }); return; }
     if (d.conv) { openConversation(d.conv); return; }
     if (d.cfilter) { convFilter = d.cfilter; $$('[data-cfilter]').forEach((b) => b.setAttribute('aria-pressed', b === t)); renderInbox(); return; }
     if (d.quick !== undefined) { const ta = $('#convReply'); if (ta) { ta.value = (ta.value ? `${ta.value.trim()}\n` : '') + QUICK[+d.quick]; ta.focus(); } return; }
@@ -1654,6 +1855,8 @@
       case 'close-sheet': closeSheet(); break;
       case 'new-product': editProduct(0); break;
       case 'new-coupon': editCoupon(null); break;
+      case 'bell': openBell(); break;
+      case 'nav-activity': VIEWS.activity(); break;
       case 'delete-conv': {
         const id = $('#sheetInner').dataset.sheetConv;
         confirmBox('تحذف المحادثة؟', 'رح تنحذف المحادثة وكل رسائلها نهائياً.', 'حذف', async () => {
@@ -1717,7 +1920,7 @@ window.RAFF_CONFIG = {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
-    const row = e.target.closest('tr[data-order], tr[data-customer]');
+    const row = e.target.closest('tr[data-order], tr[data-customer], tr[data-stock]');
     if (row) row.click();
   });
 })();

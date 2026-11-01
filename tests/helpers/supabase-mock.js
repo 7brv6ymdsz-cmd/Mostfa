@@ -19,7 +19,7 @@ export function makeMock() {
     settings: [{ id: 1, data: { ...cat.settings, whatsapp: '' } }],
     categories: cat.categories.map((c, i) => ({ id: c.id, name: c.name, color: c.c, sort: i })),
     products: cat.products.map((p) => ({ id: p.id, name: p.name, brand: p.store, category_id: p.cat, price: p.price, compare_at: null, stock: p.stock, description: p.desc, images: [], art: { kind: p.kind, bg: p.bg, fg: p.fg, ac: p.ac }, options: p.options || [], featured: p.featured, hidden: false, rating: p.rating, reviews_count: p.reviews, sort: 0, created_at: new Date().toISOString() })),
-    admins: [], profiles: [], addresses: [], wishlist: [], orders: [], reviews: [], conversations: [], conversation_messages: [], product_questions: [],
+    admins: [], profiles: [], addresses: [], wishlist: [], orders: [], reviews: [], conversations: [], conversation_messages: [], product_questions: [], stock_movements: [], admin_notifications: [], audit_log: [],
     coupons: [{ code: 'WELCOME10', kind: 'percent', value: 10, min_subtotal: 0, starts_at: null, ends_at: null, max_uses: null, uses: 0, active: true, created_at: new Date().toISOString() }],
   };
   db.settings[0].data.payments = { cod: { on: true }, paypal: { on: true, user: 'raffshop' }, bank: { on: false } };
@@ -27,6 +27,16 @@ export function makeMock() {
   const log = [];
   const uidOf = (req) => decode((req.headers()['authorization'] || '').replace('Bearer ', '')).sub || null;
   const isAdmin = (u) => !!u && db.admins.some((a) => a.user_id === u);
+  const roleOf = (u) => (db.admins.find((a) => a.user_id === u) || {}).role;
+  const hasRole = (u, ...roles) => !!u && (roleOf(u) === 'owner' || roles.includes(roleOf(u)));
+  const setStock = (pr, next, reason, ref = '', note = '', actor = null) => {
+    const before = pr.stock; pr.stock = Math.max(0, next);
+    if (pr.stock === before) return;
+    db.stock_movements.push({ id: seq++, product_id: pr.id, delta: pr.stock - before, stock_after: pr.stock, reason, ref, note, actor, at: new Date().toISOString() });
+    const th = pr.low_stock_threshold ?? 5;
+    if (pr.stock <= th && before > th) db.admin_notifications.push({ id: seq++, kind: pr.stock === 0 ? 'out_of_stock' : 'low_stock', title: (pr.stock === 0 ? 'نفد من المخزون: ' : 'المخزون قليل: ') + pr.name, body: `الكمية الحالية ${pr.stock}`, link: `#inventory/${pr.id}`, read: false, created_at: new Date().toISOString() });
+  };
+  const audit = (u, action, entity, id, details) => { if (isAdmin(u)) db.audit_log.push({ id: seq++, at: new Date().toISOString(), actor: u, actor_email: (users.find((x) => x.id === u) || {}).email || 'system', action, entity, entity_id: String(id), details }); };
   const session = (u) => ({ access_token: jwt({ sub: u.id, email: u.email, role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600, aud: 'authenticated' }), refresh_token: 'r-' + u.id, token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, user: u });
   const visible = (table, rows, u) => {
     if (table === 'products') return rows.filter((r) => !r.hidden || isAdmin(u));
@@ -35,7 +45,10 @@ export function makeMock() {
     if (table === 'profiles') return rows.filter((r) => r.id === u || isAdmin(u));
     if (table === 'coupons') return isAdmin(u) ? rows : [];
     if (table === 'reviews') return rows.filter((r) => r.status === 'approved' || r.user_id === u || isAdmin(u));
-    if (table === 'admins') return rows.filter((r) => r.user_id === u);
+    if (table === 'admins') return rows.filter((r) => r.user_id === u || hasRole(u));
+    if (table === 'audit_log') return hasRole(u, 'manager') ? rows : [];
+    if (table === 'stock_movements') return hasRole(u, 'manager', 'inventory') ? rows : [];
+    if (table === 'admin_notifications') return isAdmin(u) ? rows : [];
     if (table === 'conversations') return rows.filter((r) => (u && r.user_id === u) || isAdmin(u));
     if (table === 'conversation_messages') return rows.filter((r) => isAdmin(u) || db.conversations.some((c) => c.id === r.conversation_id && u && c.user_id === u));
     if (table === 'product_questions') return rows.filter((r) => r.status === 'published' || (u && r.user_id === u) || isAdmin(u));
@@ -70,7 +83,21 @@ export function makeMock() {
   const RPC = {
     is_admin: (b, u) => isAdmin(u),
     admin_exists: () => db.admins.length > 0,
-    claim_admin: (b, u) => { if (!u) return false; if (db.admins.length) return isAdmin(u); db.admins.push({ user_id: u }); return true; },
+    claim_admin: (b, u) => { if (!u) return false; if (db.admins.length) return isAdmin(u); db.admins.push({ user_id: u, role: 'owner' }); return true; },
+    my_role: (b, u) => roleOf(u) || null,
+    list_staff: (b, u) => (hasRole(u) ? db.admins.map((a) => { const x = users.find((y) => y.id === a.user_id) || {}; return { user_id: a.user_id, email: x.email, full_name: (db.profiles.find((p) => p.id === a.user_id) || {}).full_name || '', role: a.role, created_at: new Date().toISOString() }; }) : []),
+    add_staff: (b, u) => {
+      if (!hasRole(u)) throw new Error('not_allowed');
+      const x = users.find((y) => y.email.toLowerCase() === String(b.p_email).trim().toLowerCase()); if (!x) throw new Error('user_not_found');
+      const a = db.admins.find((y) => y.user_id === x.id); if (a) a.role = b.p_role; else db.admins.push({ user_id: x.id, role: b.p_role });
+      audit(u, 'insert', 'admins', x.id, { name: x.email }); return null;
+    },
+    remove_staff: (b, u) => { if (!hasRole(u)) throw new Error('not_allowed'); if (roleOf(b.p_user) === 'owner' && db.admins.filter((a) => a.role === 'owner').length === 1) throw new Error('last_owner'); db.admins = db.admins.filter((a) => a.user_id !== b.p_user); return null; },
+    adjust_stock: (b, u) => {
+      if (!hasRole(u, 'manager', 'inventory')) throw new Error('not_allowed');
+      const pr = db.products.find((x) => x.id === +b.p_product); if (!pr) throw new Error('not_found');
+      setStock(pr, pr.stock + b.p_delta, b.p_reason, '', b.p_note, u); return pr.stock;
+    },
     check_coupon: (b) => couponDisc(b.p_code, +b.p_subtotal),
     can_review: (b, u) => db.orders.some((o) => o.user_id === u && o.status === 'delivered' && o.items.some((i) => +i.id === +b.p_product)),
     place_order: (b, u) => {
@@ -79,7 +106,7 @@ export function makeMock() {
         const pr = db.products.find((x) => x.id === +it.id && !x.hidden);
         if (!pr) throw new Error('product_unavailable:' + it.id);
         if (pr.stock < it.qty) throw new Error('out_of_stock:' + pr.name);
-        pr.stock -= it.qty; sub += pr.price * it.qty;
+        setStock(pr, pr.stock - it.qty, 'order'); sub += pr.price * it.qty;
         items.push({ id: pr.id, name: pr.name, price: pr.price, qty: it.qty, options: it.options || {}, image: '' });
       }
       let disc = 0; if (p.coupon) { const c = couponDisc(p.coupon, sub); if (!c.ok) throw new Error('coupon_invalid:' + c.message); disc = c.discount; db.coupons.find((x) => x.code === c.code).uses++; }
@@ -114,7 +141,7 @@ export function makeMock() {
       Object.assign(c, { status: 'open', unread_admin: true, last_message: b.p_body.slice(0, 200), updated_at: new Date().toISOString() }); return null;
     },
     admin_reply: (b, u) => {
-      if (!isAdmin(u)) throw new Error('not_admin');
+      if (!hasRole(u, 'manager', 'support')) throw new Error('not_allowed');
       const c = db.conversations.find((x) => x.id === b.p_id); if (!c) throw new Error('not_found');
       db.conversation_messages.push({ id: seq++, conversation_id: c.id, sender: 'admin', body: b.p_body.trim(), created_at: new Date().toISOString() });
       Object.assign(c, { status: 'answered', unread_admin: false, unread_customer: true, last_message: b.p_body.slice(0, 200), updated_at: new Date().toISOString() }); return null;
@@ -126,7 +153,7 @@ export function makeMock() {
       return null;
     },
     delete_my_account: (b, u) => { if (!u) throw new Error('not_signed_in'); if (isAdmin(u) && db.admins.length === 1) throw new Error('last_admin'); const i = users.findIndex((x) => x.id === u); users.splice(i, 1); db.profiles = db.profiles.filter((x) => x.id !== u); db.addresses = db.addresses.filter((x) => x.user_id !== u); db.wishlist = db.wishlist.filter((x) => x.user_id !== u); db.orders.forEach((o) => { if (o.user_id === u) o.user_id = null; }); return null; },
-    admin_set_status: (b, u) => { if (!isAdmin(u)) throw new Error('not_admin'); const o = db.orders.find((x) => x.id === b.p_id); o.status = b.p_status; o.history.push({ s: b.p_status, t: new Date().toISOString() }); if (b.p_status === 'delivered' && o.method === 'cod') o.paid = true; return o; },
+    admin_set_status: (b, u) => { if (!hasRole(u, 'manager', 'support')) throw new Error('not_allowed'); const o = db.orders.find((x) => x.id === b.p_id); o.status = b.p_status; o.history.push({ s: b.p_status, t: new Date().toISOString() }); if (b.p_status === 'delivered' && o.method === 'cod') o.paid = true; return o; },
   };
   const json = (route, status, body, headers = {}) => route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'access-control-expose-headers': '*', ...headers }, body: body === undefined ? '' : JSON.stringify(body) });
   async function handle(route) {
@@ -190,7 +217,10 @@ export function makeMock() {
         }
         if (m === 'PATCH') {
           if (adminTables.concat(['orders', 'conversations', 'product_questions']).includes(table) && !isAdmin(u)) return json(route, 200, single ? null : []);
-          const r = filt(visible(table, rows, u), url.searchParams); r.forEach((x) => Object.assign(x, body));
+          if (table === 'products' && !hasRole(u, 'manager', 'inventory')) return json(route, 200, single ? null : []);
+          if (['settings', 'coupons', 'categories'].includes(table) && !hasRole(u, 'manager')) return json(route, 200, single ? null : []);
+          const r = filt(visible(table, rows, u), url.searchParams);
+          r.forEach((x) => { const diff = {}; Object.keys(body).forEach((k) => { if (JSON.stringify(x[k]) !== JSON.stringify(body[k]) && !['images', 'description', 'data'].includes(k)) diff[k] = { from: x[k], to: body[k] }; }); if (table !== 'admin_notifications' && Object.keys(diff).length) audit(u, 'update', table, x.id || x.code, diff); Object.assign(x, body); });
           if (table === 'reviews') { const pid = r[0] && r[0].product_id; const ap = rows.filter((x) => x.product_id === pid && x.status === 'approved'); const p = db.products.find((x) => x.id === pid); if (p) { p.reviews_count = ap.length; p.rating = ap.length ? ap.reduce((s, x) => s + x.rating, 0) / ap.length : 0; } }
           return json(route, 200, prefer.includes('return=representation') ? (single ? r[0] : r) : undefined);
         }

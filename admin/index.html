@@ -11,7 +11,7 @@
 <title>لوحة الإدارة · رَفّ</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../assets/fonts.css">
-<link rel="stylesheet" href="admin.css?v=4">
+<link rel="stylesheet" href="admin.css?v=5">
 </head>
 <body>
 
@@ -52,6 +52,8 @@
         <h1 id="topTitle">لوحة الإدارة</h1>
       </div>
       <div class="top-actions" id="topActions"></div>
+      <span class="role-badge" id="roleBadge" hidden></span>
+      <button class="bell" type="button" id="bellBtn" data-act="bell" aria-label="التنبيهات" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><em id="bellCount" hidden>0</em></button>
       <a class="cloud-badge" href="#server" id="cloudBadge" hidden><i></i>متصل بالسيرفر</a>
       <a class="publish-btn" href="#publish" id="publishBtn"><span class="pulse" id="publishDot" hidden></span>نشر التغييرات</a>
     </header>
@@ -69,7 +71,7 @@
 <script src="../config.js?v=5"></script>
 <script src="../vendor/supabase.min.js?v=2.45.4"></script>
 <script src="../shared.js?v=5"></script>
-<script src="../data.js?v=6"></script>
-<script src="admin.js?v=4"></script>
+<script src="../data.js?v=8"></script>
+<script src="admin.js?v=5"></script>
 </body>
 </html>

@@ -45,6 +45,14 @@ create table if not exists public.admins (
   user_id uuid primary key references auth.users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
+-- staff roles: owner (everything), manager, inventory, support
+alter table public.admins add column if not exists role text not null default 'owner';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'admins_role_check') then
+    alter table public.admins add constraint admins_role_check check (role in ('owner', 'manager', 'inventory', 'support'));
+  end if;
+end $$;
+alter table public.products add column if not exists low_stock_threshold int not null default 5;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -127,6 +135,21 @@ create index if not exists reviews_product_idx on public.reviews (product_id, st
 create or replace function public.is_admin()
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.admins where user_id = auth.uid());
+$$;
+
+create or replace function public.has_role(p_roles text[])
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.admins where user_id = auth.uid() and (role = 'owner' or role = any(p_roles)));
+$$;
+
+create or replace function public.request_role()
+returns text language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::json->>'role', nullif(current_setting('request.jwt.claim.role', true), ''), '');
+$$;
+
+create or replace function public.my_role()
+returns text language sql stable security definer set search_path = public as $$
+  select role from public.admins where user_id = auth.uid();
 $$;
 
 -- The very first signed-in user who calls this becomes the store admin. Afterwards it does nothing.
@@ -217,6 +240,9 @@ begin
   select data into s from public.settings where id = 1;
   if not coalesce((s->'payments'->m->>'on')::boolean, m = 'cod') then raise exception 'method_unavailable'; end if;
 
+  oid := 'R-' || upper(substr(md5(random()::text || clock_timestamp()::text), 1, 7));
+  perform set_config('raff.stock_reason', 'order', true);
+  perform set_config('raff.stock_ref', oid, true);
   for it in select * from jsonb_array_elements(p->'items') loop
     q := greatest(1, least(50, coalesce((it->>'qty')::int, 1)));
     select * into prod from public.products where id = (it->>'id')::bigint and not hidden for update;
@@ -238,7 +264,6 @@ begin
     update public.coupons set uses = uses + 1 where coupons.code = v_code;
   end if;
 
-  oid := 'R-' || upper(substr(md5(random()::text || clock_timestamp()::text), 1, 7));
   insert into public.orders (id, user_id, customer, items, subtotal, discount, shipping, total, coupon, method, history)
   values (oid, auth.uid(),
     jsonb_build_object('name', left(trim(c->>'name'), 120), 'phone', left(regexp_replace(c->>'phone', '[^\d+]', '', 'g'), 40),
@@ -270,10 +295,12 @@ create or replace function public.admin_set_status(p_id text, p_status text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare o public.orders; it jsonb;
 begin
-  if not public.is_admin() then raise exception 'not_admin'; end if;
+  if not public.has_role(array['manager', 'support']) then raise exception 'not_allowed'; end if;
   if p_status not in ('new', 'confirmed', 'shipped', 'delivered', 'cancelled') then raise exception 'bad_status'; end if;
   select * into o from public.orders where id = p_id for update;
   if not found then raise exception 'not_found'; end if;
+  perform set_config('raff.stock_reason', case when p_status = 'cancelled' then 'cancel' else 'reopen' end, true);
+  perform set_config('raff.stock_ref', p_id, true);
   if o.status = p_status then return to_jsonb(o); end if;
   if p_status = 'cancelled' and o.stock_applied then
     for it in select * from jsonb_array_elements(o.items) loop
@@ -450,7 +477,7 @@ create or replace function public.admin_reply(p_id uuid, p_body text)
 returns void language plpgsql security definer set search_path = public as $$
 declare v text := trim(coalesce(p_body, ''));
 begin
-  if not public.is_admin() then raise exception 'not_admin'; end if;
+  if not public.has_role(array['manager', 'support']) then raise exception 'not_allowed'; end if;
   if char_length(v) < 1 or char_length(v) > 2000 then raise exception 'message_length'; end if;
   insert into public.conversation_messages (conversation_id, sender, body) values (p_id, 'admin', v);
   update public.conversations set status = 'answered', unread_admin = false, unread_customer = true, last_message = left(v, 200) where id = p_id;
@@ -466,6 +493,147 @@ begin
   if auth.uid() is not null and n = '' then select left(full_name, 60) into n from public.profiles where id = auth.uid(); end if;
   if (select count(*) from public.product_questions where product_id = p_product and created_at > now() - interval '1 minute') >= 10 then raise exception 'too_many_messages'; end if;
   insert into public.product_questions (product_id, user_id, author, question) values (p_product, auth.uid(), coalesce(nullif(n, ''), 'زائر'), q);
+end $$;
+
+-- =====================================================================
+-- Staff management (owner only)
+-- =====================================================================
+create or replace function public.list_staff()
+returns table (user_id uuid, email text, full_name text, role text, created_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select a.user_id, u.email::text, coalesce(p.full_name, ''), a.role, a.created_at
+  from public.admins a join auth.users u on u.id = a.user_id left join public.profiles p on p.id = a.user_id
+  where public.has_role(array[]::text[]) order by a.created_at;
+$$;
+
+create or replace function public.add_staff(p_email text, p_role text)
+returns void language plpgsql security definer set search_path = public as $$
+declare uid uuid;
+begin
+  if not public.has_role(array[]::text[]) then raise exception 'not_allowed'; end if;
+  if p_role not in ('owner', 'manager', 'inventory', 'support') then raise exception 'bad_role'; end if;
+  select id into uid from auth.users where lower(email) = lower(trim(p_email));
+  if uid is null then raise exception 'user_not_found'; end if;
+  insert into public.admins (user_id, role) values (uid, p_role) on conflict (user_id) do update set role = excluded.role;
+end $$;
+
+create or replace function public.remove_staff(p_user uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.has_role(array[]::text[]) then raise exception 'not_allowed'; end if;
+  if (select role from public.admins where user_id = p_user) = 'owner' and (select count(*) from public.admins where role = 'owner') = 1 then raise exception 'last_owner'; end if;
+  delete from public.admins where user_id = p_user;
+end $$;
+
+-- =====================================================================
+-- Audit log: who changed what, written by triggers (nobody can edit it)
+-- =====================================================================
+create table if not exists public.audit_log (
+  id bigint generated by default as identity primary key,
+  at timestamptz not null default now(),
+  actor uuid,
+  actor_email text not null default '',
+  action text not null,
+  entity text not null,
+  entity_id text not null default '',
+  details jsonb not null default '{}'::jsonb
+);
+create index if not exists audit_log_at_idx on public.audit_log (at desc);
+create index if not exists audit_log_entity_idx on public.audit_log (entity, entity_id);
+
+create or replace function public.audit_row()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare oldj jsonb := case when tg_op <> 'INSERT' then to_jsonb(old) end;
+        newj jsonb := case when tg_op <> 'DELETE' then to_jsonb(new) end;
+        diff jsonb := '{}'::jsonb; k text; rid text;
+begin
+  -- only staff actions (and direct edits from the SQL editor) are activity; customers and visitors buying are not
+  if not public.is_admin() and (auth.uid() is not null or public.request_role() in ('anon', 'authenticated')) then return coalesce(new, old); end if;
+  if tg_op = 'UPDATE' then
+    for k in select jsonb_object_keys(newj) loop
+      if k not in ('updated_at') and (oldj->k) is distinct from (newj->k) then
+        diff := diff || jsonb_build_object(k, jsonb_build_object('from', case when k in ('images', 'description', 'items', 'data', 'history', 'customer') then to_jsonb('…'::text) else oldj->k end, 'to', case when k in ('images', 'description', 'items', 'data', 'history', 'customer') then to_jsonb('…'::text) else newj->k end));
+      end if;
+    end loop;
+    if diff = '{}'::jsonb then return new; end if;
+  elsif tg_op = 'INSERT' then diff := jsonb_build_object('name', coalesce(newj->>'name', newj->>'code', newj->>'id'));
+  else diff := jsonb_build_object('name', coalesce(oldj->>'name', oldj->>'code', oldj->>'id'));
+  end if;
+  rid := coalesce(newj->>'id', oldj->>'id', newj->>'code', oldj->>'code', newj->>'user_id', oldj->>'user_id', '');
+  insert into public.audit_log (actor, actor_email, action, entity, entity_id, details)
+  values (auth.uid(), coalesce((select email from auth.users where id = auth.uid()), 'system'), lower(tg_op), tg_table_name, rid, diff);
+  return coalesce(new, old);
+end $$;
+
+do $$ declare t text; begin
+  foreach t in array array['products', 'categories', 'coupons', 'settings', 'orders', 'admins', 'reviews', 'product_questions'] loop
+    execute format('drop trigger if exists audit_%1$s on public.%1$I', t);
+    execute format('create trigger audit_%1$s after insert or update or delete on public.%1$I for each row execute function public.audit_row()', t);
+  end loop;
+end $$;
+
+-- =====================================================================
+-- Inventory: every stock change is recorded with its reason; low stock raises an alert
+-- =====================================================================
+create table if not exists public.stock_movements (
+  id bigint generated by default as identity primary key,
+  product_id bigint not null references public.products(id) on delete cascade,
+  delta int not null,
+  stock_after int not null,
+  reason text not null default 'manual',
+  ref text not null default '',
+  note text not null default '',
+  actor uuid,
+  at timestamptz not null default now()
+);
+create index if not exists stock_movements_product_idx on public.stock_movements (product_id, at desc);
+
+create table if not exists public.admin_notifications (
+  id bigint generated by default as identity primary key,
+  kind text not null,
+  title text not null,
+  body text not null default '',
+  link text not null default '',
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists admin_notifications_idx on public.admin_notifications (read, created_at desc);
+
+create or replace function public.track_stock()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare reason text := coalesce(nullif(current_setting('raff.stock_reason', true), ''), case when tg_op = 'INSERT' then 'initial' else 'manual' end);
+        ref text := coalesce(current_setting('raff.stock_ref', true), '');
+        note text := coalesce(current_setting('raff.stock_note', true), '');
+        before int := case when tg_op = 'INSERT' then 0 else old.stock end;
+begin
+  if new.stock is distinct from before then
+    insert into public.stock_movements (product_id, delta, stock_after, reason, ref, note, actor)
+    values (new.id, new.stock - before, new.stock, reason, ref, note, auth.uid());
+    -- crossing the threshold downwards → one alert (not one per sale)
+    if new.stock <= new.low_stock_threshold and before > new.low_stock_threshold and not new.hidden then
+      insert into public.admin_notifications (kind, title, body, link)
+      values (case when new.stock = 0 then 'out_of_stock' else 'low_stock' end,
+              case when new.stock = 0 then 'نفد من المخزون: ' else 'المخزون قليل: ' end || new.name,
+              'الكمية الحالية ' || new.stock || ' (حد التنبيه ' || new.low_stock_threshold || ')', '#inventory/' || new.id);
+    end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists products_stock on public.products;
+create trigger products_stock after insert or update of stock on public.products for each row execute function public.track_stock();
+
+-- manual adjustment from the admin with a reason (restock, count, damage…)
+create or replace function public.adjust_stock(p_product bigint, p_delta int, p_reason text, p_note text default '')
+returns int language plpgsql security definer set search_path = public as $$
+declare r int;
+begin
+  if not public.has_role(array['manager', 'inventory']) then raise exception 'not_allowed'; end if;
+  if p_reason not in ('restock', 'count', 'damage', 'return', 'manual') then raise exception 'bad_reason'; end if;
+  perform set_config('raff.stock_reason', p_reason, true);
+  perform set_config('raff.stock_note', left(coalesce(p_note, ''), 200), true);
+  update public.products set stock = greatest(0, stock + p_delta) where id = p_product returning stock into r;
+  if not found then raise exception 'not_found'; end if;
+  return r;
 end $$;
 
 -- =====================================================================
@@ -489,9 +657,9 @@ alter table public.product_questions enable row level security;
 drop policy if exists "conversations own" on public.conversations;
 create policy "conversations own" on public.conversations for select using (user_id = auth.uid() or public.is_admin());
 drop policy if exists "conversations admin" on public.conversations;
-create policy "conversations admin" on public.conversations for update using (public.is_admin()) with check (public.is_admin());
+create policy "conversations admin" on public.conversations for update using (public.has_role(array['manager', 'support'])) with check (public.has_role(array['manager', 'support']));
 drop policy if exists "conversations admin delete" on public.conversations;
-create policy "conversations admin delete" on public.conversations for delete using (public.is_admin());
+create policy "conversations admin delete" on public.conversations for delete using (public.has_role(array['manager']));
 
 drop policy if exists "messages visible" on public.conversation_messages;
 create policy "messages visible" on public.conversation_messages for select using (
@@ -500,27 +668,39 @@ create policy "messages visible" on public.conversation_messages for select usin
 drop policy if exists "questions read" on public.product_questions;
 create policy "questions read" on public.product_questions for select using (status = 'published' or user_id = auth.uid() or public.is_admin());
 drop policy if exists "questions admin" on public.product_questions;
-create policy "questions admin" on public.product_questions for update using (public.is_admin()) with check (public.is_admin());
+create policy "questions admin" on public.product_questions for update using (public.has_role(array['manager', 'support'])) with check (public.has_role(array['manager', 'support']));
 drop policy if exists "questions admin delete" on public.product_questions;
-create policy "questions admin delete" on public.product_questions for delete using (public.is_admin());
+create policy "questions admin delete" on public.product_questions for delete using (public.has_role(array['manager', 'support']));
+
+alter table public.audit_log enable row level security;
+alter table public.stock_movements enable row level security;
+alter table public.admin_notifications enable row level security;
+drop policy if exists "audit read" on public.audit_log;
+create policy "audit read" on public.audit_log for select using (public.has_role(array['manager']));
+drop policy if exists "movements read" on public.stock_movements;
+create policy "movements read" on public.stock_movements for select using (public.has_role(array['manager', 'inventory']));
+drop policy if exists "notifications staff" on public.admin_notifications;
+create policy "notifications staff" on public.admin_notifications for select using (public.is_admin());
+drop policy if exists "notifications mark read" on public.admin_notifications;
+create policy "notifications mark read" on public.admin_notifications for update using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "settings read" on public.settings;
 create policy "settings read" on public.settings for select using (true);
 drop policy if exists "settings admin" on public.settings;
-create policy "settings admin" on public.settings for update using (public.is_admin()) with check (public.is_admin());
+create policy "settings admin" on public.settings for update using (public.has_role(array['manager'])) with check (public.has_role(array['manager']));
 
 drop policy if exists "categories read" on public.categories;
 create policy "categories read" on public.categories for select using (true);
 drop policy if exists "categories admin" on public.categories;
-create policy "categories admin" on public.categories for all using (public.is_admin()) with check (public.is_admin());
+create policy "categories admin" on public.categories for all using (public.has_role(array['manager'])) with check (public.has_role(array['manager']));
 
 drop policy if exists "products read" on public.products;
 create policy "products read" on public.products for select using (not hidden or public.is_admin());
 drop policy if exists "products admin" on public.products;
-create policy "products admin" on public.products for all using (public.is_admin()) with check (public.is_admin());
+create policy "products admin" on public.products for all using (public.has_role(array['manager', 'inventory'])) with check (public.has_role(array['manager', 'inventory']));
 
 drop policy if exists "admins self" on public.admins;
-create policy "admins self" on public.admins for select using (user_id = auth.uid());
+create policy "admins self" on public.admins for select using (user_id = auth.uid() or public.has_role(array[]::text[]));
 
 drop policy if exists "profiles own" on public.profiles;
 create policy "profiles own" on public.profiles for select using (id = auth.uid() or public.is_admin());
@@ -534,21 +714,21 @@ drop policy if exists "wishlist own" on public.wishlist;
 create policy "wishlist own" on public.wishlist for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 drop policy if exists "coupons admin" on public.coupons;
-create policy "coupons admin" on public.coupons for all using (public.is_admin()) with check (public.is_admin());
+create policy "coupons admin" on public.coupons for all using (public.has_role(array['manager'])) with check (public.has_role(array['manager']));
 
 drop policy if exists "orders own" on public.orders;
 create policy "orders own" on public.orders for select using (user_id = auth.uid() or public.is_admin());
 drop policy if exists "orders admin update" on public.orders;
-create policy "orders admin update" on public.orders for update using (public.is_admin()) with check (public.is_admin());
+create policy "orders admin update" on public.orders for update using (public.has_role(array['manager', 'support'])) with check (public.has_role(array['manager', 'support']));
 drop policy if exists "orders admin delete" on public.orders;
-create policy "orders admin delete" on public.orders for delete using (public.is_admin());
+create policy "orders admin delete" on public.orders for delete using (public.has_role(array[]::text[]));
 
 drop policy if exists "reviews read" on public.reviews;
 create policy "reviews read" on public.reviews for select using (status = 'approved' or user_id = auth.uid() or public.is_admin());
 drop policy if exists "reviews insert buyer" on public.reviews;
 create policy "reviews insert buyer" on public.reviews for insert with check (public.can_review(product_id));
 drop policy if exists "reviews admin" on public.reviews;
-create policy "reviews admin" on public.reviews for update using (public.is_admin()) with check (public.is_admin());
+create policy "reviews admin" on public.reviews for update using (public.has_role(array['manager', 'support'])) with check (public.has_role(array['manager', 'support']));
 drop policy if exists "reviews delete" on public.reviews;
 create policy "reviews delete" on public.reviews for delete using (user_id = auth.uid() or public.is_admin());
 
@@ -557,6 +737,19 @@ create policy "reviews delete" on public.reviews for delete using (user_id = aut
 -- =====================================================================
 revoke all on function public.coupon_discount(text, numeric, numeric) from public, anon, authenticated;
 revoke all on function public.conversation_access(uuid, text) from public, anon, authenticated;
+grant execute on function public.has_role(text[]) to authenticated;
+grant execute on function public.my_role() to authenticated;
+revoke execute on function public.list_staff() from public, anon;
+grant execute on function public.list_staff() to authenticated;
+revoke execute on function public.add_staff(text, text) from public, anon;
+grant execute on function public.add_staff(text, text) to authenticated;
+revoke execute on function public.remove_staff(uuid) from public, anon;
+grant execute on function public.remove_staff(uuid) to authenticated;
+revoke execute on function public.adjust_stock(bigint, int, text, text) from public, anon;
+grant execute on function public.adjust_stock(bigint, int, text, text) to authenticated;
+revoke execute on function public.audit_row() from public, anon, authenticated;
+revoke execute on function public.track_stock() from public, anon, authenticated;
+
 grant execute on function public.start_conversation(jsonb) to anon, authenticated;
 grant execute on function public.get_conversation(uuid, text) to anon, authenticated;
 grant execute on function public.reply_conversation(uuid, text, text) to anon, authenticated;
@@ -588,8 +781,8 @@ insert into storage.buckets (id, name, public) values ('products', 'products', t
 drop policy if exists "product images read" on storage.objects;
 create policy "product images read" on storage.objects for select using (bucket_id = 'products');
 drop policy if exists "product images admin insert" on storage.objects;
-create policy "product images admin insert" on storage.objects for insert with check (bucket_id = 'products' and public.is_admin());
+create policy "product images admin insert" on storage.objects for insert with check (bucket_id = 'products' and public.has_role(array['manager', 'inventory']));
 drop policy if exists "product images admin update" on storage.objects;
-create policy "product images admin update" on storage.objects for update using (bucket_id = 'products' and public.is_admin());
+create policy "product images admin update" on storage.objects for update using (bucket_id = 'products' and public.has_role(array['manager', 'inventory']));
 drop policy if exists "product images admin delete" on storage.objects;
-create policy "product images admin delete" on storage.objects for delete using (bucket_id = 'products' and public.is_admin());
+create policy "product images admin delete" on storage.objects for delete using (bucket_id = 'products' and public.has_role(array['manager', 'inventory']));
