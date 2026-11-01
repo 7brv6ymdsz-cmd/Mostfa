@@ -1,0 +1,28 @@
+{
+  "name": "raff-store",
+  "version": "1.0.0",
+  "private": true,
+  "description": "رَفّ — متجر عربي سريع: واجهة ثلاثية الأبعاد، حسابات، طلبات، كوبونات، تقييمات، نظام إجابة ولوحة إدارة. يعمل على GitHub Pages مع Supabase.",
+  "scripts": {
+    "start": "npx --yes http-server .. -p 8766 -c-1 -s",
+    "lint": "npm run lint:js && npm run lint:css && npm run lint:html",
+    "lint:js": "eslint .",
+    "lint:css": "stylelint \"**/*.css\"",
+    "lint:html": "html-validate \"**/*.html\"",
+    "test": "playwright test",
+    "test:db": "bash tests/db/run.sh",
+    "audit": "node tests/audit/lighthouse.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@eslint/js": "9.17.0",
+    "@playwright/test": "1.63.0",
+    "eslint": "9.17.0",
+    "globals": "15.14.0",
+    "html-validate": "9.1.3",
+    "lighthouse": "12.3.0",
+    "stylelint": "16.12.0",
+    "stylelint-config-standard": "36.0.1"
+  },
+  "type": "module"
+}
