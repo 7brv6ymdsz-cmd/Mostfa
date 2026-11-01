@@ -11,14 +11,14 @@
 <title>لوحة الإدارة · رَفّ</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../assets/fonts.css">
-<link rel="stylesheet" href="admin.css?v=3">
+<link rel="stylesheet" href="admin.css?v=4">
 </head>
 <body>
 
 <!-- Lock -->
 <div class="lock" id="lock">
   <form class="lock-card" id="lockForm" novalidate>
-    <div class="lock-mark">رَفّ<span class="dot"></span></div>
+    <h1 class="lock-mark">رَفّ<span class="dot"></span><span class="sr"> · لوحة الإدارة</span></h1>
     <p class="lock-sub">لوحة الإدارة</p>
     <p class="lock-msg" id="lockMsg">اكتب الرمز السري لتفتح اللوحة.</p>
     <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••••" aria-label="الرمز السري">
@@ -70,6 +70,6 @@
 <script src="../vendor/supabase.min.js?v=2.45.4"></script>
 <script src="../shared.js?v=5"></script>
 <script src="../data.js?v=6"></script>
-<script src="admin.js?v=3"></script>
+<script src="admin.js?v=4"></script>
 </body>
 </html>

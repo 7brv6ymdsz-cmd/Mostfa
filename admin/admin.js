@@ -35,6 +35,9 @@
     reviews: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
     server: '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
     refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/>',
+    messages: '<path d="M4 19.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8z"/><path d="M8.5 9h7M8.5 12.5h4.5"/>',
+    questions: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/>',
+    send: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
     image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     import: '<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>',
@@ -119,15 +122,17 @@
   const must = D.must;
   const cloudApi = {
     async loadAll() {
-      const [st, cats, prods, ords, cps, rvs] = await Promise.all([
+      const [st, cats, prods, ords, cps, rvs, convs, qs] = await Promise.all([
         sb.from('settings').select('data').eq('id', 1).maybeSingle(),
         sb.from('categories').select('*').order('sort'),
         sb.from('products').select('*').order('sort').order('id', { ascending: false }),
         sb.from('orders').select('*').order('created_at', { ascending: false }).limit(1000),
         sb.from('coupons').select('*').order('created_at', { ascending: false }),
         sb.from('reviews').select('*').order('created_at', { ascending: false }).limit(500),
+        sb.from('conversations').select('id,user_id,name,contact,subject,order_id,product_id,status,unread_admin,last_message,created_at,updated_at').order('updated_at', { ascending: false }).limit(500),
+        sb.from('product_questions').select('*').order('created_at', { ascending: false }).limit(500),
       ]);
-      const bad = [st, cats, prods, ords, cps, rvs].find((r) => r.error);
+      const bad = [st, cats, prods, ords, cps, rvs, convs, qs].find((r) => r.error);
       if (bad) throw new Error(D.friendly(bad.error));
       state = {
         settings: (st.data && st.data.data) || {},
@@ -136,6 +141,8 @@
         orders: ords.data.map((o) => ({ ...D.orderFromRow(o), stockApplied: o.stock_applied })),
         coupons: cps.data.map(couponFromRow),
         reviews: rvs.data,
+        conversations: convs.data,
+        questions: qs.data,
         publishedHash: null,
       };
       migrate();
@@ -167,6 +174,15 @@
       must(await sb.storage.from('products').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false }));
       return sb.storage.from('products').getPublicUrl(path).data.publicUrl;
     },
+    async conversation(id) { return must(await sb.rpc('get_conversation', { p_id: id, p_token: '' })); },
+    async reply(id, body) { must(await sb.rpc('admin_reply', { p_id: id, p_body: body })); },
+    async setConversation(id, fields) { must(await sb.from('conversations').update(fields).eq('id', id)); },
+    async deleteConversation(id) { must(await sb.from('conversations').delete().eq('id', id)); },
+    async answerQuestion(id, fields) { must(await sb.from('product_questions').update(fields).eq('id', id)); },
+    async deleteQuestion(id) { must(await sb.from('product_questions').delete().eq('id', id)); },
+    async freshConversations(since) {
+      return must(await sb.from('conversations').select('id,user_id,name,contact,subject,order_id,product_id,status,unread_admin,last_message,created_at,updated_at').gt('updated_at', new Date(since).toISOString()).order('updated_at', { ascending: false }));
+    },
     async newOrders(since) {
       return must(await sb.from('orders').select('*').gt('created_at', new Date(since).toISOString()).order('created_at', { ascending: false })).map((o) => ({ ...D.orderFromRow(o), stockApplied: o.stock_applied }));
     },
@@ -194,6 +210,16 @@
           if (current === 'orders') renderOrderList(); else if (current === 'dashboard') VIEWS.dashboard();
           refreshBadges();
         }
+        const lastConv = (state.conversations || []).reduce((m, c) => Math.max(m, new Date(c.updated_at).getTime()), 0) || Date.now() - 864e5;
+        const changed = await cloudApi.freshConversations(lastConv);
+        if (changed.length) {
+          changed.forEach((c) => { const i = state.conversations.findIndex((x) => x.id === c.id); if (i >= 0) state.conversations[i] = c; else state.conversations.unshift(c); });
+          state.conversations.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+          const unread = changed.filter((c) => c.unread_admin);
+          if (unread.length) toast(unread.length === 1 ? `رسالة جديدة من ${unread[0].name}` : `وصلك ${num(unread.length)} رسائل جديدة`);
+          if (current === 'messages') { renderInbox(); const open = $('#sheetInner').dataset.sheetConv; if (open && changed.some((c) => c.id === open)) openConversation(open, true); }
+          refreshNavBadges();
+        }
       } catch { /* offline, try again later */ }
     }, 30000);
   }
@@ -212,7 +238,7 @@
     const paint = (modeName) => {
       const signup = modeName === 'signup';
       card.innerHTML = `
-        <div class="lock-mark">رَفّ<span class="dot"></span></div>
+        <h1 class="lock-mark">رَفّ<span class="dot"></span><span class="sr"> · لوحة الإدارة</span></h1>
         <p class="lock-sub">لوحة الإدارة</p>
         <p class="lock-msg">${signup ? 'أنشئ حساب المدير. أول حساب بيسجّل هون بيصير هو مدير المتجر.' : 'سجّل دخول بحساب المدير.'}</p>
         <input id="cEmail" type="email" autocomplete="email" placeholder="الإيميل" dir="ltr" class="lock-field">
@@ -250,7 +276,7 @@
       if (claimed) toast('صرت مدير المتجر');
     }
     if (!admin) {
-      $('#lockForm').innerHTML = `<div class="lock-mark">رَفّ<span class="dot"></span></div><p class="lock-msg">هالحساب (${esc(D.auth.user.email)}) مش حساب المدير.</p><button class="btn wide" type="button" id="outBtn">تسجيل خروج</button><a class="link" href="../">رجوع للمتجر</a>`;
+      $('#lockForm').innerHTML = `<h1 class="lock-mark">رَفّ<span class="dot"></span><span class="sr"> · لوحة الإدارة</span></h1><p class="lock-msg">هالحساب (${esc(D.auth.user.email)}) مش حساب المدير.</p><button class="btn wide" type="button" id="outBtn">تسجيل خروج</button><a class="link" href="../">رجوع للمتجر</a>`;
       $('#outBtn').onclick = async () => { await D.auth.signOut(); location.reload(); };
       throw new Error('not_admin');
     }
@@ -318,6 +344,8 @@
     state.settings.shipping = { fee: 0, freeOver: 0, ...(state.settings.shipping || {}) };
     state.coupons = state.coupons || [];
     state.reviews = state.reviews || [];
+    state.conversations = state.conversations || [];
+    state.questions = state.questions || [];
     if (state.publishedHash === undefined) state.publishedHash = null;
     if (state.publishedHash === null && !state.products.some((p) => p._edited)) state.publishedHash = catalogHash();
   }
@@ -344,6 +372,8 @@
     { id: 'orders', t: 'الطلبات', k: 'المبيعات' },
     { id: 'products', t: 'المنتجات', k: 'الكتالوج' },
     { id: 'customers', t: 'العملاء', k: 'المبيعات' },
+    { id: 'messages', t: 'الرسائل', k: 'خدمة العملاء' },
+    { id: 'questions', t: 'أسئلة المنتجات', k: 'خدمة العملاء' },
     { id: 'payments', t: 'الدفع والشحن', k: 'الإعدادات' },
     { id: 'coupons', t: 'الكوبونات', k: 'التسويق' },
     { id: 'reviews', t: 'التقييمات', k: 'التسويق' },
@@ -360,7 +390,9 @@
     current = nav.id;
     const newCount = state.orders.filter((o) => o.status === 'new').length;
     const pendingRv = state.reviews.filter((r) => r.status === 'pending').length;
-    $('#sideNav').innerHTML = NAV.filter((n) => n.id !== 'publish').map((n) => `<a href="#${n.id}" class="${n.id === current ? 'on' : ''}" ${n.id === current ? 'aria-current="page"' : ''}>${ic(n.id)}<span>${n.t}</span>${n.id === 'orders' && newCount ? `<em>${num(newCount)}</em>` : n.id === 'reviews' && pendingRv ? `<em>${num(pendingRv)}</em>` : ''}</a>`).join('');
+    const unreadMsg = (state.conversations || []).filter((c) => c.unread_admin && c.status !== 'closed').length;
+    const pendingQ = (state.questions || []).filter((q) => q.status === 'pending').length;
+    $('#sideNav').innerHTML = NAV.filter((n) => n.id !== 'publish').map((n) => `<a href="#${n.id}" class="${n.id === current ? 'on' : ''}" ${n.id === current ? 'aria-current="page"' : ''}>${ic(n.id)}<span>${n.t}</span>${n.id === 'orders' && newCount ? `<em>${num(newCount)}</em>` : n.id === 'reviews' && pendingRv ? `<em>${num(pendingRv)}</em>` : n.id === 'messages' && unreadMsg ? `<em>${num(unreadMsg)}</em>` : n.id === 'questions' && pendingQ ? `<em>${num(pendingQ)}</em>` : ''}</a>`).join('');
     $('#topTitle').textContent = nav.t;
     $('#topKicker').textContent = nav.k;
     $('#topActions').innerHTML = '';
@@ -500,6 +532,8 @@
     const hasOrders = state.orders.length > 0;
     $('#view').innerHTML = `
       ${dirty() ? `<a class="notice" href="#publish">${ic('publish')}<span><b>عندك تعديلات ما انتشرت لسا.</b> الزبائن بيشوفوا النسخة القديمة لحتى تنشر.</span><em>انشر هلّق</em></a>` : ''}
+      ${CLOUD && state.conversations.some((c) => c.unread_admin && c.status !== 'closed') ? `<a class="notice" href="#messages">${ic('messages')}<span><b>عندك ${num(state.conversations.filter((c) => c.unread_admin && c.status !== 'closed').length)} رسالة جديدة من الزبائن.</b> الرد السريع بيفرق.</span><em>فتح الرسائل</em></a>` : ''}
+      ${CLOUD && state.questions.some((q) => q.status === 'pending') ? `<a class="notice soft" href="#questions">${ic('questions')}<span><b>${num(state.questions.filter((q) => q.status === 'pending').length)} سؤال عن المنتجات</b> بانتظار جوابك.</span><em>جاوب</em></a>` : ''}
       ${state.offerImport ? `<a class="notice" href="#server">${ic('server')}<span><b>السيرفر جاهز بس فاضي.</b> انقل منتجاتك وإعداداتك الحالية إليه بكبسة وحدة.</span><em>نقل البيانات</em></a>` : ''}
       ${!CLOUD && !state.settings.whatsapp ? `<a class="notice soft" href="#payments">${ic('whatsapp')}<span><b>ما حطيت رقم واتساب.</b> بدونه الزبون ما فيه يبعتلك الطلب بكبسة وحدة.</span><em>أضف الرقم</em></a>` : ''}
       <div class="seg" role="group" aria-label="الفترة">
@@ -686,7 +720,7 @@
         </div>
       </div>`);
     const sheet = $('#sheetInner');
-    sheet.dataset.order = o.id;
+    sheet.dataset.sheetOrder = o.id;
     $('[name=paid]', sheet).addEventListener('change', async (e) => {
       const v = e.target.checked;
       if (CLOUD) { try { await cloudDo(() => cloudApi.patchOrder(o.id, { paid: v })); } catch { e.target.checked = !v; return; } }
@@ -723,7 +757,7 @@
   }
   const refreshBehind = () => {
     if (current === 'orders') renderOrderList();
-    else if (current === 'dashboard' || current === 'customers') { const keep = $('#sheetInner').dataset.order; VIEWS[current](); if (keep) openOrder(keep); }
+    else if (current === 'dashboard' || current === 'customers') { const keep = $('#sheetInner').dataset.sheetOrder; VIEWS[current](); if (keep) openOrder(keep); }
     const newCount = state.orders.filter((o) => o.status === 'new').length;
     const em = $('#sideNav a[href="#orders"] em');
     if (em) { if (newCount) em.textContent = num(newCount); else em.remove(); }
@@ -1211,6 +1245,144 @@
     <button type="button" class="icon-btn sm" data-cat-act="down" aria-label="لتحت"><svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
     <button type="button" class="icon-btn sm" data-cat-act="del" aria-label="حذف">${ic('trash')}</button></li>`;
 
+  /* ---------- Messages (answer system) ---------- */
+  const CONV_ST = { open: { t: 'بانتظار الرد', c: 'st-new' }, answered: { t: 'تم الرد', c: 'st-done' }, closed: { t: 'مغلقة', c: 'st-unpaid' } };
+  const QUICK = [
+    'أهلاً فيك! شكراً لتواصلك معنا.',
+    'طلبك قيد التجهيز، ورح نبعتلك رسالة أول ما ينشحن.',
+    'طلبك انشحن، وبيوصلك خلال ٢ لـ ٥ أيام عمل.',
+    'أكيد فيك ترجعه خلال ١٤ يوم. ابعتلنا رقم الطلب ومنرتّب الاستلام.',
+    'المنتج رح يرجع للمخزون قريباً، منبعتلك أول ما يتوفّر.',
+  ];
+  let convFilter = 'open', convQuery = '';
+  function refreshNavBadges() {
+    const set = (href, n) => {
+      const a = $(`#sideNav a[href="${href}"]`); if (!a) return;
+      let em = a.querySelector('em');
+      if (n) { if (!em) { em = document.createElement('em'); a.append(em); } em.textContent = num(n); } else if (em) em.remove();
+    };
+    set('#messages', state.conversations.filter((c) => c.unread_admin && c.status !== 'closed').length);
+    set('#questions', state.questions.filter((q) => q.status === 'pending').length);
+  }
+  const serverOnly = (title, text) => `<div class="card">${empty(title, text, `<a class="btn violet" href="#server">${ic('server')}ربط السيرفر</a>`)}</div>`;
+
+  VIEWS.messages = (arg) => {
+    if (!CLOUD) {
+      const wa = String(state.settings.whatsapp || '').replace(/\D/g, '');
+      $('#view').innerHTML = serverOnly('الرسائل بتوصل على واتساب حالياً', `بدون سيرفر، أسئلة الزبائن من زر المساعدة بتنفتح كرسالة واتساب${wa ? ` على +${esc(wa)}` : ' (حط رقمك من «الدفع والشحن»)'}. اربط المتجر بـ Supabase ليصير عندك صندوق رسائل كامل هون مع ردود ومتابعة.`);
+      return;
+    }
+    setActions(`<button class="btn" type="button" data-act="reload">${ic('refresh')}<span>تحديث</span></button>`);
+    const counts = { open: 0, answered: 0, closed: 0, all: state.conversations.length };
+    state.conversations.forEach((c) => { counts[c.status]++; });
+    $('#view').innerHTML = `
+      <div class="toolbar"><label class="search">${ic('search')}<input type="search" id="cq" placeholder="ابحث بالاسم، الموضوع، رقم الطلب…" value="${esc(convQuery)}"></label></div>
+      <div class="chips" role="group" aria-label="فلترة الرسائل">${[['open', 'بانتظار الرد'], ['answered', 'تم الرد'], ['closed', 'مغلقة'], ['all', 'الكل']].map(([k, t]) => `<button type="button" data-cfilter="${k}" aria-pressed="${convFilter === k}">${t}<em>${num(counts[k])}</em></button>`).join('')}</div>
+      <div id="inbox"></div>`;
+    $('#cq').addEventListener('input', (e) => { convQuery = e.target.value; renderInbox(); });
+    renderInbox();
+    if (arg) openConversation(arg);
+  };
+  function renderInbox() {
+    const box = $('#inbox'); if (!box) return;
+    const q = S.norm(convQuery);
+    const list = state.conversations.filter((c) => (convFilter === 'all' || c.status === convFilter)
+      && (!q || S.norm(`${c.name} ${c.subject} ${c.order_id || ''} ${c.contact} ${c.last_message}`).includes(q)));
+    if (!state.conversations.length) { box.innerHTML = `<div class="card">${empty('ما في رسائل لسا', 'لما زبون يسأل من زر المساعدة أو صفحة التواصل، الرسالة بتوصل هون وبترد عليها مباشرة.', '')}</div>`; return; }
+    if (!list.length) { box.innerHTML = '<p class="muted pad center">ما في رسائل بهالفلتر.</p>'; return; }
+    box.innerHTML = `<ul class="inbox">${list.map((c) => `<li><button type="button" data-conv="${esc(c.id)}" class="${c.unread_admin && c.status !== 'closed' ? 'unread' : ''}">
+      <span class="avatar-sm">${esc((c.name || '?').trim()[0])}</span>
+      <span class="ib-main"><b>${esc(c.name)}</b><span class="ib-sub">${esc(c.subject || 'محادثة')}${c.order_id ? ` · <span class="oid">${esc(c.order_id)}</span>` : ''}</span><small>${esc((c.last_message || '').slice(0, 110))}</small></span>
+      <span class="ib-side"><small>${ago(new Date(c.updated_at).getTime())}</small><span class="badge ${CONV_ST[c.status].c}">${CONV_ST[c.status].t}</span></span>
+    </button></li>`).join('')}</ul>`;
+  }
+  async function openConversation(id, keepDraft) {
+    const meta = state.conversations.find((c) => c.id === id);
+    const draft = keepDraft && $('#convReply') ? $('#convReply').value : '';
+    if (!keepDraft) openSheet('<div class="sheet-body"><p class="muted pad center">عم نحمّل المحادثة…</p></div>');
+    let c;
+    try { c = await cloudApi.conversation(id); } catch (e) { toast(D.friendly(e)); return; }
+    if (!c) { toast('المحادثة مش موجودة'); closeSheet(); return; }
+    if (meta && meta.unread_admin) {
+      meta.unread_admin = false; refreshNavBadges(); renderInbox();
+      cloudApi.setConversation(id, { unread_admin: false }).catch(() => {});
+    }
+    const order = c.order_id ? state.orders.find((o) => o.id === c.order_id) : null;
+    const prod = c.product_id ? byPid().get(+c.product_id) : null;
+    const contact = meta ? meta.contact : '';
+    const wa = /^[+\d\s-]{7,}$/.test(contact || '') ? contact.replace(/\D/g, '') : '';
+    openSheet(`
+      <div class="sheet-head">
+        <div><p class="muted">${esc(meta ? meta.name : c.name)}${contact ? ` · <span dir="ltr">${esc(contact)}</span>` : ''}</p><h2>${esc(c.subject || 'محادثة')}</h2></div>
+        <button class="icon-btn" type="button" data-act="close-sheet" aria-label="إغلاق">${ic('close')}</button>
+      </div>
+      <div class="sheet-body conv">
+        ${order || prod || c.order_id ? `<div class="conv-ctx">${order ? `<button type="button" class="ctx-chip" data-order="${esc(order.id)}">${ic('orders')}طلب <span class="oid">${esc(order.id)}</span> · ${money(order.total)} · ${STATUS[order.status].t}</button>` : c.order_id ? `<span class="ctx-chip">${ic('orders')}طلب <span class="oid">${esc(c.order_id)}</span> (مش موجود)</span>` : ''}${prod ? `<button type="button" class="ctx-chip" data-product="${prod.id}">${thumb(prod)}${esc(prod.name)}</button>` : ''}</div>` : ''}
+        <ol class="conv-msgs" id="convMsgs">${c.messages.map((m) => `<li class="cm-${esc(m.sender)}"><span>${m.sender === 'customer' ? esc(meta ? meta.name : 'الزبون') : m.sender === 'bot' ? 'جواب تلقائي' : 'أنت'}</span><p>${esc(m.body).replace(/\n/g, '<br>')}</p><time>${fmtDate(new Date(m.created_at).getTime(), true)}</time></li>`).join('')}</ol>
+        <div class="quick">${QUICK.map((q, i) => `<button type="button" data-quick="${i}">${esc(q.slice(0, 34))}…</button>`).join('')}</div>
+        <form class="conv-reply" id="convForm"><label class="sr" for="convReply">الرد</label><textarea id="convReply" rows="3" maxlength="2000" placeholder="اكتب ردّك… (Enter للإرسال، Shift+Enter لسطر جديد)">${esc(draft)}</textarea><button class="btn violet" type="submit">${ic('send')}إرسال</button></form>
+        <div class="row-btns sheet-actions">
+          ${c.status !== 'closed' ? `<button class="btn" type="button" data-conv-status="closed">إغلاق المحادثة</button>` : `<button class="btn" type="button" data-conv-status="open">إعادة فتح</button>`}
+          ${wa ? `<a class="btn" href="https://wa.me/${wa}" target="_blank" rel="noopener noreferrer">${ic('whatsapp')}واتساب</a>` : ''}
+          <button class="btn danger-ghost" type="button" data-act="delete-conv">${ic('trash')}حذف</button>
+        </div>
+      </div>`);
+    const sheetEl = $('#sheetInner'); sheetEl.dataset.sheetConv = id;
+    const msgs = $('#convMsgs'); msgs.scrollTop = msgs.scrollHeight;
+    const ta = $('#convReply');
+    if (!keepDraft) setTimeout(() => ta.focus(), 50);
+    ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#convForm').requestSubmit(); } });
+    $('#convForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const v = ta.value.trim(); if (!v) return;
+      const b = e.target.querySelector('button'); b.classList.add('busy');
+      try {
+        await cloudDo(() => cloudApi.reply(id, v), 'انبعت الرد');
+        if (meta) Object.assign(meta, { status: 'answered', unread_admin: false, last_message: v.slice(0, 200), updated_at: new Date().toISOString() });
+        ta.value = ''; renderInbox(); openConversation(id);
+      } catch { b.classList.remove('busy'); }
+    });
+  }
+
+  /* ---------- Product questions ---------- */
+  let qFilter = 'pending';
+  VIEWS.questions = () => {
+    if (!CLOUD) {
+      $('#view').innerHTML = serverOnly('أسئلة المنتجات بتحتاج السيرفر', 'بدون سيرفر، زر «اسأل عن المنتج» بيفتح رسالة واتساب للمتجر. مع السيرفر، الأسئلة بتوصل هون، بتجاوب عليها، وبتنتشر تحت المنتج ليستفيد كل الزبائن.');
+      return;
+    }
+    setActions(`<button class="btn" type="button" data-act="reload">${ic('refresh')}<span>تحديث</span></button>`);
+    const pm = byPid();
+    const counts = { pending: 0, published: 0, hidden: 0 };
+    state.questions.forEach((q) => { counts[q.status]++; });
+    const list = state.questions.filter((q) => q.status === qFilter);
+    $('#view').innerHTML = `
+      <div class="chips" role="group">${[['pending', 'بانتظار الجواب'], ['published', 'منشورة'], ['hidden', 'مخفية']].map(([k, t]) => `<button type="button" data-qfilter="${k}" aria-pressed="${qFilter === k}">${t}<em>${num(counts[k])}</em></button>`).join('')}</div>
+      ${list.length ? `<ul class="rv-admin">${list.map((q) => { const p = pm.get(+q.product_id); return `<li class="card">
+        <div class="rva-head">${thumb(p)}<div><b>${esc(p ? p.name : 'منتج محذوف')}</b><small>${esc(q.author || 'زائر')} · ${fmtDate(new Date(q.created_at).getTime())}</small></div></div>
+        <p class="qa-qtext">${esc(q.question)}</p>
+        <form class="qa-answer" data-qa="${q.id}"><label class="sr" for="qa${q.id}">الجواب</label><textarea id="qa${q.id}" rows="2" maxlength="1500" placeholder="اكتب الجواب…">${esc(q.answer || '')}</textarea>
+          <div class="row-btns"><button class="btn violet" type="submit">${ic('check')}${q.status === 'published' ? 'تحديث الجواب' : 'جاوب وانشر'}</button>${q.status !== 'hidden' ? `<button class="btn" type="button" data-qa-act="hide">إخفاء</button>` : `<button class="btn" type="button" data-qa-act="unhide">إرجاع</button>`}<button class="btn danger-ghost" type="button" data-qa-act="delete">${ic('trash')}حذف</button></div>
+        </form>
+      </li>`; }).join('')}</ul>` : `<p class="muted pad center">${qFilter === 'pending' ? 'ما في أسئلة بانتظارك.' : 'ما في شي هون.'}</p>`}`;
+    $$('.qa-answer').forEach((f) => f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = +f.dataset.qa, ans = f.querySelector('textarea').value.trim();
+      if (ans.length < 2) { toast('اكتب الجواب'); return; }
+      try { await cloudDo(() => cloudApi.answerQuestion(id, { answer: ans, status: 'published', answered_at: new Date().toISOString() }), 'انتشر السؤال مع الجواب'); } catch { return; }
+      Object.assign(state.questions.find((x) => x.id === id), { answer: ans, status: 'published', answered_at: new Date().toISOString() });
+      VIEWS.questions(); refreshNavBadges();
+    }));
+  };
+  async function questionAction(id, act) {
+    const q = state.questions.find((x) => x.id === id); if (!q) return;
+    try {
+      if (act === 'delete') { await cloudDo(() => cloudApi.deleteQuestion(id), 'انحذف السؤال'); state.questions = state.questions.filter((x) => x.id !== id); }
+      else { const st = act === 'hide' ? 'hidden' : (q.answer ? 'published' : 'pending'); await cloudDo(() => cloudApi.answerQuestion(id, { status: st })); q.status = st; }
+    } catch { return; }
+    VIEWS.questions(); refreshNavBadges();
+  }
+
   /* ---------- Coupons ---------- */
   const KIND_T = { percent: 'نسبة مئوية', fixed: 'مبلغ ثابت', shipping: 'توصيل مجاني' };
   const couponValue = (c) => (c.kind === 'percent' ? `${num(c.value)}٪` : c.kind === 'fixed' ? money(c.value) : 'توصيل مجاني');
@@ -1431,7 +1603,7 @@
   }
   function closeSheet() {
     scrim.hidden = true; sheet.classList.remove('open'); sheet.inert = true;
-    $('#sheetInner').dataset.order = '';
+    $('#sheetInner').dataset.sheetOrder = ''; $('#sheetInner').dataset.sheetConv = '';
   }
   scrim.addEventListener('click', closeSheet);
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheet.classList.contains('open') && !modal.open) closeSheet(); });
@@ -1446,14 +1618,27 @@
   /* ---------- Global clicks ---------- */
   document.addEventListener('click', (e) => {
     if (!state) return;
-    const t = e.target.closest('[data-act],[data-order],[data-product],[data-period],[data-ofilter],[data-status],[data-customer],[data-coupon],[data-rv],[data-rvf],[data-copy-text]');
+    const t = e.target.closest('[data-act],[data-order],[data-product],[data-period],[data-ofilter],[data-status],[data-customer],[data-coupon],[data-rv],[data-rvf],[data-copy-text],[data-conv],[data-cfilter],[data-conv-status],[data-quick],[data-qfilter],[data-qa-act]');
     if (!t) return;
     const d = t.dataset;
     if (d.period !== undefined) { period = +d.period; VIEWS.dashboard(); return; }
     if (d.ofilter) { oFilter = d.ofilter; $$('[data-ofilter]').forEach((b) => b.setAttribute('aria-pressed', b === t)); renderOrderList(); return; }
-    if (d.status) { setStatus($('#sheetInner').dataset.order, d.status); return; }
+    if (d.status) { setStatus($('#sheetInner').dataset.sheetOrder, d.status); return; }
     if (d.order) { openOrder(d.order); return; }
     if (d.product) { if (current !== 'products') location.hash = `#products/${d.product}`; else editProduct(+d.product); return; }
+    if (d.conv) { openConversation(d.conv); return; }
+    if (d.cfilter) { convFilter = d.cfilter; $$('[data-cfilter]').forEach((b) => b.setAttribute('aria-pressed', b === t)); renderInbox(); return; }
+    if (d.quick !== undefined) { const ta = $('#convReply'); if (ta) { ta.value = (ta.value ? `${ta.value.trim()}\n` : '') + QUICK[+d.quick]; ta.focus(); } return; }
+    if (d.convStatus) {
+      const id = $('#sheetInner').dataset.sheetConv, st = d.convStatus;
+      cloudDo(() => cloudApi.setConversation(id, { status: st }), st === 'closed' ? 'انغلقت المحادثة' : 'انفتحت المحادثة').then(() => {
+        const m = state.conversations.find((c) => c.id === id); if (m) m.status = st;
+        renderInbox(); openConversation(id);
+      }, () => {});
+      return;
+    }
+    if (d.qfilter) { qFilter = d.qfilter; VIEWS.questions(); return; }
+    if (d.qaAct) { questionAction(+t.closest('[data-qa]').dataset.qa, d.qaAct); return; }
     if (d.coupon) { editCoupon(d.coupon); return; }
     if (d.rv) { moderate(+d.rv, d.to); return; }
     if (d.rvf) { rvFilter = d.rvf; VIEWS.reviews(); return; }
@@ -1469,6 +1654,14 @@
       case 'close-sheet': closeSheet(); break;
       case 'new-product': editProduct(0); break;
       case 'new-coupon': editCoupon(null); break;
+      case 'delete-conv': {
+        const id = $('#sheetInner').dataset.sheetConv;
+        confirmBox('تحذف المحادثة؟', 'رح تنحذف المحادثة وكل رسائلها نهائياً.', 'حذف', async () => {
+          try { await cloudDo(() => cloudApi.deleteConversation(id), 'انحذفت المحادثة'); } catch { return; }
+          state.conversations = state.conversations.filter((c) => c.id !== id); closeSheet(); renderInbox(); refreshNavBadges();
+        });
+        break;
+      }
       case 'migrate': migrateToCloud(); break;
       case 'srv-clear': ls.del('raff.cloud'); toast('رجعنا للوضع بلا سيرفر'); setTimeout(() => location.reload(), 600); break;
       case 'copy-sql':

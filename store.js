@@ -516,6 +516,7 @@
     }
   });
   scrim.addEventListener('click', closeCart);
+  addEventListener('hashchange', () => { if (cartEl.classList.contains('open')) { lastFocus = null; closeCart(); } if (qv.open) closeQV(); });
   $('#checkoutForm').coupon.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && cartEl.classList.contains('open')) closeCart();

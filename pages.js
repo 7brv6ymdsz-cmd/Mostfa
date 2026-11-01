@@ -54,7 +54,14 @@
     tag.textContent = JSON.stringify(ld).replace(/</g, '\\u003c');
   }
   let lastName = null;
-  async function route() {
+  // Navigations run one at a time and the latest hash always wins, so a slow page can never paint over a newer one.
+  let routing = null, again = false;
+  function route() {
+    if (routing) { again = true; return routing; }
+    routing = (async () => { do { again = false; await doRoute(); } while (again); })().finally(() => { routing = null; });
+    return routing;
+  }
+  async function doRoute() {
     if (/access_token=|error_description=/.test(location.hash)) return; // Supabase is finishing a login from an email link
     const r = parse();
     const onPage = r.name !== 'home';
@@ -78,7 +85,7 @@
     try { await fn(r); } catch (e) { page.innerHTML = `<div class="pg narrow"><div class="pg-card center"><h1 class="pg-title">صار خطأ</h1><p class="muted">${esc(D.friendly(e))}</p><a class="btn-dark" href="#/">الرئيسية</a></div></div>`; }
     page.focus({ preventScroll: true });
   }
-  const navFor = (n) => ({ wishlist: 'wishlist', account: 'account', orders: 'account', addresses: 'account', login: 'account', signup: 'account' }[n] || '');
+  const navFor = (n) => ({ wishlist: 'wishlist', account: 'account', orders: 'account', addresses: 'account', messages: 'account', login: 'account', signup: 'account' }[n] || '');
   window.raffRouter = { route };
   addEventListener('hashchange', route);
 
@@ -101,7 +108,7 @@
   D.auth.onChange(() => {
     renderAccountChip();
     const r = parse();
-    if (['account', 'orders', 'addresses', 'login', 'signup'].includes(r.name)) route();
+    if (['account', 'orders', 'addresses', 'messages', 'login', 'signup'].includes(r.name)) route();
   });
 
   /* ================= Product ================= */
@@ -160,7 +167,12 @@
 
         <section class="pd-reviews" id="reviews">
           <div class="band-head"><h2>التقييمات</h2></div>
-          <div class="rv-wrap" id="rvWrap"><div class="pg-loading small"><span></span><span></span><span></span></div></div>
+          <div class="rv-wrap" id="rvWrap" data-pid="${p.id}"><div class="pg-loading small"><span></span><span></span><span></span></div></div>
+        </section>
+
+        <section class="pd-qa" id="qa">
+          <div class="band-head"><h2>أسئلة وأجوبة</h2></div>
+          <div id="qaWrap" data-pid="${p.id}"><div class="pg-loading small"><span></span><span></span><span></span></div></div>
         </section>
 
         ${related.length ? `<section class="band"><div class="band-head"><h2>ممكن يعجبك كمان</h2></div><div class="grid">${related.slice(0, 4).map((x) => R().card(x)).join('')}</div></section>` : ''}
@@ -187,6 +199,7 @@
     const st = page.querySelector('[data-scroll-to]');
     if (st) st.addEventListener('click', (e) => { e.preventDefault(); $('#reviews').scrollIntoView({ behavior: 'smooth' }); });
     renderReviews(p);
+    renderQA(p);
   };
 
   let pdGallery = null;
@@ -196,14 +209,60 @@
     $$('.pd-thumbs button').forEach((x) => x.classList.toggle('on', x === b));
   });
 
+  async function renderQA(p) {
+    let wrap = $('#qaWrap'); if (!wrap) return;
+    if (!cloud) {
+      wrap.innerHTML = `<div class="qa-empty"><p>عندك سؤال عن «${esc(p.name)}»؟ منجاوبك مباشرة.</p><button class="btn-dark" type="button" data-ask-product="${p.id}">اسأل عن المنتج</button></div>`;
+      return;
+    }
+    let list = [];
+    try { list = await D.qa.list(p.id); } catch { /* offline */ }
+    wrap = $('#qaWrap'); if (!wrap || wrap.dataset.pid !== String(p.id)) return;
+    const mine = D.auth.user ? list.filter((q) => q.user_id === D.auth.user.id && q.status === 'pending') : [];
+    const pub = list.filter((q) => q.status === 'published' && q.answer);
+    const u = D.auth.user, pr = D.auth.profile || {};
+    wrap.innerHTML = `
+      <div class="qa-grid">
+        <form class="pg-card qa-form" id="qaForm" novalidate>
+          <h3>اسأل عن المنتج</h3>
+          <p class="muted">منجاوب وبننشر السؤال والجواب هون ليستفيد الكل.</p>
+          ${u ? '' : '<label class="field" data-f="qname"><span>اسمك</span><input name="qname" type="text" autocomplete="name" maxlength="60"><em></em></label>'}
+          <label class="field" data-f="q"><span>سؤالك</span><textarea name="q" rows="3" maxlength="500" placeholder="مثلاً: هل المقاس بيطلع كبير؟"></textarea><em></em></label>
+          <p class="form-err" hidden></p>
+          <button class="btn-dark" type="submit">إرسال السؤال</button>
+          ${mine.length ? `<p class="rv-note">عندك ${num(mine.length)} سؤال بانتظار الجواب.</p>` : ''}
+        </form>
+        <ul class="qa-list">${pub.length ? pub.map((q) => `<li><p class="qa-q"><b>س:</b> ${esc(q.question)}</p><p class="qa-a"><b>ج:</b> ${esc(q.answer)}</p><small>${esc(q.author || 'زبون')} · ${fmtDate(q.answered_at || q.created_at)}</small></li>`).join('') : '<li class="qa-none">لسا ما في أسئلة. كون أول واحد بيسأل.</li>'}</ul>
+      </div>`;
+    const f = $('#qaForm');
+    if (u && pr.full_name) f.dataset.name = pr.full_name;
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = f.q.value.trim();
+      if (f.qname && f.qname.value.trim().length < 2) return showErr(f, 'qname', 'اكتب اسمك');
+      if (q.length < 3) return showErr(f, 'q', 'اكتب سؤالك');
+      busy(f, true);
+      try { await D.qa.ask(p.id, q, f.qname ? f.qname.value.trim() : ''); R().toast('وصلنا سؤالك. رح يظهر هون مع الجواب.'); f.reset(); showErr(f, null, ''); }
+      catch (err) { showErr(f, null, D.friendly(err)); }
+      busy(f, false);
+    });
+  }
+  page.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ask-product]'); if (b && window.raffHelp) window.raffHelp.compose({ productId: +b.dataset.askProduct });
+    const o = e.target.closest('[data-ask-order]'); if (o && window.raffHelp) window.raffHelp.compose({ orderId: o.dataset.askOrder });
+    const t = e.target.closest('[data-open-thread]'); if (t && window.raffHelp) window.raffHelp.thread(t.dataset.openThread);
+    if (e.target.closest('[data-open-help]') && window.raffHelp) window.raffHelp.open();
+  });
+
   async function renderReviews(p) {
-    const wrap = $('#rvWrap'); if (!wrap) return;
+    let wrap = $('#rvWrap'); if (!wrap) return;
     if (!cloud) {
       wrap.innerHTML = p.reviews ? `<div class="rv-summary"><b>${num(p.rating)}</b>${stars(p.rating, 'lg')}<span class="muted">${compact(p.reviews)} تقييم</span></div>` : '<p class="muted">ما في تقييمات لسا.</p>';
       return;
     }
     let list = [], can = false;
     try { [list, can] = await Promise.all([D.reviews.list(p.id), D.reviews.canReview(p.id)]); } catch { /* ignore */ }
+    wrap = $('#rvWrap'); if (!wrap || wrap.dataset.pid !== String(p.id)) return;
     const approved = list.filter((r) => r.status === 'approved');
     const mine = D.auth.user && list.find((r) => r.user_id === D.auth.user.id);
     const avg = approved.length ? approved.reduce((s, r) => s + r.rating, 0) / approved.length : 0;
@@ -401,7 +460,7 @@
     const u = D.auth.user, p = D.auth.profile;
     const admin = await isAdmin();
     const items = [
-      ['account', 'حسابي', 'user'], ['orders', 'طلباتي', 'box'], ['addresses', 'العناوين', 'pin'], ['wishlist', 'المفضلة', 'heart'],
+      ['account', 'حسابي', 'user'], ['orders', 'طلباتي', 'box'], ['addresses', 'العناوين', 'pin'], ['wishlist', 'المفضلة', 'heart'], ['messages', 'رسائلي', 'chat'],
     ];
     return `
       <div class="pg">
@@ -520,7 +579,7 @@
     const cur = STEPS.indexOf(o.status);
     const body = `
       <div class="od">
-        <div class="od-head"><div><small class="muted">${fmtDate(o.createdAt, true)}</small><h2 class="oid">${esc(o.id)}</h2></div><span class="st st-${o.status}">${STATUS[o.status]}</span></div>
+        <div class="od-head"><div><small class="muted">${fmtDate(o.createdAt, true)}</small><h2 class="oid">${esc(o.id)}</h2></div><div class="od-head-r"><span class="st st-${o.status}">${STATUS[o.status]}</span><button class="btn-ghost sm" type="button" data-ask-order="${esc(o.id)}">سؤال عن الطلب</button></div></div>
         ${o.status === 'cancelled' ? '<p class="od-cancel">هالطلب انلغى. إذا عندك سؤال تواصل معنا.</p>' : `
         <ol class="timeline">${STEPS.map((k, i) => `<li class="${i < cur ? 'done' : i === cur ? 'now' : ''}"><i>${i <= cur ? svg('check', 'ti') : ''}</i><div><b>${STATUS[k]}</b><small>${when(k)}</small></div></li>`).join('')}</ol>`}
         <div class="od-grid">
@@ -631,6 +690,19 @@
     });
   };
 
+  ROUTES.messages = async () => {
+    if (!cloud) { location.hash = '#/contact'; return; }
+    document.title = 'رسائلي';
+    loading();
+    let list = [];
+    try { list = await D.support.list(); } catch (err) { R().toast(D.friendly(err)); }
+    const ST = { open: 'بانتظار الرد', answered: 'تم الرد', closed: 'مغلقة' };
+    const body = `${list.length ? `<ul class="msg-list">${list.map((c) => `<li><button type="button" data-open-thread="${esc(c.id)}"><span class="msg-ic">${svg('chat')}</span><span class="msg-main"><b>${esc(c.subject || 'محادثة')}</b><small>${esc((c.last_message || '').slice(0, 90))}</small></span><span class="msg-side">${c.unread_customer ? '<i class="help-new">رد جديد</i>' : `<em class="st st-${c.status === 'answered' ? 'delivered' : c.status === 'closed' ? 'cancelled' : 'new'}">${ST[c.status] || ''}</em>`}<small>${fmtDate(c.updatedAt)}</small></span></button></li>`).join('')}</ul>`
+      : `<div class="pg-empty">${svg('chat', 'big')}<h2>ما في رسائل لسا</h2><p class="muted">عندك سؤال؟ منرد عليك هون.</p></div>`}
+      <button class="btn-violet" type="button" data-open-help style="margin-top:16px">رسالة جديدة</button>`;
+    page.innerHTML = D.auth.user ? await accShell('messages', 'رسائلي', body) : `<div class="pg narrow"><h1 class="pg-title">رسائلي</h1>${body}</div>`;
+  };
+
   ROUTES.wishlist = async () => {
     document.title = 'المفضلة';
     const ids = D.wishlist.all().filter((id) => R().byId.has(id));
@@ -716,14 +788,27 @@
         <label class="field" data-f="order"><span>رقم الطلب (اختياري)</span><input name="order" dir="ltr" maxlength="20"></label>
         <label class="field" data-f="msg"><span>رسالتك</span><textarea name="msg" rows="4" maxlength="1500"></textarea><em></em></label>
         <p class="form-err" hidden></p>
-        <button class="btn-violet wide" type="submit">${wa ? 'إرسال على واتساب' : ct.email ? 'إرسال بالإيميل' : 'إرسال'}</button>
+        ${cloud && !D.auth.user ? '<label class="field" data-f="contact"><span>هاتف أو إيميل لنرد عليك</span><input name="contact" type="text" dir="ltr" autocomplete="tel" maxlength="120"><em></em></label>' : ''}
+        <button class="btn-violet wide" type="submit">${cloud ? 'إرسال' : wa ? 'إرسال على واتساب' : ct.email ? 'إرسال بالإيميل' : 'إرسال'}</button>
       </form></div>`;
     const f = $('#contactForm');
     const prof = D.auth.profile; if (prof && prof.full_name) f.name.value = prof.full_name;
-    f.addEventListener('submit', (e) => {
+    f.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (f.name.value.trim().length < 2) return showErr(f, 'name', 'اكتب اسمك');
       if (f.msg.value.trim().length < 5) return showErr(f, 'msg', 'اكتب رسالتك');
+      if (cloud) {
+        if (f.contact && S.toLatinDigits(f.contact.value).replace(/\s/g, '').length < 6) return showErr(f, 'contact', 'اكتب رقم هاتف أو إيميل');
+        busy(f, true);
+        try {
+          const r = await D.support.start({ name: f.name.value.trim(), contact: f.contact ? S.toLatinDigits(f.contact.value.trim()) : '', subject: 'رسالة من صفحة التواصل', body: f.msg.value.trim(), orderId: f.order.value.trim() });
+          f.reset(); showErr(f, null, '');
+          R().toast('وصلتنا رسالتك. فيك تتابع الرد هون أو من زر المساعدة.');
+          if (window.raffHelp) window.raffHelp.thread(r.id);
+        } catch (err) { showErr(f, null, D.friendly(err)); }
+        busy(f, false);
+        return;
+      }
       const text = `مرحبا ${c.name || ''}،\n${f.msg.value.trim()}\n\n${f.name.value.trim()}${f.order.value.trim() ? `\nرقم الطلب: ${f.order.value.trim()}` : ''}`;
       if (wa) window.open(`https://wa.me/${wa}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
       else if (ct.email) location.href = `mailto:${ct.email}?subject=${encodeURIComponent(`رسالة من ${f.name.value.trim()}`)}&body=${encodeURIComponent(text)}`;

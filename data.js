@@ -27,6 +27,11 @@
     items_invalid: 'السلة فاضية',
     method_unavailable: 'طريقة الدفع هاي مش متاحة حالياً',
     last_admin: 'هيدا حساب المدير الوحيد. ما فيك تحذفه من هون.',
+    contact_required: 'اكتب رقم هاتف أو إيميل لنرد عليك',
+    message_length: 'الرسالة لازم تكون بين حرفين و٢٠٠٠ حرف',
+    too_many_messages: 'رسائل كتير ورا بعض. استنى شوي وجرّب مرة تانية.',
+    question_length: 'السؤال لازم يكون ٣ أحرف أو أكثر',
+    not_found: 'المحادثة مش موجودة أو الرابط انتهى',
     not_signed_in: 'لازم تسجّل دخول أولاً',
     'Invalid login credentials': 'الإيميل أو كلمة السر غلط',
     'Email not confirmed': 'لازم تأكد إيميلك أولاً. شوف بريدك (وكمان الرسائل غير المرغوبة).',
@@ -276,8 +281,52 @@
     async add(pid, rating, body) { must(await client.from('reviews').insert({ product_id: pid, rating, body })); },
   };
 
+  /* ---------- Answer system: conversations + product Q&A ---------- */
+  const threadsKey = 'raff.threads';
+  const support = {
+    saved() { return ls.get(threadsKey, []); },
+    remember(t) { const l = support.saved().filter((x) => x.id !== t.id); l.unshift(t); ls.set(threadsKey, l.slice(0, 20)); },
+    tokenOf(id) { const t = support.saved().find((x) => x.id === id); return t ? t.token : ''; },
+    async start(p) {
+      const r = must(await client.rpc('start_conversation', { p: {
+        name: p.name || '', contact: p.contact || '', subject: p.subject || '', body: p.body,
+        order_id: p.orderId || '', product_id: p.productId ? String(p.productId) : '', bot: (p.bot || []).slice(0, 5),
+      } }));
+      support.remember({ id: r.id, token: r.token, subject: p.subject || '', at: Date.now() });
+      return r;
+    },
+    async get(id) { return must(await client.rpc('get_conversation', { p_id: id, p_token: support.tokenOf(id) })); },
+    async reply(id, body) { must(await client.rpc('reply_conversation', { p_id: id, p_token: support.tokenOf(id), p_body: body })); },
+    async list() {
+      const out = new Map();
+      if (user) {
+        const rows = must(await client.from('conversations').select('id,subject,status,unread_customer,last_message,updated_at').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(50));
+        rows.forEach((r) => out.set(r.id, { ...r, updatedAt: new Date(r.updated_at).getTime() }));
+      }
+      // guest threads remembered on this device
+      await Promise.all(support.saved().slice(0, 10).filter((t) => !out.has(t.id)).map(async (t) => {
+        try {
+          const c = await support.get(t.id);
+          if (c) {
+            const last = c.messages[c.messages.length - 1] || {};
+            out.set(c.id, { id: c.id, subject: c.subject, status: c.status, unread_customer: last.sender === 'admin' && (t.seen || 0) < new Date(last.created_at).getTime(), last_message: last.body || '', updatedAt: new Date(c.updated_at).getTime() });
+          }
+        } catch { /* expired or offline */ }
+      }));
+      return [...out.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+    },
+    markSeen(id) { const l = support.saved().map((x) => (x.id === id ? { ...x, seen: Date.now() } : x)); ls.set(threadsKey, l); },
+  };
+  const qa = {
+    async list(pid) {
+      if (mode !== 'cloud') return [];
+      return must(await client.from('product_questions').select('id,question,answer,author,status,created_at,answered_at,user_id').eq('product_id', pid).order('created_at', { ascending: false }).limit(50));
+    },
+    async ask(pid, question, name) { must(await client.rpc('ask_question', { p_product: pid, p_question: question, p_name: name || '' })); },
+  };
+
   window.RaffData = {
     mode, cfg, client, ready, friendly, must, fromRow, toRow, orderFromRow,
-    catalog, auth, checkCoupon, localCoupon, sha, placeOrder, myOrders, trackOrder, wishlist, addresses, reviews,
+    support, qa, catalog, auth, checkCoupon, localCoupon, sha, placeOrder, myOrders, trackOrder, wishlist, addresses, reviews,
   };
 })();
