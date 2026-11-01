@@ -348,4 +348,42 @@
 
   renderCart();
   renderSaved();
+
+  /* ---------- 3D: card tilt ---------- */
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (matchMedia('(pointer: fine)').matches && !reduceMotion) {
+    let tilted = null;
+    const reset = (el) => { el.style.transform = ''; el.style.removeProperty('--gx'); el.classList.remove('tilting'); };
+    document.addEventListener('pointermove', (e) => {
+      const el = e.target.closest('.pcard:not(.mini), .spot, .tile, .feature');
+      if (tilted && tilted !== el) reset(tilted);
+      tilted = el;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      const k = el.classList.contains('feature') ? 5 : 9;
+      el.classList.add('tilting');
+      el.style.transform = `perspective(900px) rotateX(${(-py * k).toFixed(2)}deg) rotateY(${(px * k).toFixed(2)}deg) translateZ(0) translateY(-4px)`;
+      el.style.setProperty('--gx', `${((px + 0.5) * 100).toFixed(1)}%`);
+      el.style.setProperty('--gy', `${((py + 0.5) * 100).toFixed(1)}%`);
+    }, { passive: true });
+    document.addEventListener('pointerleave', () => tilted && reset(tilted));
+  }
+
+  /* ---------- 3D: sections rise into place ---------- */
+  if ('IntersectionObserver' in window && !reduceMotion) {
+    const io = new IntersectionObserver((ens) => ens.forEach((en) => {
+      if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+    }), { rootMargin: '0px 0px -10% 0px' });
+    document.querySelectorAll('.band:not(#results)').forEach((b) => { b.classList.add('rise'); io.observe(b); });
+  }
+
+  /* ---------- 3D hero (loaded after first paint) ---------- */
+  window.raff = { open: openQV, products: byId, money };
+  const load = (src) => new Promise((ok, no) => {
+    const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.body.append(s);
+  });
+  const boot = () => load('../assets/js/three.min.js').then(() => load('store3d.js?v=3')).catch(() => { /* keep flat hero */ });
+  if (document.readyState === 'complete') boot(); else addEventListener('load', boot, { once: true });
 })();
