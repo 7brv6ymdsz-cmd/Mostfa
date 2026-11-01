@@ -584,7 +584,8 @@
   VIEWS.orders = (arg) => {
     if (arg === 'unpaid') oFilter = 'unpaid';
     else if (arg && arg.startsWith('phone:')) { oQuery = arg.slice(6); oFilter = 'all'; }
-    setActions(CLOUD ? `<button class="btn" type="button" data-act="reload">${ic('refresh')}<span>تحديث</span></button>` : `<button class="btn" type="button" data-act="sync">${ic('download')}<span>من هالجهاز</span></button><button class="btn violet" type="button" data-act="import">${ic('import')}<span>استيراد طلب</span></button>`);
+    const csvBtn = `<button class="btn" type="button" data-act="csv-orders" title="تصدير الطلبات">${ic('download')}<span>تصدير</span></button>`;
+    setActions(CLOUD ? `${csvBtn}<button class="btn" type="button" data-act="reload">${ic('refresh')}<span>تحديث</span></button>` : `${csvBtn}<button class="btn" type="button" data-act="sync">${ic('download')}<span>من هالجهاز</span></button><button class="btn violet" type="button" data-act="import">${ic('import')}<span>استيراد طلب</span></button>`);
     const counts = { all: state.orders.length, unpaid: state.orders.filter((o) => live(o) && !o.paid).length };
     Object.keys(STATUS).forEach((k) => { counts[k] = state.orders.filter((o) => o.status === k).length; });
     $('#view').innerHTML = `
@@ -1051,6 +1052,7 @@
   /* ---------- Settings ---------- */
   VIEWS.settings = () => {
     const s = state.settings;
+    const ct = s.contact || {}, pg = s.pages || {};
     const demoN = state.orders.filter((o) => o.demo).length;
     $('#view').innerHTML = `
       <form class="settings" id="setForm" novalidate>
@@ -1064,6 +1066,28 @@
             ${field('شريط الإعلان', `<input name="banner" maxlength="60" value="${esc(s.banner)}" placeholder="مثلاً: توصيل مجاني فوق ٥٠$">`, 'اتركه فاضي لتخفي الشريط')}
             ${field('سطر تحت الإعلان', `<input name="bannerSub" maxlength="60" value="${esc(s.bannerSub)}">`)}
           </div>
+        </section>
+        <section class="card set-card">
+          <div class="set-head"><span class="set-ic">${ic('whatsapp')}</span><div><h2>التواصل والسوشال</h2><p class="muted">بيطلعوا بصفحة «تواصل معنا» وبأسفل المتجر. اتركه فاضي لتخفيه.</p></div></div>
+          <div class="three">
+            ${field('الإيميل', `<input name="cEmail" type="email" dir="ltr" value="${esc(ct.email)}" maxlength="120">`)}
+            ${field('الهاتف', `<input name="cPhone" type="tel" dir="ltr" value="${esc(ct.phone)}" maxlength="40">`)}
+            ${field('العنوان / ساعات العمل', `<input name="cAddress" value="${esc(ct.address)}" maxlength="160">`)}
+          </div>
+          <div class="three">
+            ${field('Instagram', `<input name="cInstagram" dir="ltr" placeholder="https://instagram.com/…" value="${esc(ct.instagram)}" maxlength="200">`)}
+            ${field('TikTok', `<input name="cTiktok" dir="ltr" placeholder="https://tiktok.com/@…" value="${esc(ct.tiktok)}" maxlength="200">`)}
+            ${field('Facebook', `<input name="cFacebook" dir="ltr" placeholder="https://facebook.com/…" value="${esc(ct.facebook)}" maxlength="200">`)}
+          </div>
+        </section>
+        <section class="card set-card">
+          <div class="set-head"><span class="set-ic">${ic('orders')}</span><div><h2>صفحات المتجر</h2><p class="muted">نصوص «من نحن» والتوصيل والإرجاع والأسئلة الشائعة. سطر فاضي بيفصل بين الفقرات.</p></div></div>
+          ${field('من نحن', `<textarea name="pAbout" rows="4" maxlength="3000">${esc(pg.about)}</textarea>`)}
+          <div class="two">
+            ${field('سياسة التوصيل', `<textarea name="pShipping" rows="5" maxlength="3000">${esc(pg.shipping)}</textarea>`)}
+            ${field('سياسة الإرجاع', `<textarea name="pReturns" rows="5" maxlength="3000">${esc(pg.returns)}</textarea>`)}
+          </div>
+          ${field('الأسئلة الشائعة', `<textarea name="pFaq" rows="6" maxlength="5000" placeholder="كل سؤال بسطر لحاله، وتحته جوابه، وسطر فاضي بين كل سؤال والتاني">${esc(pg.faq)}</textarea>`, 'مثال: «قديش بياخد التوصيل؟» وتحته «من ٢ لـ ٤ أيام»')}
         </section>
         <section class="card set-card">
           <div class="set-head"><span class="set-ic">${ic('products')}</span><div><h2>التصنيفات</h2><p class="muted">بالترتيب يلي بتطلع فيه بالمتجر.</p></div></div>
@@ -1137,7 +1161,15 @@
       collectCats();
       if (state.categories.some((c) => !c.name)) { toast('في تصنيف بلا اسم'); return; }
       if (!f.name.value.trim()) { toast('اكتب اسم المتجر'); f.name.focus(); return; }
-      Object.assign(s, { name: f.name.value.trim(), tagline: f.tagline.value.trim(), banner: f.banner.value.trim(), bannerSub: f.bannerSub.value.trim() });
+      const url = (v) => { v = v.trim(); return /^https:\/\/[^\s"'<>]+$/i.test(v) ? v : ''; };
+      const badUrl = ['cInstagram', 'cTiktok', 'cFacebook'].find((k) => f[k].value.trim() && !url(f[k].value));
+      if (badUrl) { toast('روابط السوشال لازم تبلّش بـ https://'); f[badUrl].focus(); return; }
+      if (f.cEmail.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.cEmail.value.trim())) { toast('الإيميل مش صحيح'); f.cEmail.focus(); return; }
+      Object.assign(s, {
+        name: f.name.value.trim(), tagline: f.tagline.value.trim(), banner: f.banner.value.trim(), bannerSub: f.bannerSub.value.trim(),
+        contact: { email: f.cEmail.value.trim(), phone: S.toLatinDigits(f.cPhone.value).replace(/[^\d+ ]/g, '').trim(), address: f.cAddress.value.trim(), instagram: url(f.cInstagram.value), tiktok: url(f.cTiktok.value), facebook: url(f.cFacebook.value) },
+        pages: { about: f.pAbout.value.trim(), shipping: f.pShipping.value.trim(), returns: f.pReturns.value.trim(), faq: f.pFaq.value.trim() },
+      });
       if (CLOUD) {
         const removed = catsBefore.filter((id) => !state.categories.some((c) => c.id === id));
         try { await cloudDo(async () => { await cloudApi.saveCategories(removed); await cloudApi.saveSettings(); }, 'انحفظ ووصل للمتجر'); } catch { return; }
@@ -1462,6 +1494,16 @@ window.RAFF_CONFIG = {
           state.orders = state.orders.filter((x) => x.id !== d.id); save(); closeSheet(); toast('انحذف الطلب'); route();
         });
         break;
+      case 'csv-orders': {
+        const head = ['order', 'date', 'status', 'paid', 'method', 'name', 'phone', 'email', 'city', 'address', 'items', 'subtotal', 'discount', 'coupon', 'shipping', 'total'];
+        const rows = state.orders.map((o) => [o.id, new Date(o.createdAt).toISOString().slice(0, 16).replace('T', ' '), STATUS[o.status].t, o.paid ? 'نعم' : 'لا', S.METHODS[o.method] || o.method,
+          o.customer.name, o.customer.phone, o.customer.email || '', o.customer.city, o.customer.address,
+          o.items.map((x) => `${x.name}${optsText(x.options) ? ` (${optsText(x.options)})` : ''} × ${x.qty}`).join(' | '), o.subtotal, o.discount || 0, o.coupon || '', o.shipping, o.total]);
+        const cell = (v) => { const s2 = String(v ?? ''); return /^[=+\-@]/.test(s2) ? `"'${s2.replace(/"/g, '""')}"` : `"${s2.replace(/"/g, '""')}"`; };
+        download(`orders-${new Date().toISOString().slice(0, 10)}.csv`, '\ufeff' + [head].concat(rows).map((r) => r.map(cell).join(',')).join('\n'), 'text/csv');
+        toast(`انصدّر ${num(rows.length)} طلب`);
+        break;
+      }
       case 'csv': {
         const rows = [['name', 'phone', 'city', 'orders', 'spent', 'last_order']].concat((VIEWS.customers.list || []).map((c) => [c.name, c.phone, c.city, c.n, c.spent.toFixed(2), new Date(c.last).toISOString().slice(0, 10)]));
         const cell = (v) => { const s = String(v); return /^[=+\-@]/.test(s) ? `"'${s.replace(/"/g, '""')}"` : `"${s.replace(/"/g, '""')}"`; };

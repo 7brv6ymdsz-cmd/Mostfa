@@ -1006,3 +1006,46 @@ body.on-page .hero, body.on-page #main { display: none; }
 .timeline li > div { display: flex; flex-direction: column; gap: 2px; }
 .pw input { padding-left: 48px !important; padding-right: 16px !important; }
 .pw-eye { inset-inline-end: auto; left: 6px; }
+
+/* ---------- v6: info pages, socials, sorting, account deletion ---------- */
+a.banner { color: #fff; text-decoration: none; transition: background .2s; }
+a.banner:hover { background: #1a1a1a; }
+.socials { display: flex; gap: 8px; margin-top: 16px; }
+.socials:empty { display: none; }
+.socials a { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.1); color: #fff; transition: background .2s; }
+.socials a:hover { background: rgba(255,255,255,.2); }
+.socials.big a { width: 48px; height: 48px; background: #fff; color: var(--color-ink-black); box-shadow: var(--shadow-sm); }
+.socials.big a:hover { background: var(--color-canvas-mist); }
+.info .lead { font-size: var(--text-body-lg); margin: -10px 0 20px; }
+.info .pi { width: 22px; height: 22px; }
+.facts { list-style: none; margin: 0 0 20px; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.facts li { background: #fff; border-radius: 22px; padding: 16px 18px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+.facts b { font-size: 24px; font-weight: 600; }
+.facts span { font-size: var(--text-body-sm); color: var(--color-muted-gray); }
+.faq-list { display: flex; flex-direction: column; gap: 8px; }
+.faq-list details { background: #fff; border-radius: 20px; box-shadow: var(--shadow-sm); padding: 0 20px; }
+.faq-list summary { cursor: pointer; list-style: none; padding: 18px 0; font-size: var(--text-body-lg); font-weight: 600; display: flex; justify-content: space-between; gap: 12px; }
+.faq-list summary::-webkit-details-marker { display: none; }
+.faq-list summary::after { content: "+"; font-size: 22px; line-height: 1; color: var(--color-muted-gray); transition: transform .2s; }
+.faq-list details[open] summary::after { transform: rotate(45deg); }
+.faq-list details > div { padding-bottom: 18px; }
+.faq-list details p { font-size: var(--text-body-lg); margin: 0; }
+.info-help { margin-top: 32px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: #fff; border-radius: 22px; padding: 16px 20px; box-shadow: var(--shadow-sm); }
+.info-help span { font-size: var(--text-body-lg); font-weight: 500; }
+.ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.way { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 22px; padding: 16px 18px; box-shadow: var(--shadow-sm); transition: transform .2s var(--ease); }
+.way:hover { transform: translateY(-2px); }
+.way b { display: block; font-size: var(--text-body-lg); font-weight: 600; }
+.way small { font-size: var(--text-body-sm); color: var(--color-muted-gray); }
+.addr-line { display: flex; align-items: center; gap: 8px; font-size: var(--text-body-lg); color: var(--color-slate-ink); }
+.contact-form { margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+.contact-form h2 { margin-bottom: 4px; }
+.results-tools { display: flex; align-items: center; gap: 8px; }
+.sort-sel { height: 34px; padding: 0 32px 0 14px; border-radius: var(--radius-full); border: 1px solid var(--color-faint-border); background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23787574' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat left 10px center / 14px; padding-inline: 14px 32px; font-size: var(--text-body-sm); font-weight: 500; appearance: none; box-shadow: var(--shadow-sm); }
+.danger-card { margin-top: 12px; }
+.danger-card summary { cursor: pointer; font-weight: 600; color: #b3261e; }
+.danger-card[open] { display: flex; flex-direction: column; gap: 12px; }
+.danger-card p { margin-top: 10px; font-size: var(--text-body); line-height: 1.7; }
+.btn-danger { align-self: flex-start; height: 44px; padding: 0 20px; border-radius: var(--radius-full); background: #b3261e; color: #fff; font-weight: 500; }
+.btn-danger[disabled] { background: var(--color-cool-stone); cursor: not-allowed; }
+@media (max-width: 720px) { .results-tools .sort-sel { max-width: 150px; } }

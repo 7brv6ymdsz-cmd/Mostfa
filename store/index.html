@@ -10,9 +10,20 @@
 <title>رَفّ · متاجر صغيرة، أشياء تحبها</title>
 <meta name="description" content="رَفّ: اكتشف منتجات من متاجر صغيرة مستقلة. فخار، أزياء، عناية، نباتات وأشياء للبيت، في مكان واحد هادئ.">
 <link rel="canonical" href="https://7brv6ymdsz-cmd.github.io/Mostfa/store/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ar_AR">
+<meta property="og:site_name" content="رَفّ">
+<meta property="og:title" content="رَفّ · متاجر صغيرة، أشياء تحبها">
+<meta property="og:description" content="اكتشف منتجات من متاجر صغيرة مستقلة: فخار، أزياء، عناية، نباتات وأشياء للبيت. الدفع عند الاستلام أو عبر PayPal.">
+<meta property="og:url" content="https://7brv6ymdsz-cmd.github.io/Mostfa/store/">
+<meta property="og:image" content="https://7brv6ymdsz-cmd.github.io/Mostfa/store/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="apple-touch-icon" href="og.png">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../assets/css/fonts.css">
-<link rel="stylesheet" href="store.css?v=5">
+<link rel="stylesheet" href="store.css?v=6">
 </head>
 <body>
 
@@ -39,11 +50,11 @@
 </nav>
 
 <div class="page">
-  <div class="banner">
+  <a class="banner" href="#/shipping" aria-label="تفاصيل التوصيل">
     <span class="banner-icon" aria-hidden="true">ر</span>
     <p><b id="bannerTitle"></b><small id="bannerSub"></small></p>
     <svg class="banner-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
-  </div>
+  </a>
 
   <div class="topbar">
     <a class="topbar-brand" href="#/" data-brand-sm>رَفّ<span class="dot"></span></a>
@@ -76,7 +87,17 @@
     <section class="band" id="results" hidden aria-live="polite">
       <div class="band-head">
         <h2 id="resultsTitle">النتائج</h2>
-        <button class="clear" type="button" data-action="clear">مسح</button>
+        <div class="results-tools">
+          <label class="sr" for="sortSel">ترتيب</label>
+          <select id="sortSel" class="sort-sel">
+            <option value="">الأنسب</option>
+            <option value="price-asc">السعر: من الأقل</option>
+            <option value="price-desc">السعر: من الأعلى</option>
+            <option value="rating">الأعلى تقييماً</option>
+            <option value="new">الأحدث</option>
+          </select>
+          <button class="clear" type="button" data-action="clear">مسح</button>
+        </div>
       </div>
       <div class="grid" id="resultsGrid"></div>
       <p class="empty" id="resultsEmpty" hidden>ما لقينا شي بهالاسم. جرّب كلمة ثانية.</p>
@@ -104,13 +125,14 @@
     <div class="foot-inner">
       <div class="foot-brand">
         <span class="foot-mark" data-brand>رَفّ<span class="dot"></span></span>
-        <p>نجمع لك أجمل ما تصنعه المتاجر الصغيرة، في مكان واحد هادئ.</p>
+        <p id="footAbout">نجمع لك أجمل ما تصنعه المتاجر الصغيرة، في مكان واحد هادئ.</p>
+        <div class="socials" id="footSocial"></div>
       </div>
       <div class="foot-cols">
         <div id="footShop"><h3>تسوّق</h3></div>
         <div><h3>حسابي</h3><a href="#/account">حسابي</a><a href="#/orders">طلباتي</a><a href="#/wishlist">المفضلة</a><a href="#/track">تتبّع طلب</a></div>
-        <div><h3>المتجر</h3><a href="#picks">مختارات</a><a href="#stores">المتاجر</a><a href="admin/">لوحة الإدارة</a></div>
-        <div><h3>مساعدة</h3><a href="#top">التوصيل</a><a href="#top">الإرجاع</a><a href="#top">تواصل معنا</a></div>
+        <div><h3>المتجر</h3><a href="#/about">من نحن</a><a href="#picks">مختارات</a><a href="#/terms">الشروط والخصوصية</a><a href="admin/">لوحة الإدارة</a></div>
+        <div><h3>مساعدة</h3><a href="#/shipping">التوصيل</a><a href="#/returns">الإرجاع</a><a href="#/faq">الأسئلة الشائعة</a><a href="#/contact">تواصل معنا</a></div>
       </div>
     </div>
     <p class="foot-legal"><span id="footYear"></span> · الدفع يتم عبر PayPal أو تحويل بنكي أو عند الاستلام. ما منطلب ولا منخزّن أرقام بطاقات.</p>
@@ -202,8 +224,8 @@
 <script src="config.js?v=5"></script>
 <script src="vendor/supabase.min.js?v=2.45.4"></script>
 <script src="shared.js?v=5"></script>
-<script src="data.js?v=5"></script>
-<script src="store.js?v=5"></script>
-<script src="pages.js?v=5"></script>
+<script src="data.js?v=6"></script>
+<script src="store.js?v=6"></script>
+<script src="pages.js?v=6"></script>
 </body>
 </html>

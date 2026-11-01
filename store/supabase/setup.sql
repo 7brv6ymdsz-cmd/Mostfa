@@ -330,6 +330,17 @@ drop trigger if exists reviews_rollup on public.reviews;
 create trigger reviews_rollup after insert or update or delete on public.reviews for each row execute function public.reviews_rollup();
 
 -- =====================================================================
+-- Customers can delete their own account (orders stay, unlinked)
+-- =====================================================================
+create or replace function public.delete_my_account()
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'not_signed_in'; end if;
+  if public.is_admin() and (select count(*) from public.admins) = 1 then raise exception 'last_admin'; end if;
+  delete from auth.users where id = auth.uid();
+end $$;
+
+-- =====================================================================
 -- Row level security
 -- =====================================================================
 alter table public.settings enable row level security;
@@ -404,6 +415,8 @@ grant execute on function public.can_review(bigint) to authenticated;
 grant execute on function public.claim_admin() to authenticated;
 grant execute on function public.admin_set_status(text, text) to authenticated;
 revoke execute on function public.claim_admin() from public, anon;
+revoke execute on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
 revoke execute on function public.admin_set_status(text, text) from public, anon;
 revoke execute on function public.can_review(bigint) from public, anon;
 revoke execute on function public.handle_new_user() from public, anon, authenticated;

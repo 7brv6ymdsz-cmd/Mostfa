@@ -148,6 +148,9 @@
       const cat = CATS.find((c) => c.id === p.cat);
       return words.every((w) => norm(`${p.name} ${p.store} ${cat ? cat.name : ''} ${p.desc || ''}`).includes(w));
     });
+    const sort = $('#sortSel').value;
+    const sorters = { 'price-asc': (x, y) => x.price - y.price, 'price-desc': (x, y) => y.price - x.price, rating: (x, y) => (y.rating || 0) - (x.rating || 0) || (y.reviews || 0) - (x.reviews || 0), new: (x, y) => y.id - x.id };
+    if (sorters[sort]) list.sort(sorters[sort]);
     const catName = activeCat ? (CATS.find((c) => c.id === activeCat) || {}).name : '';
     const raw = $('#q').value.trim();
     $('#resultsTitle').textContent = raw && catName ? `«${raw}» في ${catName}` : raw ? `نتائج «${raw}»` : catName;
@@ -157,6 +160,7 @@
     results.hidden = false;
     if (scroll) results.scrollIntoView({ block: 'start' });
   };
+  $('#sortSel').addEventListener('change', () => runSearch(false));
   $('#searchForm').addEventListener('submit', (e) => { e.preventDefault(); runSearch(true); $('#q').blur(); });
   let t;
   $('#q').addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => runSearch(false), 160); });
@@ -508,7 +512,7 @@
       case 'checkout': startCheckout(); break;
       case 'apply-coupon': applyCoupon(); break;
       case 'back-to-cart': view('cart'); break;
-      case 'clear': $('#q').value = ''; activeCat = null; syncPills(); results.hidden = true; break;
+      case 'clear': $('#q').value = ''; $('#sortSel').value = ''; activeCat = null; syncPills(); results.hidden = true; break;
     }
   });
   scrim.addEventListener('click', closeCart);

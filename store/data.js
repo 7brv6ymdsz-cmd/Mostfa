@@ -26,6 +26,8 @@
     address_required: 'اكتب المدينة والعنوان بالتفصيل',
     items_invalid: 'السلة فاضية',
     method_unavailable: 'طريقة الدفع هاي مش متاحة حالياً',
+    last_admin: 'هيدا حساب المدير الوحيد. ما فيك تحذفه من هون.',
+    not_signed_in: 'لازم تسجّل دخول أولاً',
     'Invalid login credentials': 'الإيميل أو كلمة السر غلط',
     'Email not confirmed': 'لازم تأكد إيميلك أولاً. شوف بريدك (وكمان الرسائل غير المرغوبة).',
     'User already registered': 'في حساب بهالإيميل. جرّب تسجّل دخول.',
@@ -135,6 +137,7 @@
       must(await client.from('profiles').update({ full_name, phone }).eq('id', user.id));
       profile = { ...profile, full_name, phone }; emit();
     },
+    async deleteAccount() { must(await client.rpc('delete_my_account')); await client.auth.signOut(); user = null; profile = null; emit(); },
     async resend(email) { must(await client.auth.resend({ type: 'signup', email, options: { emailRedirectTo: redirect('#/account') } })); },
   };
 

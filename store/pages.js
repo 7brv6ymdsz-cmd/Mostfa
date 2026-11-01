@@ -28,6 +28,8 @@
     grid: '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
     search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
     check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+    chat: '<path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/>',
   };
   const svg = (n, c = 'pi') => `<svg class="${c}" viewBox="0 0 24 24" aria-hidden="true">${ic[n]}</svg>`;
   const fmtDate = (t, time = false) => new Intl.DateTimeFormat('ar-EG', time ? { day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' } : { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(t));
@@ -43,6 +45,14 @@
     return { name: parts[0] || 'home', arg: parts[1], q: new URLSearchParams(qs || '') };
   };
   const ROUTES = {};
+  const defaultDesc = (document.querySelector('meta[name="description"]') || {}).content || '';
+  function setMeta(desc, ld) {
+    const m = document.querySelector('meta[name="description"]'); if (m) m.content = String(desc).slice(0, 160);
+    let tag = document.getElementById('ldjson');
+    if (!ld) { if (tag) tag.remove(); return; }
+    if (!tag) { tag = document.createElement('script'); tag.type = 'application/ld+json'; tag.id = 'ldjson'; document.head.append(tag); }
+    tag.textContent = JSON.stringify(ld).replace(/</g, '\\u003c');
+  }
   let lastName = null;
   async function route() {
     if (/access_token=|error_description=/.test(location.hash)) return; // Supabase is finishing a login from an email link
@@ -52,12 +62,14 @@
     page.hidden = !onPage;
     $$('[data-nav]').forEach((a) => a.classList.toggle('is-active', a.dataset.nav === (onPage ? navFor(r.name) : 'home')));
     if (!onPage) {
+      setMeta(defaultDesc, null);
       document.title = `${(R().CFG || {}).name || 'رَفّ'} · ${(R().CFG || {}).tagline || ''}`;
       if (lastName && lastName !== 'home' && !r.anchor) scrollTo(0, 0);
       if (r.anchor) { const el = document.getElementById(r.anchor); if (el) setTimeout(() => el.scrollIntoView({ block: 'start' }), 20); }
       lastName = 'home';
       return;
     }
+    if (r.name !== 'p') setMeta(defaultDesc, null);
     const fn = ROUTES[r.name];
     if (!fn) { location.hash = '#/'; return; }
     if (lastName !== r.name || r.name === 'p') scrollTo(0, 0);
@@ -104,6 +116,12 @@
     const sh = (R().CFG.shipping || {});
     const pay = R().CFG.payments || {};
     document.title = `${p.name} · ${R().CFG.name || ''}`;
+    setMeta(p.desc || `${p.name} من ${p.store}`, {
+      '@context': 'https://schema.org', '@type': 'Product', name: p.name, description: p.desc || '', brand: p.store ? { '@type': 'Brand', name: p.store } : undefined,
+      image: (p.images && p.images[0]) || undefined, sku: String(p.id),
+      offers: { '@type': 'Offer', price: String(p.price), priceCurrency: /^[A-Z]{3}$/.test(R().CFG.currencyCode || '') ? R().CFG.currencyCode : 'USD', availability: `https://schema.org/${R().inStock(p) ? 'InStock' : 'OutOfStock'}`, url: location.href },
+      aggregateRating: p.reviews ? { '@type': 'AggregateRating', ratingValue: String(p.rating), reviewCount: String(p.reviews) } : undefined,
+    });
     const pic = (src) => (src ? `<img src="${esc(src)}" alt="${esc(p.name)}" decoding="async">` : S.art({ ...p, img: '' }));
 
     page.innerHTML = `
@@ -437,7 +455,12 @@
           <p class="form-err" hidden></p>
           <button class="btn-ghost" type="submit">تغيير كلمة السر</button>
         </form>
-      </div>`);
+      </div>
+      <details class="pg-card danger-card"><summary>حذف الحساب</summary>
+        <p class="muted">رح ينحذف حسابك وعناوينك ومفضّلتك نهائياً. الطلبات القديمة بتضل عند المتجر للفواتير بس بتنفصل عن حسابك. ما في تراجع.</p>
+        <label class="field"><span>للتأكيد اكتب «احذف»</span><input id="delConfirm" autocomplete="off"></label>
+        <button class="btn-danger" type="button" id="delBtn" disabled>حذف حسابي نهائياً</button>
+      </details>`);
     const pf = $('#profForm');
     pf.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -446,6 +469,12 @@
       busy(pf, true);
       try { await D.auth.updateProfile({ full_name: name, phone }); R().toast('انحفظت معلوماتك'); } catch (err) { showErr(pf, null, err.message); }
       busy(pf, false);
+    });
+    $('#delConfirm').addEventListener('input', (e) => { $('#delBtn').disabled = e.target.value.trim() !== 'احذف'; });
+    $('#delBtn').addEventListener('click', async (e) => {
+      e.target.disabled = true; e.target.classList.add('busy');
+      try { await D.auth.deleteAccount(); R().toast('انحذف حسابك. منتمنّالك الخير.'); location.hash = '#/'; }
+      catch (err) { R().toast(D.friendly(err)); e.target.disabled = false; e.target.classList.remove('busy'); }
     });
     const wf = $('#pwForm');
     wf.addEventListener('submit', async (e) => {
@@ -619,8 +648,98 @@
       <h2>الحساب</h2><p>انت مسؤول عن سرية كلمة السر. إذا شكّيت إنو حدا دخل على حسابك، غيّر كلمة السر فوراً.</p></div>`;
   };
 
+  /* ================= Info pages ================= */
+  const paras = (txt) => String(txt || '').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean)
+    .map((b) => `<p>${esc(b).replace(/\n/g, '<br>')}</p>`).join('');
+  const SOC = {
+    instagram: ['Instagram', '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>'],
+    tiktok: ['TikTok', '<path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5"/><path d="M14 3c.5 2.6 2.4 4.4 5 4.6"/>'],
+    facebook: ['Facebook', '<path d="M14 21v-8h3l.5-3.5H14V7.6c0-1 .3-1.7 1.8-1.7h1.8V2.8A24 24 0 0 0 15 2.6c-2.6 0-4.4 1.6-4.4 4.5v2.4H7.7V13h2.9v8"/>'],
+  };
+  const socialLinks = (ct) => Object.keys(SOC).filter((k) => ct && /^https:\/\//.test(ct[k] || ''))
+    .map((k) => `<a href="${esc(ct[k])}" target="_blank" rel="noopener noreferrer" aria-label="${SOC[k][0]}" title="${SOC[k][0]}"><svg class="pi" viewBox="0 0 24 24" aria-hidden="true">${SOC[k][1]}</svg></a>`).join('');
+  const infoShell = (title, inner, sub = '') => `<div class="pg narrow prose info"><h1 class="pg-title">${title}</h1>${sub ? `<p class="lead muted">${sub}</p>` : ''}${inner}
+    <div class="info-help"><span>عندك سؤال تاني؟</span><a class="btn-dark" href="#/contact">تواصل معنا</a></div></div>`;
+  const cfg = () => R().CFG || {};
+  const pagesCfg = () => cfg().pages || {};
+
+  ROUTES.about = async () => {
+    const c = cfg();
+    document.title = `من نحن · ${c.name || ''}`;
+    page.innerHTML = infoShell(`عن ${esc(c.name || 'المتجر')}`, paras(pagesCfg().about) || `<p>${esc(c.name || 'متجرنا')} بيجمعلك منتجات مختارة بعناية، وبيوصلها لعندك بسهولة وأمان.</p><p>منهتم بكل طلب كأنه الوحيد، ومنحب نسمع رأيك.</p>`, esc(c.tagline || ''));
+  };
+  ROUTES.shipping = async () => {
+    const c = cfg(), sh = c.shipping || {}, money = R().money;
+    document.title = `التوصيل · ${c.name || ''}`;
+    const facts = `<ul class="facts">
+      <li><b>${sh.fee ? money(sh.fee) : 'مجاني'}</b><span>رسوم التوصيل</span></li>
+      ${sh.freeOver > 0 ? `<li><b>${money(sh.freeOver)}</b><span>توصيل مجاني فوق</span></li>` : ''}
+      <li><b>${['cod', 'paypal', 'bank'].filter((k) => (c.payments || {})[k] && c.payments[k].on).length || 1}</b><span>طرق دفع</span></li></ul>`;
+    page.innerHTML = infoShell('التوصيل', facts + (paras(pagesCfg().shipping) || '<p>بعد ما تطلب، منتواصل معك لنأكد العنوان والموعد. التوصيل عادةً بياخد من ٢ لـ ٥ أيام عمل حسب المدينة.</p><p>فيك تتابع حالة طلبك بأي وقت من صفحة «تتبّع طلبك» برقم الطلب ورقم هاتفك.</p>'));
+  };
+  ROUTES.returns = async () => {
+    const c = cfg();
+    document.title = `الإرجاع · ${c.name || ''}`;
+    page.innerHTML = infoShell('الإرجاع والاستبدال', paras(pagesCfg().returns) || '<p>فيك ترجع أو تبدّل المنتج خلال ١٤ يوم من استلامه، إذا كان بحالته الأصلية، أو إذا وصلك فيه عيب.</p><p>تواصل معنا برقم الطلب ومنرتّب الاستلام. بنرجّعلك المبلغ بنفس طريقة الدفع خلال أيام من وصول المنتج.</p>');
+  };
+  ROUTES.faq = async () => {
+    const c = cfg(), money = R().money, sh = c.shipping || {};
+    document.title = `الأسئلة الشائعة · ${c.name || ''}`;
+    const raw = pagesCfg().faq;
+    const items = raw ? raw.split(/\n\s*\n/).map((b) => b.trim().split('\n')).filter((l) => l[0]).map(([q, ...a]) => [q, a.join('\n')])
+      : [
+        ['كيف بدفع؟', `${[(c.payments || {}).cod && c.payments.cod.on ? 'نقداً عند الاستلام' : '', (c.payments || {}).paypal && c.payments.paypal.on ? 'عبر PayPal أو ببطاقتك على صفحة PayPal' : '', (c.payments || {}).bank && c.payments.bank.on ? 'بتحويل بنكي' : ''].filter(Boolean).join('، ') || 'نقداً عند الاستلام'}. ما منطلب أرقام بطاقات على موقعنا.`],
+        ['قديش التوصيل؟', sh.fee ? `${money(sh.fee)}${sh.freeOver > 0 ? `، ومجاني للطلبات فوق ${money(sh.freeOver)}` : ''}.` : 'التوصيل مجاني.'],
+        ['كيف بتابع طلبي؟', 'من صفحة «تتبّع طلبك» برقم الطلب ورقم هاتفك، أو من «طلباتي» إذا عندك حساب.'],
+        ['فيني رجّع المنتج؟', 'أكيد، خلال ١٤ يوم من الاستلام. التفاصيل بصفحة الإرجاع.'],
+        ['لازم أعمل حساب لأطلب؟', 'لا، فيك تطلب كضيف. الحساب بيسهّل عليك تتابع طلباتك وتحفظ عناوينك ومفضّلتك.'],
+      ];
+    page.innerHTML = infoShell('الأسئلة الشائعة', `<div class="faq-list">${items.map(([q, a], i) => `<details ${i === 0 ? 'open' : ''}><summary>${esc(q)}</summary><div>${paras(a) || ''}</div></details>`).join('')}</div>`);
+  };
+  ROUTES.contact = async () => {
+    const c = cfg(), ct = c.contact || {};
+    document.title = `تواصل معنا · ${c.name || ''}`;
+    const wa = String(c.whatsapp || '').replace(/\D/g, '');
+    const ways = [
+      wa ? `<a class="way" href="https://wa.me/${wa}" target="_blank" rel="noopener noreferrer">${svg('chat')}<span><b>واتساب</b><small dir="ltr">+${esc(wa)}</small></span></a>` : '',
+      ct.phone ? `<a class="way" href="tel:${esc(ct.phone.replace(/\s/g, ''))}">${svg('phone')}<span><b>اتصال</b><small dir="ltr">${esc(ct.phone)}</small></span></a>` : '',
+      ct.email ? `<a class="way" href="mailto:${esc(ct.email)}">${svg('mail')}<span><b>إيميل</b><small dir="ltr">${esc(ct.email)}</small></span></a>` : '',
+    ].filter(Boolean).join('');
+    page.innerHTML = `<div class="pg narrow prose info"><h1 class="pg-title">تواصل معنا</h1><p class="lead muted">منرد عليك بأسرع وقت. إذا سؤالك عن طلب، اذكر رقم الطلب.</p>
+      ${ways ? `<div class="ways">${ways}</div>` : ''}
+      ${ct.address ? `<p class="addr-line">${svg('pin')}<span>${esc(ct.address)}</span></p>` : ''}
+      ${socialLinks(ct) ? `<div class="socials big">${socialLinks(ct)}</div>` : ''}
+      <form class="pg-card contact-form" id="contactForm" novalidate>
+        <h2>ابعتلنا رسالة</h2>
+        <label class="field" data-f="name"><span>الاسم</span><input name="name" autocomplete="name" maxlength="80"><em></em></label>
+        <label class="field" data-f="order"><span>رقم الطلب (اختياري)</span><input name="order" dir="ltr" maxlength="20"></label>
+        <label class="field" data-f="msg"><span>رسالتك</span><textarea name="msg" rows="4" maxlength="1500"></textarea><em></em></label>
+        <p class="form-err" hidden></p>
+        <button class="btn-violet wide" type="submit">${wa ? 'إرسال على واتساب' : ct.email ? 'إرسال بالإيميل' : 'إرسال'}</button>
+      </form></div>`;
+    const f = $('#contactForm');
+    const prof = D.auth.profile; if (prof && prof.full_name) f.name.value = prof.full_name;
+    f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (f.name.value.trim().length < 2) return showErr(f, 'name', 'اكتب اسمك');
+      if (f.msg.value.trim().length < 5) return showErr(f, 'msg', 'اكتب رسالتك');
+      const text = `مرحبا ${c.name || ''}،\n${f.msg.value.trim()}\n\n${f.name.value.trim()}${f.order.value.trim() ? `\nرقم الطلب: ${f.order.value.trim()}` : ''}`;
+      if (wa) window.open(`https://wa.me/${wa}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+      else if (ct.email) location.href = `mailto:${ct.email}?subject=${encodeURIComponent(`رسالة من ${f.name.value.trim()}`)}&body=${encodeURIComponent(text)}`;
+      else { showErr(f, null, 'المتجر ما حط وسيلة تواصل لسا.'); return; }
+      R().toast('فتحنالك الرسالة جاهزة، بس اكبس إرسال');
+    });
+  };
+
+  function renderFooterExtras() {
+    const c = cfg();
+    const about = paras(pagesCfg().about);
+    if (about) { const first = String(pagesCfg().about).split(/\n\s*\n/)[0].trim(); $('#footAbout').textContent = first.length > 160 ? `${first.slice(0, 157)}…` : first; }
+    $('#footSocial').innerHTML = socialLinks(c.contact || {});
+  }
+
   /* ---------- Boot ---------- */
-  const start = () => { renderAccountChip(); route(); };
+  const start = () => { renderAccountChip(); renderFooterExtras(); route(); };
   if (R().isReady) start(); else R().onReady.push(start);
   D.ready.then(renderAccountChip);
 })();
