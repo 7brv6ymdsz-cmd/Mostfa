@@ -130,16 +130,24 @@
     },
   };
 
-  // product id ↔ 3D model, placed as fractions of the visible width
-  const ITEMS = [
-    { id: 7, kind: 'serum', fx: -0.86, y: 0.35, s: 1.05, phone: false },
-    { id: 1, kind: 'mug', fx: -0.56, y: -0.55, s: 1.15, phone: true },
-    { id: 6, kind: 'headphones', fx: -0.24, y: 0.85, s: 1.1, phone: true },
-    { id: 11, kind: 'vase', fx: 0.06, y: -0.3, s: 1.1, phone: true },
-    { id: 10, kind: 'candle', fx: 0.36, y: 0.75, s: 1.05, phone: false },
-    { id: 5, kind: 'plant', fx: 0.6, y: -0.45, s: 1.15, phone: true },
-    { id: 17, kind: 'speaker', fx: 0.88, y: 0.4, s: 0.95, phone: false },
+  // Each 3D model stands in for the first visible product of that kind (products with their own photo stay 2D).
+  const SLOTS = [
+    { fx: -0.86, y: 0.35, s: 1.05 }, { fx: -0.56, y: -0.55, s: 1.15 }, { fx: -0.24, y: 0.85, s: 1.1 },
+    { fx: 0.06, y: -0.3, s: 1.1 }, { fx: 0.36, y: 0.75, s: 1.05 }, { fx: 0.6, y: -0.45, s: 1.15 }, { fx: 0.88, y: 0.4, s: 0.95 },
   ];
+  const all = [...(window.raff?.products?.values() || [])];
+  const ORDER = ['serum', 'mug', 'headphones', 'vase', 'candle', 'plant', 'speaker'];
+  const ITEMS = ORDER.map((kind) => {
+    const p = all.find((x) => x.kind === kind && !x.img && x.featured) || all.find((x) => x.kind === kind && !x.img);
+    return p ? { id: p.id, kind } : null;
+  }).filter(Boolean).map((it, i, arr) => {
+    // spread whatever we have evenly across the slots
+    const slot = SLOTS[arr.length >= SLOTS.length ? i : Math.round(i * (SLOTS.length - 1) / Math.max(1, arr.length - 1))];
+    return { ...it, ...slot };
+  });
+  if (ITEMS.length < 3) return;
+  const mid = Math.floor(ITEMS.length / 2);
+  ITEMS.forEach((it, i) => { it.phone = Math.abs(i - mid + 0.5) <= 2 && ITEMS.filter((x) => x.phone).length < 4; });
 
   const world = new T.Group();
   scene.add(world);
@@ -198,7 +206,8 @@
     host.classList.toggle('is-hover', !!it);
     if (it && products) {
       const p = products.get(it.id);
-      tip.innerHTML = `<b>${p.name}</b><span>${p.store} · ${window.raff.money(p.price)}</span>`;
+      const e = window.RaffShared.esc;
+      tip.innerHTML = `<b>${e(p.name)}</b><span>${e(p.store)} · ${e(window.raff.money(p.price))}</span>`;
       tip.style.transform = `translate(${cx}px, ${cy}px)`;
       tip.classList.add('show');
     } else tip.classList.remove('show');

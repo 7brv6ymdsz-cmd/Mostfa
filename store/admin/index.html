@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f2f4f5">
+<title>لوحة الإدارة · رَفّ</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../assets/css/fonts.css">
+<link rel="stylesheet" href="admin.css?v=1">
+</head>
+<body>
+
+<!-- Lock -->
+<div class="lock" id="lock">
+  <form class="lock-card" id="lockForm" novalidate>
+    <div class="lock-mark">رَفّ<span class="dot"></span></div>
+    <p class="lock-sub">لوحة الإدارة</p>
+    <p class="lock-msg" id="lockMsg">اكتب الرمز السري لتفتح اللوحة.</p>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••••" aria-label="الرمز السري">
+    <input id="pin2" type="password" inputmode="numeric" autocomplete="new-password" placeholder="أعد كتابة الرمز" aria-label="تأكيد الرمز" hidden>
+    <p class="err" id="lockErr" hidden></p>
+    <button class="btn violet wide" type="submit" id="lockSubmit">فتح</button>
+    <button class="link" type="button" id="forgotBtn">نسيت الرمز؟</button>
+    <div class="forgot" id="forgotBox" hidden>
+      <p class="err">رح ينمسح كل شي محفوظ بلوحة الإدارة على هالجهاز (الطلبات والتعديلات غير المنشورة)، وبتختار رمز جديد. ما في تراجع.</p>
+      <div class="row-btns"><button class="btn danger" type="button" id="forgotYes">امسح واختار رمز جديد</button><button class="btn" type="button" id="forgotNo">إلغاء</button></div>
+    </div>
+    <p class="lock-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>البيانات مشفّرة ومحفوظة على هالجهاز بس، وما بتنبعت لأي مكان.</p>
+  </form>
+</div>
+
+<!-- App -->
+<div class="app" id="app" hidden>
+  <aside class="side" aria-label="أقسام اللوحة">
+    <a class="side-brand" href="#dashboard"><span class="side-mark">رَفّ<span class="dot"></span></span><small>الإدارة</small></a>
+    <nav class="side-nav" id="sideNav"></nav>
+    <div class="side-foot">
+      <a class="side-link" href="../" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span>فتح المتجر</span></a>
+      <button class="side-link" type="button" data-act="lock"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>قفل</span></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <div>
+        <p class="top-kicker" id="topKicker"></p>
+        <h1 id="topTitle"></h1>
+      </div>
+      <div class="top-actions" id="topActions"></div>
+      <a class="publish-btn" href="#publish" id="publishBtn"><span class="pulse" id="publishDot" hidden></span>نشر التغييرات</a>
+    </header>
+    <main class="view" id="view" tabindex="-1"></main>
+  </div>
+</div>
+
+<!-- Modal & drawer shells -->
+<dialog class="modal" id="modal"><div class="modal-inner" id="modalInner"></div></dialog>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="sheet" aria-hidden="true"><div class="sheet-inner" id="sheetInner"></div></aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="invoice" id="invoice" aria-hidden="true"></div>
+
+<script src="../shared.js?v=4"></script>
+<script src="admin.js?v=1"></script>
+</body>
+</html>

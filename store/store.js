@@ -1,249 +1,321 @@
 (() => {
   'use strict';
-
-  /* ---------- Product art: flat shapes on warm earth tones ---------- */
-  const ART = {
-    mug: (f, a) => `<rect x="30" y="36" width="34" height="38" rx="7" fill="${f}"/><path d="M64 46h5a8 8 0 0 1 0 16h-5" fill="none" stroke="${f}" stroke-width="5"/><rect x="30" y="36" width="34" height="7" rx="3.5" fill="${a}"/>`,
-    sneaker: (f, a) => `<path d="M16 64c0-9 6-16 14-16 4 0 7-3 10-6 3-3 8-3 11 1l7 9c9 2 20 4 25 9 2 2 2 5 1 7H16z" fill="${f}"/><rect x="15" y="66" width="70" height="7" rx="3.5" fill="${a}"/><path d="M42 50l5 5M47 46l5 5M52 43l4 5" stroke="${a}" stroke-width="2" stroke-linecap="round"/>`,
-    tote: (f, a) => `<path d="M38 42v-6a12 12 0 0 1 24 0v6" fill="none" stroke="${a}" stroke-width="4" stroke-linecap="round"/><path d="M27 42h46l-3 38H30z" fill="${f}"/><rect x="40" y="56" width="20" height="12" rx="2" fill="${a}" opacity=".35"/>`,
-    lamp: (f, a) => `<path d="M36 26h28l9 24H27z" fill="${f}"/><rect x="48" y="50" width="4" height="24" fill="${a}"/><ellipse cx="50" cy="76" rx="15" ry="4" fill="${a}"/>`,
-    plant: (f, a) => `<ellipse cx="42" cy="40" rx="7" ry="16" transform="rotate(-28 42 40)" fill="${f}"/><ellipse cx="58" cy="38" rx="7" ry="17" transform="rotate(26 58 38)" fill="${f}"/><ellipse cx="50" cy="34" rx="6" ry="18" fill="${f}" opacity=".85"/><path d="M36 56h28l-4 24H40z" fill="${a}"/>`,
-    headphones: (f, a) => `<path d="M29 60V50a21 21 0 0 1 42 0v10" fill="none" stroke="${f}" stroke-width="6" stroke-linecap="round"/><rect x="22" y="54" width="15" height="24" rx="7" fill="${f}"/><rect x="63" y="54" width="15" height="24" rx="7" fill="${f}"/><rect x="26" y="58" width="7" height="16" rx="3.5" fill="${a}"/><rect x="67" y="58" width="7" height="16" rx="3.5" fill="${a}"/>`,
-    serum: (f, a) => `<rect x="46" y="16" width="8" height="16" rx="4" fill="${a}"/><rect x="43" y="30" width="14" height="9" rx="2" fill="${a}"/><rect x="37" y="38" width="26" height="42" rx="6" fill="${f}"/><rect x="42" y="52" width="16" height="14" rx="2" fill="${a}" opacity=".4"/>`,
-    chair: (f, a) => `<rect x="34" y="20" width="32" height="30" rx="6" fill="${f}"/><rect x="30" y="50" width="40" height="8" rx="3" fill="${f}"/><path d="M34 58l-3 22M66 58l3 22" stroke="${a}" stroke-width="4" stroke-linecap="round"/>`,
-    watch: (f, a) => `<rect x="42" y="14" width="16" height="72" rx="6" fill="${a}"/><circle cx="50" cy="50" r="17" fill="${a}"/><circle cx="50" cy="50" r="13" fill="${f}"/><path d="M50 50V41M50 50l6 4" stroke="${a}" stroke-width="2" stroke-linecap="round"/>`,
-    candle: (f, a) => `<path d="M50 24c4 5 5 9 0 13-5-4-4-8 0-13z" fill="#e2a85a"/><rect x="48.8" y="36" width="2.4" height="6" fill="${a}"/><rect x="33" y="42" width="34" height="38" rx="7" fill="${f}"/><rect x="33" y="56" width="34" height="12" fill="${a}" opacity=".35"/>`,
-    vase: (f, a) => `<path d="M44 20h12v8c0 4 12 10 12 26 0 14-8 26-18 26S32 68 32 54c0-16 12-22 12-26z" fill="${f}"/><path d="M34 50h32" stroke="${a}" stroke-width="3"/>`,
-    glasses: (f, a) => `<circle cx="35" cy="52" r="13" fill="${f}"/><circle cx="65" cy="52" r="13" fill="${f}"/><path d="M47 50q3-4 6 0" fill="none" stroke="${f}" stroke-width="3"/><path d="M22 48l-6-6M78 48l6-6" stroke="${f}" stroke-width="3" stroke-linecap="round"/><circle cx="31" cy="48" r="3" fill="${a}" opacity=".6"/><circle cx="61" cy="48" r="3" fill="${a}" opacity=".6"/>`,
-    cap: (f, a) => `<path d="M24 62a26 26 0 0 1 52 0z" fill="${f}"/><path d="M58 62h24a4 4 0 0 1 0 7H50z" fill="${a}"/><circle cx="50" cy="36" r="3" fill="${a}"/><path d="M50 36v26" stroke="${a}" stroke-width="1.5" opacity=".5"/>`,
-    tee: (f, a) => `<path d="M38 22l-18 10 6 14 8-4v38h32V42l8 4 6-14-18-10c-2 5-6 8-12 8s-10-3-12-8z" fill="${f}"/><path d="M38 22c2 5 6 8 12 8s10-3 12-8" fill="none" stroke="${a}" stroke-width="2"/>`,
-    tube: (f, a) => `<path d="M36 20h28l-4 52H40z" fill="${f}"/><rect x="42" y="72" width="16" height="9" rx="2" fill="${a}"/><rect x="41" y="38" width="18" height="12" rx="2" fill="${a}" opacity=".35"/>`,
-    cactus: (f, a) => `<rect x="43" y="22" width="14" height="40" rx="7" fill="${f}"/><path d="M43 46h-6a5 5 0 0 1-5-5v-8" fill="none" stroke="${f}" stroke-width="7" stroke-linecap="round"/><path d="M57 40h6a5 5 0 0 0 5-5v-6" fill="none" stroke="${f}" stroke-width="7" stroke-linecap="round"/><path d="M36 58h28l-4 22H40z" fill="${a}"/>`,
-    speaker: (f, a) => `<rect x="32" y="22" width="36" height="58" rx="10" fill="${f}"/><circle cx="50" cy="60" r="11" fill="${a}"/><circle cx="50" cy="60" r="4" fill="${f}"/><circle cx="50" cy="36" r="5" fill="${a}"/>`,
-  };
-  const art = (p) =>
-    `<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><ellipse cx="50" cy="83" rx="28" ry="3" fill="#000" opacity=".08"/>${ART[p.kind](p.fg, p.ac)}</svg>`;
-
-  /* ---------- Data ---------- */
-  const CATS = [
-    { id: 'fashion', name: 'الأزياء', c: '#c96f4a' },
-    { id: 'home', name: 'البيت', c: '#d9c3a5' },
-    { id: 'beauty', name: 'الجمال', c: '#e8c9bb' },
-    { id: 'tech', name: 'الإلكترونيات', c: '#332f2d' },
-    { id: 'plants', name: 'النباتات', c: '#a9b59a' },
-    { id: 'accessories', name: 'الإكسسوارات', c: '#b5806a' },
-  ];
-
-  const P = [
-    { id: 1, name: 'كوب فخار مزجّج', store: 'فخّار الواحة', price: 18, rating: 4.9, reviews: 1240, cat: 'home', kind: 'mug', bg: '#e6d5bd', fg: '#c96f4a', ac: '#a65638', desc: 'مشغول باليد على الدولاب، بطبقة زجاج تحفظ حرارة قهوتك الصباحية. كل قطعة تختلف قليلاً عن أختها.' },
-    { id: 2, name: 'حذاء جري خفيف', store: 'خطوة', price: 89, rating: 4.8, reviews: 3120, cat: 'fashion', kind: 'sneaker', bg: '#dfe3dc', fg: '#efe8dc', ac: '#332f2d', desc: 'نعل مرن وقماش يتنفّس، للمشي الطويل والجري الخفيف. وزن أقل من ٢٥٠ غراماً.' },
-    { id: 3, name: 'حقيبة قماش يومية', store: 'نول', price: 34, rating: 4.7, reviews: 860, cat: 'fashion', kind: 'tote', bg: '#d9c3a5', fg: '#f4efe6', ac: '#8a6a4a', desc: 'قطن سميك منسوج على النول، بجيب داخلي وحزام يتحمّل مشتريات الأسبوع.' },
-    { id: 4, name: 'مصباح طاولة كتّاني', store: 'ضوء خافت', price: 72, rating: 4.9, reviews: 540, cat: 'home', kind: 'lamp', bg: '#332f2d', fg: '#efe8dc', ac: '#b5806a', desc: 'غطاء من الكتّان الطبيعي وقاعدة نحاسية، يعطي ضوءاً دافئاً للقراءة قبل النوم.' },
-    { id: 5, name: 'نبتة زيتون صغيرة', store: 'أخضر', price: 26, rating: 4.6, reviews: 410, cat: 'plants', kind: 'plant', bg: '#efe8dc', fg: '#7d8466', ac: '#c96f4a', desc: 'شجرة زيتون قزمة في أصيص طين، تحب الشمس وتحتمل نسيان الري أحياناً.' },
-    { id: 6, name: 'سماعات لاسلكية', store: 'صدى', price: 129, rating: 4.8, reviews: 2210, cat: 'tech', kind: 'headphones', bg: '#cfcac2', fg: '#1d1b1a', ac: '#665a54', desc: 'عزل للضوضاء وبطارية تدوم ٣٠ ساعة، بوسائد ناعمة تريح الأذن في الرحلات الطويلة.' },
-    { id: 7, name: 'سيروم فيتامين ج', store: 'بشرة', price: 32, rating: 4.7, reviews: 1980, cat: 'beauty', kind: 'serum', bg: '#e8c9bb', fg: '#f4efe6', ac: '#b5806a', desc: 'تركيبة خفيفة تمنح البشرة إشراقة، بدون عطور ومناسبة للبشرة الحساسة.' },
-    { id: 8, name: 'كرسي خشب جوز', store: 'ورشة النجّار', price: 240, rating: 4.9, reviews: 190, cat: 'home', kind: 'chair', bg: '#e6d5bd', fg: '#8a5a3c', ac: '#5e3d28', desc: 'خشب جوز صلب بتشطيب زيتي، مصنوع ليعيش معك عشرين سنة على الأقل.' },
-    { id: 9, name: 'ساعة جلد بني', store: 'توقيت', price: 145, rating: 4.8, reviews: 720, cat: 'accessories', kind: 'watch', bg: '#a9b59a', fg: '#f4efe6', ac: '#6b4a33', desc: 'ميناء بسيط بلا أرقام وحزام جلد طبيعي يكتسب لوناً أجمل مع الأيام.' },
-    { id: 10, name: 'شمعة عود وعنبر', store: 'دخون', price: 22, rating: 4.9, reviews: 3300, cat: 'home', kind: 'candle', bg: '#332f2d', fg: '#d9c3a5', ac: '#efe8dc', desc: 'شمع صويا وعطر عود دافئ، تحترق نحو ٤٠ ساعة في جرّة زجاجية تعيد استخدامها.' },
-    { id: 11, name: 'مزهرية طين', store: 'فخّار الواحة', price: 48, rating: 4.7, reviews: 300, cat: 'home', kind: 'vase', bg: '#efe8dc', fg: '#b5806a', ac: '#8f5f4c', desc: 'طين محلي غير مزجّج بملمس خشن، جميلة فارغة وأجمل مع غصن زيتون.' },
-    { id: 12, name: 'نظارة شمسية', store: 'ظلّ', price: 65, rating: 4.6, reviews: 940, cat: 'accessories', kind: 'glasses', bg: '#e6d5bd', fg: '#1d1b1a', ac: '#665a54', desc: 'إطار دائري خفيف وعدسات تحمي من الأشعة فوق البنفسجية بالكامل.' },
-    { id: 13, name: 'قبعة قطن', store: 'نول', price: 24, rating: 4.5, reviews: 610, cat: 'fashion', kind: 'cap', bg: '#cfd6c8', fg: '#7d8466', ac: '#5c6249', desc: 'قطن مغسول بلون زيتي هادئ، بحزام خلفي قابل للتعديل.' },
-    { id: 14, name: 'قميص كتّان', store: 'نول', price: 42, rating: 4.8, reviews: 1500, cat: 'fashion', kind: 'tee', bg: '#efe8dc', fg: '#c9b79c', ac: '#a6937a', desc: 'كتّان خفيف للصيف، قصّة واسعة مريحة تزداد نعومة مع كل غسلة.' },
-    { id: 15, name: 'مرطّب يدين', store: 'بشرة', price: 16, rating: 4.8, reviews: 2600, cat: 'beauty', kind: 'tube', bg: '#dfe3dc', fg: '#f4efe6', ac: '#7d8466', desc: 'زبدة الشيا وزيت الزيتون، يمتصّ بسرعة ولا يترك أثراً دهنياً.' },
-    { id: 16, name: 'صبّار مكتبي', store: 'أخضر', price: 14, rating: 4.7, reviews: 880, cat: 'plants', kind: 'cactus', bg: '#e8c9bb', fg: '#7d8466', ac: '#c96f4a', desc: 'رفيق المكتب الذي لا يشتكي. ريّة واحدة كل أسبوعين تكفيه.' },
-    { id: 17, name: 'مكبّر صوت صغير', store: 'صدى', price: 79, rating: 4.7, reviews: 1100, cat: 'tech', kind: 'speaker', bg: '#d9c3a5', fg: '#332f2d', ac: '#665a54', desc: 'صوت دافئ بحجم الكف، مقاوم للماء ويعمل ١٢ ساعة بشحنة واحدة.' },
-    { id: 18, name: 'زيت شعر بالأرغان', store: 'بشرة', price: 28, rating: 4.8, reviews: 1430, cat: 'beauty', kind: 'serum', bg: '#d9c3a5', fg: '#c96f4a', ac: '#8f5f4c', desc: 'أرغان مغربي معصور على البارد، بضع قطرات تكفي لشعر لامع وناعم.' },
-    { id: 19, name: 'حذاء جلد كلاسيكي', store: 'خطوة', price: 120, rating: 4.7, reviews: 640, cat: 'fashion', kind: 'sneaker', bg: '#332f2d', fg: '#8a5a3c', ac: '#efe8dc', desc: 'جلد طبيعي مدبوغ نباتياً ونعل مخيط باليد، أنيق في العمل ومريح في المساء.' },
-    { id: 20, name: 'مسكة شفاه بالعسل', store: 'بشرة', price: 9, rating: 4.9, reviews: 4100, cat: 'beauty', kind: 'tube', bg: '#efe8dc', fg: '#e8c9bb', ac: '#b5806a', desc: 'شمع العسل وزيت اللوز، ترطيب يدوم طوال اليوم بلمسة لون خفيفة.' },
-  ];
-  const byId = new Map(P.map((p) => [p.id, p]));
-
-  const STORES = [
-    { name: 'فخّار الواحة', about: 'فخار يدوي من الطين المحلي', hero: 11, items: [1, 11, 10] },
-    { name: 'نول', about: 'قطن وكتّان منسوج بهدوء', hero: 14, items: [3, 13, 14] },
-    { name: 'بشرة', about: 'عناية نظيفة بمكونات بسيطة', hero: 7, items: [15, 18, 20] },
-    { name: 'صدى', about: 'صوت جميل بتصميم هادئ', hero: 6, items: [17, 6] },
-  ];
-
-  /* ---------- Helpers ---------- */
+  const S = window.RaffShared;
+  const { art, esc, num, compact, norm, ls } = S;
   const $ = (s, r = document) => r.querySelector(s);
-  const ar = new Intl.NumberFormat('ar-EG');
-  const money = (n) => `${ar.format(n)}$`;
-  const compact = (n) => (n >= 1000 ? `${ar.format(Math.round(n / 100) / 10)} ألف` : ar.format(n));
-  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const store = {
-    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } },
-  };
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-  const saved = new Set(store.get('raff.saved', []));
-  let cart = store.get('raff.cart', {}); // { id: qty }
-  Object.keys(cart).forEach((k) => { if (!byId.has(+k) || !(cart[k] > 0)) delete cart[k]; });
-
+  let CFG, CATS, P, byId, money;
   const heartSVG = '<svg viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10A4.5 4.5 0 0 1 12 7.3 4.5 4.5 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/></svg>';
   const plusSVG = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+  const chev = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
 
+  const saved = new Set(ls.get('raff.saved', []));
+  let cart = ls.get('raff.cart', {});
+
+  /* ---------- Components ---------- */
+  const inStock = (p) => !(p.stock <= 0);
+  const priceHTML = (p) => `<span class="price">${money(p.price)}${p.compare > p.price ? ` <s>${money(p.compare)}</s>` : ''}</span>`;
   const card = (p, mini = false) => `
-    <article class="pcard${mini ? ' mini' : ''}">
-      <button class="pcard-img" type="button" data-open="${p.id}" style="--bg:${p.bg}" aria-label="عرض ${esc(p.name)}">${art(p)}</button>
+    <article class="pcard${mini ? ' mini' : ''}${inStock(p) ? '' : ' soldout'}">
+      <button class="pcard-img" type="button" data-open="${p.id}" style="--bg:${S.hex(p.bg, '#efe8dc')}" aria-label="عرض ${esc(p.name)}">${art(p)}${inStock(p) ? '' : '<span class="tag">نفد</span>'}${p.compare > p.price && inStock(p) ? `<span class="tag sale">−${num(Math.round((1 - p.price / p.compare) * 100))}٪</span>` : ''}</button>
       ${mini ? '' : `<button class="heart" type="button" data-save="${p.id}" aria-pressed="${saved.has(p.id)}" aria-label="احفظ ${esc(p.name)}">${heartSVG}</button>
-      <button class="add" type="button" data-add="${p.id}" aria-label="أضف ${esc(p.name)} إلى السلة">${plusSVG}</button>`}
+      <button class="add" type="button" data-add="${p.id}" ${inStock(p) ? '' : 'disabled'} aria-label="أضف ${esc(p.name)} إلى السلة">${plusSVG}</button>`}
       <div class="pcard-meta">
         <h3>${esc(p.name)}</h3>
         <p class="store">${esc(p.store)}</p>
-        <div class="row">
-          <span class="price">${money(p.price)}</span>
-          <span class="rate"><span class="stars">★</span> ${ar.format(p.rating)} (${compact(p.reviews)})</span>
+        <div class="row">${priceHTML(p)}
+          ${p.reviews ? `<span class="rate"><span class="stars">★</span> ${num(p.rating)} (${compact(p.reviews)})</span>` : ''}
         </div>
       </div>
     </article>`;
-
   const tile = (p) => `
-    <button class="tile" type="button" data-open="${p.id}" style="--bg:${p.bg}" aria-label="عرض ${esc(p.name)}">
+    <button class="tile" type="button" data-open="${p.id}" style="--bg:${S.hex(p.bg, '#efe8dc')}" aria-label="عرض ${esc(p.name)}">
       ${art(p)}
       <span class="tile-label"><b>${esc(p.name)}</b><small>${esc(p.store)} · ${money(p.price)}</small></span>
     </button>`;
+  const head = (id, title) => `<div class="band-head"><h2><a href="#${id}">${esc(title)} ${chev}</a></h2></div>`;
 
   /* ---------- Render ---------- */
-  // Hero constellation
-  const SLOTS = [
-    { id: 2, x: '2%', y: '78px', w: '150px', d: '0s' },
-    { id: 7, x: '19%', y: '8px', w: '168px', d: '-2s' },
-    { id: 1, x: '40.5%', y: '36px', w: '190px', d: '-4s' },
-    { id: 9, x: '63%', y: '0px', w: '164px', d: '-1s' },
-    { id: 5, x: '82%', y: '70px', w: '148px', d: '-3s' },
-  ];
-  const narrow = matchMedia('(max-width: 720px)');
-  const placeHero = () => {
-    const m = narrow.matches;
-    $('#constellation').innerHTML = SLOTS.map((s, i) => {
-      // On phones show the middle three, spread across the width.
-      const mx = ['0', '4%', '33%', '62%', '0'][i];
-      const my = ['0', '28px', '0px', '34px', '0'][i];
-      const mw = ['0', '34%', '36%', '34%', '0'][i];
-      return `<div class="float" data-slot="${i + 1}" style="--x:${m ? mx : s.x};--y:${m ? my : s.y};--w:${m ? mw : s.w};--d:${s.d}">${card(byId.get(s.id), true)}</div>`;
-    }).join('');
+  const renderAll = () => {
+    document.title = `${CFG.name} · ${CFG.tagline}`;
+    $$('[data-brand]').forEach((el) => { el.firstChild.nodeValue = CFG.name; });
+    $('#tagline').textContent = CFG.tagline;
+    $('#bannerTitle').textContent = CFG.banner;
+    $('#bannerSub').textContent = CFG.bannerSub;
+    $('.banner').hidden = !CFG.banner;
+
+    // Hero constellation (flat fallback for the 3D stage)
+    const heroList = P.filter((p) => p.featured).concat(P.filter((p) => !p.featured)).slice(0, 5);
+    const SLOTS = [
+      { x: '2%', y: '78px', w: '150px', d: '0s', mx: '0', my: '0', mw: '0' },
+      { x: '19%', y: '8px', w: '168px', d: '-2s', mx: '4%', my: '28px', mw: '34%' },
+      { x: '40.5%', y: '36px', w: '190px', d: '-4s', mx: '33%', my: '0px', mw: '36%' },
+      { x: '63%', y: '0px', w: '164px', d: '-1s', mx: '62%', my: '34px', mw: '34%' },
+      { x: '82%', y: '70px', w: '148px', d: '-3s', mx: '0', my: '0', mw: '0' },
+    ];
+    const m = matchMedia('(max-width: 720px)').matches;
+    $('#constellation').querySelectorAll('.float').forEach((n) => n.remove());
+    $('#constellation').insertAdjacentHTML('afterbegin', heroList.map((p, i) => {
+      const s = SLOTS[i];
+      return `<div class="float" data-slot="${i + 1}" style="--x:${m ? s.mx : s.x};--y:${m ? s.my : s.y};--w:${m ? s.mw : s.w};--d:${s.d}">${card(p, true)}</div>`;
+    }).join(''));
+
+    // Pills
+    $('#pills').innerHTML = CATS.filter((c) => P.some((p) => p.cat === c.id)).map((c) =>
+      `<button class="pill" type="button" data-cat="${esc(c.id)}" aria-pressed="false"><i style="--c:${S.hex(c.c, '#cccccc')}"></i>${esc(c.name)}</button>`).join('');
+
+    // Picks
+    const picks = (P.some((p) => p.featured) ? P.filter((p) => p.featured) : [...P].sort((a, b) => b.rating - a.rating)).slice(0, 12);
+    $('#picksRow').innerHTML = picks.map((p) => card(p)).join('');
+    $('#picks').hidden = picks.length === 0;
+
+    // Category bands
+    const out = [];
+    const storesHTML = renderStores();
+    CATS.forEach((c, ci) => {
+      const list = P.filter((p) => p.cat === c.id);
+      if (!list.length) return;
+      const id = `cat-${c.id}`;
+      if (list.length >= 5 && !out.some((x) => x.includes('class="mosaic"'))) {
+        const [f, ...rest] = [...list].sort((a, b) => (b.featured - a.featured) || (b.reviews - a.reviews));
+        out.push(`<section class="band" id="${esc(id)}">${head(id, c.name)}<div class="mosaic">
+          <button class="feature" type="button" data-open="${f.id}" style="--bg:${S.hex(f.bg, '#332f2d')}" aria-label="عرض ${esc(f.name)}">
+            <span class="feature-copy"><strong>${esc(f.store)}</strong><span>${f.reviews ? `★ ${num(f.rating)} · ${compact(f.reviews)} تقييم` : esc(f.name)}</span><em>${esc(f.name)} · ${money(f.price)}</em></span>
+            ${art(f)}
+          </button>${rest.slice(0, 4).map(tile).join('')}</div></section>`);
+      } else if (list.length >= 4 && ci % 2 === 0) {
+        out.push(`<section class="band" id="${esc(id)}">${head(id, c.name)}<div class="tiles">${list.slice(0, 4).map(tile).join('')}</div>
+          ${list.length > 4 ? `<div class="grid more">${list.slice(4).map((p) => card(p)).join('')}</div>` : ''}</section>`);
+      } else {
+        out.push(`<section class="band" id="${esc(id)}">${head(id, c.name)}<div class="grid">${list.map((p) => card(p)).join('')}</div></section>`);
+      }
+      if (out.length === 1 && storesHTML) out.push(storesHTML);
+    });
+    if (out.length === 0 && storesHTML) out.push(storesHTML);
+    $('#sections').innerHTML = out.join('');
+
+    $('#footShop').innerHTML = '<h3>تسوّق</h3>' + CATS.filter((c) => P.some((p) => p.cat === c.id)).slice(0, 5)
+      .map((c) => `<a href="#cat-${esc(c.id)}">${esc(c.name)}</a>`).join('');
+    $('#footYear').textContent = `© ${num(new Date().getFullYear()).replace(/٬/g, '')} ${CFG.name}`;
+    observeBands();
   };
-  placeHero();
-  narrow.addEventListener?.('change', placeHero);
 
-  // Pills
-  $('#pills').innerHTML = CATS.map((c) =>
-    `<button class="pill" type="button" data-cat="${c.id}" aria-pressed="false"><i style="--c:${c.c}"></i>${c.name}</button>`).join('');
-
-  // Picks rail
-  $('#picksRow').innerHTML = [1, 6, 3, 10, 12, 7, 17, 5, 14, 9].map((id) => card(byId.get(id))).join('');
-
-  // Home mosaic
-  const lamp = byId.get(4);
-  $('#homeMosaic').innerHTML = `
-    <button class="feature" type="button" data-open="${lamp.id}" style="--bg:${lamp.bg}" aria-label="عرض ${esc(lamp.name)}">
-      <span class="feature-copy"><strong>ضوء خافت</strong><span>★ ${ar.format(lamp.rating)} · ${compact(lamp.reviews)} تقييم</span><em>تسوّق الإضاءة</em></span>
-      ${art(lamp)}
-    </button>` + [1, 8, 11, 10].map((id) => tile(byId.get(id))).join('');
-
-  // Stores
-  const renderStores = () => {
-    const followed = new Set(store.get('raff.follow', []));
-    $('#storesGrid').innerHTML = STORES.map((s) => {
-      const h = byId.get(s.hero);
-      const count = P.filter((p) => p.store === s.name).length;
-      return `
-      <article class="spot">
-        <button class="spot-hero" type="button" data-open="${h.id}" style="--bg:${h.bg}" aria-label="عرض ${esc(h.name)}">${art(h)}</button>
+  function renderStores() {
+    const groups = new Map();
+    P.forEach((p) => { if (p.store) groups.set(p.store, [...(groups.get(p.store) || []), p]); });
+    const top = [...groups.entries()].filter(([, l]) => l.length >= 2).sort((a, b) => b[1].length - a[1].length).slice(0, 4);
+    if (top.length < 2) return '';
+    const followed = new Set(ls.get('raff.follow', []));
+    return `<section class="band" id="stores">${head('stores', 'متاجر تستحق المتابعة')}<div class="stores">${top.map(([name, list]) => {
+      const h = list[0];
+      const avg = list.reduce((s, p) => s + (p.rating || 0), 0) / list.length;
+      const letter = name.replace(/^ال/, '').trim()[0] || name[0];
+      return `<article class="spot">
+        <button class="spot-hero" type="button" data-open="${h.id}" style="--bg:${S.hex(h.bg, '#efe8dc')}" aria-label="عرض ${esc(h.name)}">${art(h)}</button>
         <div class="spot-info">
-          <span class="spot-logo" aria-hidden="true">${esc(s.name.replace('ال', '').trim()[0])}</span>
-          <div><h3>${esc(s.name)}</h3><p>★ ${ar.format(4.8)} · ${ar.format(count)} منتجات</p></div>
-          <button class="follow" type="button" data-follow="${esc(s.name)}" aria-pressed="${followed.has(s.name)}">${followed.has(s.name) ? 'متابَع' : 'تابِع'}</button>
+          <span class="spot-logo" aria-hidden="true">${esc(letter)}</span>
+          <div><h3>${esc(name)}</h3><p>${avg ? `★ ${num(Math.round(avg * 10) / 10)} · ` : ''}${num(list.length)} منتجات</p></div>
+          <button class="follow" type="button" data-follow="${esc(name)}" aria-pressed="${followed.has(name)}">${followed.has(name) ? 'متابَع' : 'تابِع'}</button>
         </div>
-        <div class="thumbs">${s.items.map((id) => { const p = byId.get(id); return `<button type="button" data-open="${id}" style="--bg:${p.bg}" aria-label="عرض ${esc(p.name)}">${art(p)}</button>`; }).join('')}</div>
+        <div class="thumbs">${list.slice(0, 3).map((p) => `<button type="button" data-open="${p.id}" style="--bg:${S.hex(p.bg, '#efe8dc')}" aria-label="عرض ${esc(p.name)}">${art(p)}</button>`).join('')}</div>
       </article>`;
-    }).join('');
-  };
-  renderStores();
-
-  // Care tiles & style grid
-  $('#careTiles').innerHTML = [18, 7, 15, 20].map((id) => tile(byId.get(id))).join('');
-  $('#styleGrid').innerHTML = [2, 3, 12, 13, 14, 9, 19, 6].map((id) => card(byId.get(id))).join('');
+    }).join('')}</div></section>`;
+  }
 
   /* ---------- Search & filter ---------- */
   const results = $('#results');
   let activeCat = null;
-  const norm = (s) => s.toLowerCase()
-    .replace(/[ً-ْـ]/g, '')   // tashkeel + tatweel
-    .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').trim();
-
+  const EMPTY_SEARCH = 'ما لقينا شي بهالاسم. جرّب كلمة ثانية.';
   const runSearch = (scroll) => {
     const q = norm($('#q').value);
     if (!q && !activeCat) { results.hidden = true; return; }
     const words = q.split(/\s+/).filter(Boolean);
     const list = P.filter((p) => {
       if (activeCat && p.cat !== activeCat) return false;
-      const hay = norm(`${p.name} ${p.store} ${CATS.find((c) => c.id === p.cat).name}`);
-      return words.every((w) => hay.includes(w));
+      const cat = CATS.find((c) => c.id === p.cat);
+      return words.every((w) => norm(`${p.name} ${p.store} ${cat ? cat.name : ''} ${p.desc || ''}`).includes(w));
     });
-    const catName = activeCat ? CATS.find((c) => c.id === activeCat).name : '';
+    const catName = activeCat ? (CATS.find((c) => c.id === activeCat) || {}).name : '';
     const raw = $('#q').value.trim();
     $('#resultsTitle').textContent = raw && catName ? `«${raw}» في ${catName}` : raw ? `نتائج «${raw}»` : catName;
     $('#resultsGrid').innerHTML = list.map((p) => card(p)).join('');
+    $('#resultsEmpty').textContent = EMPTY_SEARCH;
     $('#resultsEmpty').hidden = list.length > 0;
     results.hidden = false;
     if (scroll) results.scrollIntoView({ block: 'start' });
   };
-
   $('#searchForm').addEventListener('submit', (e) => { e.preventDefault(); runSearch(true); $('#q').blur(); });
   let t;
   $('#q').addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => runSearch(false), 160); });
+  const syncPills = () => $$('.pill').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cat === activeCat));
 
   /* ---------- Cart ---------- */
-  const persistCart = () => store.set('raff.cart', cart);
+  const persistCart = () => ls.set('raff.cart', cart);
   const bump = (el) => { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); };
-  const setBadge = (el, n) => { el.hidden = n === 0; el.textContent = ar.format(n); };
+  const setBadge = (el, n) => { el.hidden = n === 0; el.textContent = num(n); };
+  const cartLines = () => Object.keys(cart).map(Number).filter((id) => byId.has(id)).map((id) => ({ p: byId.get(id), qty: cart[id] }));
+  const totals = () => {
+    const sub = cartLines().reduce((s, l) => s + l.p.price * l.qty, 0);
+    const sh = CFG.shipping || {};
+    const ship = sub === 0 ? 0 : (sh.freeOver > 0 && sub >= sh.freeOver ? 0 : +sh.fee || 0);
+    return { sub, ship, total: Math.round((sub + ship) * 100) / 100 };
+  };
 
   const renderCart = () => {
-    const ids = Object.keys(cart).map(Number);
-    const count = ids.reduce((s, id) => s + cart[id], 0);
-    const total = ids.reduce((s, id) => s + cart[id] * byId.get(id).price, 0);
+    const lines = cartLines();
+    const count = lines.reduce((s, l) => s + l.qty, 0);
+    const { sub, ship, total } = totals();
     setBadge($('#cartBadge'), count);
-    $('#cartList').innerHTML = ids.map((id) => {
-      const p = byId.get(id);
-      return `<li class="cart-item">
-        <span class="cart-thumb" style="--bg:${p.bg}">${art(p)}</span>
+    $('#cartList').innerHTML = lines.map(({ p, qty }) => `<li class="cart-item">
+        <span class="cart-thumb" style="--bg:${S.hex(p.bg, '#efe8dc')}">${art(p)}</span>
         <div class="cart-info"><b>${esc(p.name)}</b><small>${esc(p.store)}</small>
-          <div class="qty"><button type="button" data-dec="${id}" aria-label="إنقاص">−</button><span>${ar.format(cart[id])}</span><button type="button" data-inc="${id}" aria-label="زيادة">+</button></div>
+          <div class="qty"><button type="button" data-dec="${p.id}" aria-label="إنقاص">−</button><span>${num(qty)}</span><button type="button" data-inc="${p.id}" aria-label="زيادة">+</button></div>
         </div>
-        <span class="cart-price">${money(p.price * cart[id])}</span>
-      </li>`;
-    }).join('');
+        <span class="cart-price">${money(p.price * qty)}</span>
+      </li>`).join('');
     $('#cartEmpty').hidden = count > 0;
     $('#cartFoot').hidden = count === 0;
+    $('#cartSub').textContent = money(sub);
+    $('#cartShip').textContent = ship ? money(ship) : 'مجاني';
     $('#cartTotal').textContent = money(total);
+    const fo = (CFG.shipping || {}).freeOver;
+    $('#freeHint').hidden = !(fo > 0 && sub > 0 && sub < fo);
+    $('#freeHint').textContent = `أضف ${money(Math.round((fo - sub) * 100) / 100)} وبيصير التوصيل مجاني`;
   };
-
   const addToCart = (id) => {
+    const p = byId.get(id);
+    if (!p || !inStock(p)) return;
+    if (p.stock > 0 && (cart[id] || 0) >= p.stock) { toast('هاي كل الكمية المتوفرة'); return; }
     cart[id] = (cart[id] || 0) + 1;
     persistCart(); renderCart(); bump($('#cartBadge'));
-    toast(`انضاف «${byId.get(id).name}» إلى السلة`);
+    toast(`انضاف «${p.name}» إلى السلة`);
   };
 
+  /* ---------- Drawer & checkout ---------- */
   const cartEl = $('#cart'), scrim = $('#scrim');
   let lastFocus = null;
+  const view = (name) => {
+    $$('[data-view]', cartEl).forEach((v) => { v.hidden = v.dataset.view !== name; });
+    $('#drawerTitle').textContent = { cart: 'السلة', checkout: 'إتمام الطلب', done: 'تم استلام طلبك' }[name];
+    $('#drawerBack').hidden = name !== 'checkout';
+    cartEl.scrollTop = 0;
+  };
   const openCart = () => {
     lastFocus = document.activeElement;
+    view('cart');
     scrim.hidden = false; cartEl.classList.add('open'); cartEl.setAttribute('aria-hidden', 'false');
-    cartEl.querySelector('.icon-btn').focus();
+    cartEl.querySelector('[data-action="close-cart"]').focus();
   };
   const closeCart = () => {
     scrim.hidden = true; cartEl.classList.remove('open'); cartEl.setAttribute('aria-hidden', 'true');
     lastFocus?.focus?.();
   };
 
+  const enabledMethods = () => Object.keys(S.METHODS).filter((k) => {
+    const m = (CFG.payments || {})[k];
+    if (!m || !m.on) return false;
+    if (k === 'paypal') return !!m.user;
+    if (k === 'bank') return !!m.iban;
+    return true;
+  });
+
+  const startCheckout = () => {
+    const methods = enabledMethods();
+    const methodsWithFallback = methods.length ? methods : ['cod'];
+    const desc = {
+      cod: 'بتدفع نقداً لما يوصلك الطلب.',
+      paypal: 'ادفع بحساب PayPal أو بالبطاقة كضيف، على صفحة PayPal الآمنة.',
+      bank: 'منبعتلك بيانات الحساب بعد الطلب، وبنشحن بعد وصول التحويل.',
+    };
+    $('#payMethods').innerHTML = methodsWithFallback.map((k, i) => `
+      <label class="pay-opt"><input type="radio" name="method" value="${k}" ${i === 0 ? 'checked' : ''}>
+        <span class="pay-ico pay-${k}" aria-hidden="true"></span>
+        <span><b>${S.METHODS[k]}</b><small>${desc[k]}</small></span></label>`).join('');
+    const saved = ls.get('raff.customer', {});
+    const f = $('#checkoutForm');
+    ['name', 'phone', 'city', 'address'].forEach((k) => { if (saved[k] && !f[k].value) f[k].value = saved[k]; });
+    const { sub, ship, total } = totals();
+    $('#coSummary').innerHTML = `<div><span>المنتجات</span><b>${money(sub)}</b></div><div><span>التوصيل</span><b>${ship ? money(ship) : 'مجاني'}</b></div><div class="grand"><span>المجموع</span><b>${money(total)}</b></div>`;
+    view('checkout');
+    f.name.focus();
+  };
+
+  $('#checkoutForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const val = (k) => f[k].value.trim();
+    const phone = S.toLatinDigits(val('phone')).replace(/[^\d+]/g, '');
+    let bad = null;
+    if (val('name').length < 2) bad = 'name';
+    else if (phone.replace(/\D/g, '').length < 7) bad = 'phone';
+    else if (!val('city')) bad = 'city';
+    else if (val('address').length < 4) bad = 'address';
+    $$('.field', f).forEach((el) => el.classList.toggle('invalid', el.dataset.f === bad));
+    if (bad) { f[bad].focus(); return; }
+    const lines = cartLines();
+    if (!lines.length) { view('cart'); return; }
+    const { sub, ship, total } = totals();
+    const order = {
+      id: S.newOrderId(), createdAt: Date.now(),
+      customer: { name: val('name'), phone, city: val('city'), address: val('address'), notes: val('notes') },
+      method: f.method.value,
+      items: lines.map(({ p, qty }) => ({ id: p.id, qty, price: p.price, name: p.name })),
+      subtotal: sub, shipping: ship, total, status: 'new', paid: false,
+    };
+    ls.set('raff.customer', { name: order.customer.name, phone, city: order.customer.city, address: order.customer.address });
+    const mine = ls.get('raff.myorders', []); mine.unshift(order); ls.set('raff.myorders', mine.slice(0, 50));
+    cart = {}; persistCart(); renderCart();
+    showDone(order);
+  });
+
+  const waText = (o) => [
+    `طلب جديد من ${CFG.name}`,
+    `رقم الطلب: ${o.id}`,
+    ...o.items.map((x) => `• ${x.name} × ${x.qty} = ${money(x.price * x.qty)}`),
+    `التوصيل: ${o.shipping ? money(o.shipping) : 'مجاني'}`,
+    `المجموع: ${money(o.total)}`,
+    `الدفع: ${S.METHODS[o.method]}`,
+    `الاسم: ${o.customer.name}`, `الهاتف: ${o.customer.phone}`, `العنوان: ${o.customer.city}، ${o.customer.address}`,
+    o.customer.notes ? `ملاحظات: ${o.customer.notes}` : '',
+    '', `رمز الطلب (لا تعدّله): ${S.encodeOrder(o)}`,
+  ].filter((l) => l !== '').join('\n');
+
+  const showDone = (o) => {
+    const pay = CFG.payments || {};
+    const wa = String(CFG.whatsapp || '').replace(/\D/g, '');
+    const steps = [];
+    if (wa) steps.push(`<a class="btn-violet wide" href="https://wa.me/${wa}?text=${encodeURIComponent(waText(o))}" target="_blank" rel="noopener noreferrer">أرسل الطلب على واتساب لنأكده</a>`);
+    if (o.method === 'paypal' && pay.paypal && pay.paypal.user) {
+      const user = encodeURIComponent(String(pay.paypal.user).replace(/^@/, ''));
+      const code = /^[A-Z]{3}$/.test(CFG.currencyCode || '') ? CFG.currencyCode : 'USD';
+      steps.push(`<a class="btn-dark wide" href="https://www.paypal.com/paypalme/${user}/${o.total}${code}" target="_blank" rel="noopener noreferrer">ادفع ${money(o.total)} عبر PayPal</a>
+        <p class="note">اكتب رقم الطلب <b>${esc(o.id)}</b> بخانة الملاحظة على PayPal.</p>`);
+    }
+    if (o.method === 'bank' && pay.bank) {
+      steps.push(`<div class="bank">
+        <div><span>البنك</span><b>${esc(pay.bank.bank)}</b></div>
+        <div><span>اسم الحساب</span><b>${esc(pay.bank.holder)}</b></div>
+        <div><span>IBAN</span><b class="mono">${esc(pay.bank.iban)}</b><button type="button" class="copy" data-copy="${esc(pay.bank.iban)}">نسخ</button></div>
+        <div><span>المبلغ</span><b>${money(o.total)}</b></div>
+        <p class="note">اكتب رقم الطلب <b>${esc(o.id)}</b> بوصف التحويل.</p></div>`);
+    }
+    if (o.method === 'cod') steps.push('<p class="note">بتدفع نقداً عند الاستلام. منتواصل معك لنأكد العنوان والموعد.</p>');
+    if (!wa) steps.push(`<div class="code-box"><p class="note">ابعت هالرمز للمتجر ليأكد طلبك:</p><textarea readonly rows="3">${esc(S.encodeOrder(o))}</textarea><button type="button" class="copy" data-copy="${esc(waText(o))}">نسخ الطلب كاملاً</button></div>`);
+    $('#doneBody').innerHTML = `
+      <div class="done-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <p class="done-id">رقم الطلب <b>${esc(o.id)}</b></p>
+      <p class="done-total">${money(o.total)} · ${esc(S.METHODS[o.method])}</p>
+      <div class="done-steps">${steps.join('')}</div>`;
+    view('done');
+  };
+
   /* ---------- Saved ---------- */
-  const renderSaved = () => setBadge($('#savedBadge'), saved.size);
+  const renderSaved = () => setBadge($('#savedBadge'), [...saved].filter((id) => byId.has(id)).length);
   const toggleSave = (id) => {
     saved.has(id) ? saved.delete(id) : saved.add(id);
-    store.set('raff.saved', [...saved]);
-    document.querySelectorAll(`[data-save="${id}"]`).forEach((b) => b.setAttribute('aria-pressed', saved.has(id)));
+    ls.set('raff.saved', [...saved]);
+    $$(`[data-save="${id}"]`).forEach((b) => b.setAttribute('aria-pressed', saved.has(id)));
     renderSaved();
     if (saved.has(id)) { bump($('#savedBadge')); toast('انحفظ بالمحفوظات'); }
   };
@@ -262,14 +334,17 @@
   const qv = $('#qv');
   let qvId = null;
   const openQV = (id) => {
-    const p = byId.get(id); qvId = id;
-    $('#qvImg').style.setProperty('--bg', p.bg);
+    const p = byId.get(id); if (!p) return; qvId = id;
+    $('#qvImg').style.setProperty('--bg', S.hex(p.bg, '#efe8dc'));
     $('#qvImg').innerHTML = art(p);
     $('#qvStore').textContent = p.store;
     $('#qvName').textContent = p.name;
-    $('#qvRate').textContent = `★ ${ar.format(p.rating)} · ${compact(p.reviews)} تقييم`;
-    $('#qvDesc').textContent = p.desc;
-    $('#qvPrice').textContent = money(p.price);
+    $('#qvRate').textContent = p.reviews ? `★ ${num(p.rating)} · ${compact(p.reviews)} تقييم` : '';
+    $('#qvDesc').textContent = p.desc || '';
+    $('#qvPrice').innerHTML = priceHTML(p);
+    $('#qvStock').textContent = !inStock(p) ? 'نفدت الكمية' : p.stock > 0 && p.stock <= 5 ? `باقي ${num(p.stock)} بس` : '';
+    $('#qvAdd').disabled = !inStock(p);
+    $('#qvAdd').textContent = inStock(p) ? 'أضف إلى السلة' : 'نفد من المخزون';
     if (typeof qv.showModal === 'function') qv.showModal(); else qv.setAttribute('open', '');
   };
   const closeQV = () => (qv.close ? qv.close() : qv.removeAttribute('open'));
@@ -280,27 +355,19 @@
   let tt;
   const toast = (msg) => {
     const el = $('#toast'); el.textContent = msg; el.classList.add('show');
-    clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 2200);
+    clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 2400);
   };
-
-  /* ---------- Pills ---------- */
-  const syncPills = () => document.querySelectorAll('.pill').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cat === activeCat));
 
   /* ---------- Scroller arrows (RTL aware) ---------- */
   const updateArrows = (sc) => {
     const max = sc.scrollWidth - sc.clientWidth;
     const pos = Math.abs(sc.scrollLeft);
-    document.querySelectorAll(`[data-scroll="${sc.id}"]`).forEach((b) => {
-      b.disabled = b.dataset.dir === '1' ? pos >= max - 2 : pos <= 2;
-    });
+    $$(`[data-scroll="${sc.id}"]`).forEach((b) => { b.disabled = b.dataset.dir === '1' ? pos >= max - 2 : pos <= 2; });
   };
-  document.querySelectorAll('.scroller').forEach((sc) => {
-    sc.addEventListener('scroll', () => updateArrows(sc), { passive: true });
-    updateArrows(sc);
-  });
-  addEventListener('resize', () => document.querySelectorAll('.scroller').forEach(updateArrows));
+  $$('.scroller').forEach((sc) => sc.addEventListener('scroll', () => updateArrows(sc), { passive: true }));
+  addEventListener('resize', () => $$('.scroller').forEach(updateArrows));
 
-  /* ---------- Event delegation ---------- */
+  /* ---------- Events ---------- */
   document.addEventListener('click', (e) => {
     const el = e.target.closest('button, [data-action]');
     if (!el) return;
@@ -308,16 +375,15 @@
     if (d.open) { openQV(+d.open); return; }
     if (d.add) { addToCart(+d.add); return; }
     if (d.save) { toggleSave(+d.save); return; }
-    if (d.inc) { cart[d.inc]++; persistCart(); renderCart(); return; }
+    if (d.inc) { const p = byId.get(+d.inc); if (p.stock > 0 && cart[d.inc] >= p.stock) { toast('هاي كل الكمية المتوفرة'); return; } cart[d.inc]++; persistCart(); renderCart(); return; }
     if (d.dec) { if (--cart[d.dec] <= 0) delete cart[d.dec]; persistCart(); renderCart(); return; }
-    if (d.cat) {
-      $('#resultsEmpty').textContent = 'ما لقينا شي بهالاسم. جرّب كلمة ثانية.';
-      activeCat = activeCat === d.cat ? null : d.cat; syncPills(); runSearch(true); return;
-    }
+    if (d.copy) { navigator.clipboard?.writeText(d.copy).then(() => toast('انسخ'), () => toast('ما قدرنا ننسخ، حدده وانسخه يدوي')); return; }
+    if (d.cat) { activeCat = activeCat === d.cat ? null : d.cat; syncPills(); runSearch(true); return; }
     if (d.follow) {
-      const f = new Set(store.get('raff.follow', []));
+      const f = new Set(ls.get('raff.follow', []));
       f.has(d.follow) ? f.delete(d.follow) : f.add(d.follow);
-      store.set('raff.follow', [...f]); renderStores();
+      ls.set('raff.follow', [...f]);
+      $$(`[data-follow="${CSS.escape(d.follow)}"]`).forEach((b) => { b.setAttribute('aria-pressed', f.has(d.follow)); b.textContent = f.has(d.follow) ? 'متابَع' : 'تابِع'; });
       if (f.has(d.follow)) toast(`صرت تتابع «${d.follow}»`);
       return;
     }
@@ -333,27 +399,22 @@
       case 'open-cart': openCart(); break;
       case 'close-cart': closeCart(); break;
       case 'close-qv': closeQV(); break;
-      case 'clear':
-        $('#q').value = ''; activeCat = null; syncPills(); results.hidden = true;
-        $('#resultsEmpty').textContent = 'ما لقينا شي بهالاسم. جرّب كلمة ثانية.';
-        break;
-      case 'checkout': toast('هذا متجر تجريبي، ما في دفع حقيقي'); break;
+      case 'checkout': startCheckout(); break;
+      case 'back-to-cart': view('cart'); break;
+      case 'clear': $('#q').value = ''; activeCat = null; syncPills(); results.hidden = true; break;
     }
   });
   scrim.addEventListener('click', closeCart);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && cartEl.classList.contains('open')) closeCart();
-    if (e.key === '/' && document.activeElement !== $('#q') && !qv.open) { e.preventDefault(); $('#q').focus(); }
+    if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !qv.open) { e.preventDefault(); $('#q').focus(); }
   });
-
-  renderCart();
-  renderSaved();
 
   /* ---------- 3D: card tilt ---------- */
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (matchMedia('(pointer: fine)').matches && !reduceMotion) {
     let tilted = null;
-    const reset = (el) => { el.style.transform = ''; el.style.removeProperty('--gx'); el.classList.remove('tilting'); };
+    const reset = (el) => { el.style.transform = ''; el.classList.remove('tilting'); };
     document.addEventListener('pointermove', (e) => {
       const el = e.target.closest('.pcard:not(.mini), .spot, .tile, .feature');
       if (tilted && tilted !== el) reset(tilted);
@@ -372,18 +433,38 @@
   }
 
   /* ---------- 3D: sections rise into place ---------- */
-  if ('IntersectionObserver' in window && !reduceMotion) {
-    const io = new IntersectionObserver((ens) => ens.forEach((en) => {
+  let io = null;
+  function observeBands() {
+    if (!('IntersectionObserver' in window) || reduceMotion) return;
+    io = io || new IntersectionObserver((ens) => ens.forEach((en) => {
       if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
     }), { rootMargin: '0px 0px -10% 0px' });
-    document.querySelectorAll('.band:not(#results)').forEach((b) => { b.classList.add('rise'); io.observe(b); });
+    $$('.band:not(#results):not(.in)').forEach((b) => { b.classList.add('rise'); io.observe(b); });
   }
 
-  /* ---------- 3D hero (loaded after first paint) ---------- */
-  window.raff = { open: openQV, products: byId, money };
+  /* ---------- Boot ---------- */
   const load = (src) => new Promise((ok, no) => {
     const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.body.append(s);
   });
-  const boot = () => load('../assets/js/three.min.js').then(() => load('store3d.js?v=3')).catch(() => { /* keep flat hero */ });
-  if (document.readyState === 'complete') boot(); else addEventListener('load', boot, { once: true });
+
+  S.loadCatalog('').then((data) => {
+    CFG = data.settings || {};
+    money = (n) => S.money(n, CFG.currency || '$');
+    CATS = Array.isArray(data.categories) ? data.categories : [];
+    P = (data.products || []).filter((p) => p && !p.hidden && Number.isFinite(+p.id)).map((p) => ({ ...p, id: +p.id, price: +p.price || 0 }));
+    byId = new Map(P.map((p) => [p.id, p]));
+    Object.keys(cart).forEach((k) => { if (!byId.has(+k) || !(cart[k] > 0)) delete cart[k]; });
+    if (data.isPreview) document.body.insertAdjacentHTML('afterbegin', '<div class="preview-bar">وضع المعاينة: هيدا شكل المتجر بعد ما تنشر التغييرات. <a href="./">عرض النسخة المنشورة</a></div>');
+    renderAll();
+    renderCart();
+    renderSaved();
+    $$('.scroller').forEach(updateArrows);
+    document.body.classList.add('ready');
+
+    window.raff = { open: openQV, products: byId, money };
+    const boot = () => load('../assets/js/three.min.js').then(() => load('store3d.js?v=4')).catch(() => { /* keep flat hero */ });
+    if (document.readyState === 'complete') boot(); else addEventListener('load', boot, { once: true });
+  }).catch(() => {
+    $('#sections').innerHTML = '<p class="empty" style="text-align:center">ما قدرنا نحمّل المنتجات. حدّث الصفحة بعد شوي.</p>';
+  });
 })();

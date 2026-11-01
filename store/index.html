@@ -12,7 +12,7 @@
 <link rel="canonical" href="https://7brv6ymdsz-cmd.github.io/Mostfa/store/">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../assets/css/fonts.css">
-<link rel="stylesheet" href="store.css?v=3">
+<link rel="stylesheet" href="store.css?v=4">
 </head>
 <body>
 
@@ -39,15 +39,15 @@
 <div class="page">
   <div class="banner">
     <span class="banner-icon" aria-hidden="true">ر</span>
-    <p><b>توصيل مجاني فوق ٥٠$</b><small>من أكثر من ١٢٠ متجراً مستقلاً</small></p>
+    <p><b id="bannerTitle"></b><small id="bannerSub"></small></p>
     <svg class="banner-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
   </div>
 
   <header class="hero" id="top">
     <div class="constellation" id="constellation" aria-label="منتجات مختارة"></div>
 
-    <h1 class="wordmark">رَفّ<span class="dot" aria-hidden="true"></span></h1>
-    <p class="tagline">متاجر صغيرة، أشياء تحبها</p>
+    <h1 class="wordmark" data-brand>رَفّ<span class="dot" aria-hidden="true"></span></h1>
+    <p class="tagline" id="tagline">متاجر صغيرة، أشياء تحبها</p>
 
     <form class="search" id="searchForm" role="search">
       <label class="sr" for="q">ابحث في رَفّ</label>
@@ -83,48 +83,22 @@
       </div>
     </section>
 
-    <section class="band" id="home">
-      <div class="band-head">
-        <h2><a href="#home">للبيت <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a></h2>
-      </div>
-      <div class="mosaic" id="homeMosaic"></div>
-    </section>
-
-    <section class="band" id="stores">
-      <div class="band-head">
-        <h2><a href="#stores">متاجر تستحق المتابعة <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a></h2>
-      </div>
-      <div class="stores" id="storesGrid"></div>
-    </section>
-
-    <section class="band" id="care">
-      <div class="band-head">
-        <h2><a href="#care">عناية وجمال <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a></h2>
-      </div>
-      <div class="tiles" id="careTiles"></div>
-    </section>
-
-    <section class="band" id="style">
-      <div class="band-head">
-        <h2><a href="#style">أزياء وإكسسوارات <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a></h2>
-      </div>
-      <div class="grid" id="styleGrid"></div>
-    </section>
+    <div id="sections"></div>
   </main>
 
   <footer class="foot">
     <div class="foot-inner">
       <div class="foot-brand">
-        <span class="foot-mark">رَفّ<span class="dot"></span></span>
+        <span class="foot-mark" data-brand>رَفّ<span class="dot"></span></span>
         <p>نجمع لك أجمل ما تصنعه المتاجر الصغيرة، في مكان واحد هادئ.</p>
       </div>
       <div class="foot-cols">
-        <div><h3>تسوّق</h3><a href="#picks">مختارات</a><a href="#home">للبيت</a><a href="#care">عناية وجمال</a><a href="#style">أزياء</a></div>
-        <div><h3>رَفّ</h3><a href="#stores">المتاجر</a><a href="#top">عن رَفّ</a><a href="#top">افتح متجرك</a></div>
+        <div id="footShop"><h3>تسوّق</h3></div>
+        <div><h3>المتجر</h3><a href="#picks">مختارات</a><a href="#stores">المتاجر</a><a href="admin/">لوحة الإدارة</a></div>
         <div><h3>مساعدة</h3><a href="#top">التوصيل</a><a href="#top">الإرجاع</a><a href="#top">تواصل معنا</a></div>
       </div>
     </div>
-    <p class="foot-legal">© ٢٠٢٦ رَفّ · متجر تجريبي، المنتجات للعرض فقط.</p>
+    <p class="foot-legal"><span id="footYear"></span> · الدفع يتم عبر PayPal أو تحويل بنكي أو عند الاستلام. ما منطلب ولا منخزّن أرقام بطاقات.</p>
   </footer>
 </div>
 
@@ -140,6 +114,7 @@
     <p class="qv-desc" id="qvDesc"></p>
     <div class="qv-actions">
       <span class="qv-price" id="qvPrice"></span>
+      <span class="qv-stock" id="qvStock"></span>
       <button class="btn-violet" type="button" id="qvAdd">أضف إلى السلة</button>
     </div>
   </div>
@@ -147,22 +122,58 @@
 
 <!-- Cart drawer -->
 <div class="scrim" id="scrim" hidden></div>
-<aside class="drawer" id="cart" aria-label="السلة" aria-hidden="true">
+<aside class="drawer" id="cart" aria-labelledby="drawerTitle" aria-hidden="true">
   <div class="drawer-head">
-    <h2>السلة</h2>
-    <button class="icon-btn" type="button" data-action="close-cart" aria-label="إغلاق السلة">
+    <button class="icon-btn" type="button" id="drawerBack" data-action="back-to-cart" aria-label="رجوع للسلة" hidden>
+      <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    <h2 id="drawerTitle">السلة</h2>
+    <button class="icon-btn" type="button" data-action="close-cart" aria-label="إغلاق">
       <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   </div>
-  <ul class="cart-list" id="cartList"></ul>
-  <p class="empty" id="cartEmpty">سلتك فاضية. لفّ على الرفوف شوي.</p>
-  <div class="drawer-foot" id="cartFoot" hidden>
-    <div class="total"><span>المجموع</span><b id="cartTotal"></b></div>
-    <button class="btn-violet wide" type="button" data-action="checkout">إتمام الطلب</button>
+
+  <div class="drawer-view" data-view="cart">
+    <ul class="cart-list" id="cartList"></ul>
+    <p class="empty" id="cartEmpty">سلتك فاضية. لفّ على الرفوف شوي.</p>
+    <div class="drawer-foot" id="cartFoot" hidden>
+      <p class="free-hint" id="freeHint" hidden></p>
+      <div class="sum-row"><span>المنتجات</span><b id="cartSub"></b></div>
+      <div class="sum-row"><span>التوصيل</span><b id="cartShip"></b></div>
+      <div class="total"><span>المجموع</span><b id="cartTotal"></b></div>
+      <button class="btn-violet wide" type="button" data-action="checkout">إتمام الطلب</button>
+    </div>
+  </div>
+
+  <div class="drawer-view" data-view="checkout" hidden>
+    <form class="checkout" id="checkoutForm" novalidate>
+      <fieldset>
+        <legend>معلومات التوصيل</legend>
+        <label class="field" data-f="name"><span>الاسم الكامل</span><input name="name" autocomplete="name" required><em>اكتب اسمك</em></label>
+        <label class="field" data-f="phone"><span>رقم الهاتف (واتساب)</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" required><em>رقم الهاتف مش صحيح</em></label>
+        <div class="field-row">
+          <label class="field" data-f="city"><span>المدينة</span><input name="city" autocomplete="address-level2" required><em>اكتب المدينة</em></label>
+        </div>
+        <label class="field" data-f="address"><span>العنوان</span><input name="address" autocomplete="street-address" placeholder="الحي، الشارع، البناية" required><em>اكتب العنوان بالتفصيل</em></label>
+        <label class="field"><span>ملاحظات (اختياري)</span><textarea name="notes" rows="2"></textarea></label>
+      </fieldset>
+      <fieldset>
+        <legend>طريقة الدفع</legend>
+        <div class="pay-methods" id="payMethods"></div>
+      </fieldset>
+      <div class="co-summary" id="coSummary"></div>
+      <button class="btn-violet wide" type="submit">تأكيد الطلب</button>
+      <p class="secure"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>ما منطلب أرقام بطاقات على هالموقع أبداً.</p>
+    </form>
+  </div>
+
+  <div class="drawer-view done" data-view="done" hidden>
+    <div id="doneBody"></div>
+    <button class="btn-ghost wide" type="button" data-action="close-cart">كمّل تسوّق</button>
   </div>
 </aside>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="store.js?v=3"></script>
+<script src="shared.js?v=4"></script>
+<script src="store.js?v=4"></script>
 </body>
 </html>
