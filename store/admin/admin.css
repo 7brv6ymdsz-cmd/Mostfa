@@ -476,3 +476,69 @@ a.kpi:hover { transform: translateY(-2px); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- v2: cloud, coupons, reviews, gallery ---------- */
+.lock-card .lock-field { letter-spacing: 0; font-size: 16px; text-align: start; height: 50px; padding: 0 18px; }
+.err.ok-msg { color: var(--green); background: var(--green-wash); border-radius: 14px; padding: 10px 12px; }
+.cloud-badge { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: var(--r-full); background: var(--white); box-shadow: var(--sh-sm); font-size: 13px; font-weight: 500; color: var(--green); }
+.cloud-badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px var(--green-wash); }
+.tiny { font-size: 12px; }
+.sums .disc span, .sums .disc b { color: var(--green); }
+
+.gallery-ed { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.gallery-ed:empty { display: none; }
+.g-item { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; }
+.g-item > span { display: block; width: 100%; height: 100%; background: var(--bg); }
+.g-item img, .g-item svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.g-item.main { box-shadow: 0 0 0 2px var(--ink); }
+.g-act { position: absolute; inset: auto 4px 4px auto; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+.g-item:hover .g-act, .g-item:focus-within .g-act { opacity: 1; }
+.g-act button { width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.95); display: grid; place-items: center; box-shadow: var(--sh-sm); }
+.g-act .ic { width: 14px; height: 14px; }
+@media (hover: none) { .g-act { opacity: 1; } }
+
+.opts-ed { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 18px; }
+.opts-head b { font-size: 14px; font-weight: 600; margin-inline-end: 8px; }
+.opts-head small { font-size: 12px; }
+.opt-row { display: grid; grid-template-columns: 130px 1fr auto; gap: 8px; align-items: center; }
+.opt-row input { height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-full); outline: 0; min-width: 0; }
+.opt-row input:focus { border-color: var(--ink); }
+.opts-ed > .btn { align-self: flex-start; height: 36px; font-size: 13px; }
+
+.coupon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.coupon-card {
+  position: relative; text-align: start; display: flex; flex-direction: column; gap: 6px;
+  background: var(--white); border-radius: var(--r-card); padding: 18px 20px; box-shadow: var(--sh-sm);
+  transition: transform .2s var(--ease), box-shadow .2s;
+}
+.coupon-card::before, .coupon-card::after { content: ""; position: absolute; top: 58px; width: 18px; height: 18px; border-radius: 50%; background: var(--mist); }
+.coupon-card::before { left: -9px; } .coupon-card::after { right: -9px; }
+.coupon-card:hover { transform: translateY(-2px); box-shadow: var(--sh-card); }
+.cc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 12px; border-bottom: 2px dashed var(--line); margin-bottom: 4px; }
+.cc-code { font-size: 18px; font-weight: 600; letter-spacing: .06em; font-family: ui-monospace, Menlo, monospace; }
+.cc-val { font-size: 26px; font-weight: 600; }
+.cc-meta, .cc-uses { font-size: 12px; color: var(--muted); }
+
+.rv-admin { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.rv-admin li { display: flex; flex-direction: column; gap: 12px; }
+.rva-head { display: flex; align-items: center; gap: 12px; }
+.rva-head > div { flex: 1; min-width: 0; }
+.rva-head b { display: block; font-size: 14px; font-weight: 600; }
+.rva-head small { font-size: 12px; color: var(--muted); }
+.rva-stars { font-size: 16px; letter-spacing: 1px; direction: ltr; }
+.rva-stars i { font-style: normal; color: var(--stone); }
+.rv-admin p { font-size: 15px; line-height: 1.7; color: var(--slate); }
+
+.mono-box { margin-top: 8px; padding: 10px 14px; border-radius: 12px; background: var(--mist); font: 13px ui-monospace, Menlo, monospace; word-break: break-all; text-align: left; }
+.srv-form { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.steps li .srv-form .btn { width: auto; }
+@media (max-width: 860px) {
+  .cloud-badge { font-size: 0; width: 42px; padding: 0; justify-content: center; }
+  .opt-row { grid-template-columns: 1fr auto; }
+  .opt-row .opt-vals { grid-column: 1; }
+}
+@media (max-width: 860px) {
+  .side-nav { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
+  .side-nav::-webkit-scrollbar { display: none; }
+  .side-nav a { flex: 0 0 auto; min-width: 68px; }
+}

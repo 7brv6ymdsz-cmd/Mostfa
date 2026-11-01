@@ -31,7 +31,7 @@
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const hex = (c, d) => (/^#[0-9a-f]{6}$/i.test(c || '') ? c : d);
-  const safeImg = (s) => (typeof s === 'string' && /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s) ? s
+  const safeImg = (s) => (typeof s === 'string' && (/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s) || /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/[\w\-./%]+$/.test(s)) ? s
     : typeof s === 'string' && /^(?:\.{0,2}\/)?[\w\-./]+\.(png|jpe?g|webp|gif|svg)$/i.test(s) && !s.includes('..//') ? s : '');
 
   const art = (p) => {

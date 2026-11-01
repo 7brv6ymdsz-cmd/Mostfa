@@ -4,7 +4,8 @@
   'use strict';
   if (window.top !== window.self) { document.documentElement.hidden = true; return; }
 
-  const S = window.RaffShared;
+  const S = window.RaffShared, D = window.RaffData;
+  const CLOUD = D.mode === 'cloud';
   const { esc, num, art, ls } = S;
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -30,6 +31,11 @@
     payments: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     publish: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
+    coupons: '<path d="M3 9V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a3 3 0 0 0 0 6v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a3 3 0 0 0 0-6z"/><path d="M9 9l6 6M9.5 14.5h0M14.5 9.5h0"/>',
+    reviews: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+    server: '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+    refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     import: '<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>',
     search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
@@ -63,6 +69,7 @@
   };
   let saving = Promise.resolve();
   const save = () => {
+    if (CLOUD) { updatePublishDot(); return Promise.resolve(); }
     saving = saving.then(async () => {
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(state)));
@@ -74,25 +81,26 @@
   };
   const readStored = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
 
+  const publicCoupons = () => (state.coupons || []).filter((c) => c.active && c.h).map(({ code, uses, maxUses, ...c }) => c);
   const publicCatalog = () => ({
     v: 1,
     updated: new Date().toISOString(),
-    settings: state.settings,
+    settings: { ...state.settings, coupons: publicCoupons() },
     categories: state.categories,
     products: state.products.map(({ sold, ...p }) => p),
   });
   const catalogHash = () => {
-    const s = JSON.stringify({ a: state.settings, b: state.categories, c: state.products.map(({ sold, ...p }) => p) });
+    const s = JSON.stringify({ a: state.settings, k: publicCoupons(), b: state.categories, c: state.products.map(({ sold, ...p }) => p) });
     let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
     return (h >>> 0).toString(36);
   };
-  const dirty = () => state && state.publishedHash !== catalogHash();
+  const dirty = () => !CLOUD && state && state.publishedHash !== catalogHash();
   const updatePublishDot = () => { if (state) { $('#publishDot').hidden = !dirty(); $('#publishBtn').classList.toggle('has-changes', dirty()); } };
 
   /* ---------- Lock ---------- */
   const stored = readStored();
   const setup = !stored;
-  if (setup) {
+  if (setup && !CLOUD) {
     $('#lockMsg').textContent = 'أهلاً! اختار رمز سري من ٦ أرقام أو أكثر. ما في طريقة لاسترجاعه إذا نسيته.';
     $('#pin2').hidden = false; $('#lockSubmit').textContent = 'إنشاء الرمز والبدء';
     $('#pin').setAttribute('autocomplete', 'new-password');
@@ -106,7 +114,153 @@
   $('#forgotNo').addEventListener('click', () => { $('#forgotBox').hidden = true; $('#forgotBtn').hidden = false; });
   $('#forgotYes').addEventListener('click', () => { ls.del(KEY); location.reload(); });
 
-  $('#lockForm').addEventListener('submit', async (e) => {
+  /* ---------- Cloud (Supabase) mode ---------- */
+  const sb = D.client;
+  const must = D.must;
+  const cloudApi = {
+    async loadAll() {
+      const [st, cats, prods, ords, cps, rvs] = await Promise.all([
+        sb.from('settings').select('data').eq('id', 1).maybeSingle(),
+        sb.from('categories').select('*').order('sort'),
+        sb.from('products').select('*').order('sort').order('id', { ascending: false }),
+        sb.from('orders').select('*').order('created_at', { ascending: false }).limit(1000),
+        sb.from('coupons').select('*').order('created_at', { ascending: false }),
+        sb.from('reviews').select('*').order('created_at', { ascending: false }).limit(500),
+      ]);
+      const bad = [st, cats, prods, ords, cps, rvs].find((r) => r.error);
+      if (bad) throw new Error(D.friendly(bad.error));
+      state = {
+        settings: (st.data && st.data.data) || {},
+        categories: cats.data.map((c) => ({ id: c.id, name: c.name, c: c.color, sort: c.sort })),
+        products: prods.data.map(D.fromRow),
+        orders: ords.data.map((o) => ({ ...D.orderFromRow(o), stockApplied: o.stock_applied })),
+        coupons: cps.data.map(couponFromRow),
+        reviews: rvs.data,
+        publishedHash: null,
+      };
+      migrate();
+    },
+    async saveProduct(p, isNew) {
+      const row = D.toRow(p);
+      const r = isNew ? await sb.from('products').insert(row).select().single() : await sb.from('products').update(row).eq('id', p.id).select().single();
+      return D.fromRow(must(r));
+    },
+    async deleteProduct(id) { must(await sb.from('products').delete().eq('id', id)); },
+    async saveSettings() { must(await sb.from('settings').update({ data: state.settings }).eq('id', 1)); },
+    async saveCategories(removed) {
+      if (state.categories.length) must(await sb.from('categories').upsert(state.categories.map((c, i) => ({ id: c.id, name: c.name, color: c.c, sort: i }))));
+      if (removed.length) must(await sb.from('categories').delete().in('id', removed));
+    },
+    async setStatus(id, st) { return D.orderFromRow(must(await sb.rpc('admin_set_status', { p_id: id, p_status: st }))); },
+    async patchOrder(id, fields) { must(await sb.from('orders').update(fields).eq('id', id)); },
+    async deleteOrder(id) { must(await sb.from('orders').delete().eq('id', id)); },
+    async saveCoupon(c, isNew) {
+      const row = { code: c.code, kind: c.kind, value: c.value, min_subtotal: c.min || 0, starts_at: c.starts ? new Date(c.starts).toISOString() : null, ends_at: c.ends ? new Date(c.ends).toISOString() : null, max_uses: c.maxUses || null, active: c.active };
+      const r = isNew ? await sb.from('coupons').insert(row).select().single() : await sb.from('coupons').update(row).eq('code', c.code).select().single();
+      return couponFromRow(must(r));
+    },
+    async deleteCoupon(code) { must(await sb.from('coupons').delete().eq('code', code)); },
+    async setReview(id, status) { must(await sb.from('reviews').update({ status }).eq('id', id)); },
+    async deleteReview(id) { must(await sb.from('reviews').delete().eq('id', id)); },
+    async upload(blob) {
+      const path = `p/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      must(await sb.storage.from('products').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false }));
+      return sb.storage.from('products').getPublicUrl(path).data.publicUrl;
+    },
+    async newOrders(since) {
+      return must(await sb.from('orders').select('*').gt('created_at', new Date(since).toISOString()).order('created_at', { ascending: false })).map((o) => ({ ...D.orderFromRow(o), stockApplied: o.stock_applied }));
+    },
+  };
+  function couponFromRow(r) {
+    return { code: r.code, kind: r.kind, value: +r.value, min: +r.min_subtotal || 0, starts: r.starts_at ? new Date(r.starts_at).getTime() : null, ends: r.ends_at ? new Date(r.ends_at).getTime() : null, maxUses: r.max_uses || null, uses: r.uses || 0, active: r.active };
+  }
+  // run a cloud write with a busy button and a friendly error
+  async function cloudDo(fn, okMsg) {
+    try { const r = await fn(); if (okMsg) toast(okMsg); return r; }
+    catch (e) { toast(D.friendly(e)); throw e; }
+  }
+
+  let pollTimer = null;
+  function startPolling() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      if (!state || document.hidden) return;
+      try {
+        const latest = state.orders.reduce((m, o) => Math.max(m, o.createdAt), 0) || Date.now() - 864e5;
+        const fresh = (await cloudApi.newOrders(latest)).filter((o) => !state.orders.some((x) => x.id === o.id));
+        if (fresh.length) {
+          state.orders.unshift(...fresh);
+          toast(fresh.length === 1 ? `طلب جديد من ${fresh[0].customer.name}` : `وصلك ${num(fresh.length)} طلبات جديدة`);
+          if (current === 'orders') renderOrderList(); else if (current === 'dashboard') VIEWS.dashboard();
+          refreshBadges();
+        }
+      } catch { /* offline, try again later */ }
+    }, 30000);
+  }
+  function refreshBadges() {
+    const newCount = state.orders.filter((o) => o.status === 'new').length;
+    const a = $('#sideNav a[href="#orders"]'); if (!a) return;
+    let em = a.querySelector('em');
+    if (newCount) { if (!em) { em = document.createElement('em'); a.append(em); } em.textContent = num(newCount); } else if (em) em.remove();
+  }
+
+  if (CLOUD) cloudLock();
+  async function cloudLock() {
+    const card = $('#lockForm');
+    const exists = await sb.rpc('admin_exists').then((r) => !!r.data, () => true);
+    await D.ready;
+    const paint = (modeName) => {
+      const signup = modeName === 'signup';
+      card.innerHTML = `
+        <div class="lock-mark">رَفّ<span class="dot"></span></div>
+        <p class="lock-sub">لوحة الإدارة</p>
+        <p class="lock-msg">${signup ? 'أنشئ حساب المدير. أول حساب بيسجّل هون بيصير هو مدير المتجر.' : 'سجّل دخول بحساب المدير.'}</p>
+        <input id="cEmail" type="email" autocomplete="email" placeholder="الإيميل" dir="ltr" class="lock-field">
+        <input id="cPass" type="password" autocomplete="${signup ? 'new-password' : 'current-password'}" placeholder="كلمة السر" dir="ltr" class="lock-field">
+        <p class="err" id="lockErr" hidden></p>
+        <button class="btn violet wide" type="submit" id="lockSubmit">${signup ? 'إنشاء حساب المدير' : 'دخول'}</button>
+        ${!exists ? `<button class="link" type="button" id="swap">${signup ? 'عندي حساب، بدي سجّل دخول' : 'أول مرة؟ أنشئ حساب المدير'}</button>` : ''}
+        <p class="lock-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>متصل بالسيرفر. البيانات محمية بقواعد أمان على قاعدة البيانات.</p>`;
+      const sw = $('#swap'); if (sw) sw.onclick = () => paint(signup ? 'login' : 'signup');
+      card.onsubmit = async (e) => {
+        e.preventDefault();
+        const err = $('#lockErr'), email = $('#cEmail').value.trim(), password = $('#cPass').value;
+        err.hidden = true;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < (signup ? 8 : 1)) { err.textContent = signup ? 'اكتب إيميل صحيح وكلمة سر ٨ أحرف أو أكثر' : 'اكتب الإيميل وكلمة السر'; err.hidden = false; return; }
+        $('#lockSubmit').disabled = true; $('#lockSubmit').classList.add('busy');
+        try {
+          if (signup) {
+            const r = await D.auth.signUp({ email, password, name: 'المدير', phone: '' });
+            if (r.needsConfirm) { err.textContent = 'بعتنالك رابط تفعيل على إيميلك. افتحه، وبعدين ارجع هون وسجّل دخول.'; err.hidden = false; err.classList.add('ok-msg'); return; }
+          } else await D.auth.signIn({ email, password });
+          await afterCloudLogin();
+        } catch (ex) { err.textContent = D.friendly(ex); err.hidden = false; }
+        finally { const b = $('#lockSubmit'); if (b) { b.disabled = false; b.classList.remove('busy'); } }
+      };
+      setTimeout(() => $('#cEmail') && $('#cEmail').focus(), 30);
+    };
+    if (D.auth.user) { try { await afterCloudLogin(); return; } catch { /* fall through to the form */ } }
+    paint(exists ? 'login' : 'signup');
+  }
+  async function afterCloudLogin() {
+    let admin = !!must(await sb.rpc('is_admin'));
+    if (!admin) {
+      const claimed = !!must(await sb.rpc('claim_admin'));
+      admin = claimed;
+      if (claimed) toast('صرت مدير المتجر');
+    }
+    if (!admin) {
+      $('#lockForm').innerHTML = `<div class="lock-mark">رَفّ<span class="dot"></span></div><p class="lock-msg">هالحساب (${esc(D.auth.user.email)}) مش حساب المدير.</p><button class="btn wide" type="button" id="outBtn">تسجيل خروج</button><a class="link" href="../">رجوع للمتجر</a>`;
+      $('#outBtn').onclick = async () => { await D.auth.signOut(); location.reload(); };
+      throw new Error('not_admin');
+    }
+    await cloudApi.loadAll();
+    // first time on the server: offer to bring the local catalog along
+    if (!state.products.length && !state.categories.length) state.offerImport = true;
+    enterApp();
+  }
+
+  if (!CLOUD) $('#lockForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const err = $('#lockErr'), pin = S.toLatinDigits($('#pin').value);
     err.hidden = true;
@@ -162,19 +316,25 @@
     state.settings = state.settings || {};
     state.settings.payments = { cod: { on: true }, paypal: { on: false, user: '' }, bank: { on: false, bank: '', holder: '', iban: '' }, ...(state.settings.payments || {}) };
     state.settings.shipping = { fee: 0, freeOver: 0, ...(state.settings.shipping || {}) };
+    state.coupons = state.coupons || [];
+    state.reviews = state.reviews || [];
     if (state.publishedHash === undefined) state.publishedHash = null;
     if (state.publishedHash === null && !state.products.some((p) => p._edited)) state.publishedHash = catalogHash();
   }
 
-  const lock = () => { state = null; key = null; location.hash = ''; location.reload(); };
+  const lock = async () => { state = null; key = null; if (CLOUD) { try { await D.auth.signOut(); } catch { /* ignore */ } } location.hash = ''; location.reload(); };
   const bumpIdle = () => { clearTimeout(idleTimer); idleTimer = setTimeout(lock, IDLE_MS); };
 
   function enterApp() {
     $('#lock').hidden = true; $('#app').hidden = false;
     ['pointerdown', 'keydown'].forEach((ev) => addEventListener(ev, bumpIdle, { passive: true }));
     bumpIdle();
-    const n = syncLocalOrders(true);
-    if (n) toast(`انضاف ${num(n)} طلب من هالجهاز`);
+    if (CLOUD) { startPolling(); } else {
+      const n = syncLocalOrders(true);
+      if (n) toast(`انضاف ${num(n)} طلب من هالجهاز`);
+    }
+    $('#publishBtn').hidden = CLOUD;
+    $('#cloudBadge').hidden = !CLOUD;
     route();
   }
 
@@ -185,7 +345,10 @@
     { id: 'products', t: 'المنتجات', k: 'الكتالوج' },
     { id: 'customers', t: 'العملاء', k: 'المبيعات' },
     { id: 'payments', t: 'الدفع والشحن', k: 'الإعدادات' },
+    { id: 'coupons', t: 'الكوبونات', k: 'التسويق' },
+    { id: 'reviews', t: 'التقييمات', k: 'التسويق' },
     { id: 'settings', t: 'الإعدادات', k: 'المتجر' },
+    { id: 'server', t: 'السيرفر والحسابات', k: 'المتجر' },
     { id: 'publish', t: 'النشر', k: 'المتجر' },
   ];
   const VIEWS = {};
@@ -196,7 +359,8 @@
     const nav = NAV.find((n) => n.id === id) || NAV[0];
     current = nav.id;
     const newCount = state.orders.filter((o) => o.status === 'new').length;
-    $('#sideNav').innerHTML = NAV.filter((n) => n.id !== 'publish').map((n) => `<a href="#${n.id}" class="${n.id === current ? 'on' : ''}" ${n.id === current ? 'aria-current="page"' : ''}>${ic(n.id)}<span>${n.t}</span>${n.id === 'orders' && newCount ? `<em>${num(newCount)}</em>` : ''}</a>`).join('');
+    const pendingRv = state.reviews.filter((r) => r.status === 'pending').length;
+    $('#sideNav').innerHTML = NAV.filter((n) => n.id !== 'publish').map((n) => `<a href="#${n.id}" class="${n.id === current ? 'on' : ''}" ${n.id === current ? 'aria-current="page"' : ''}>${ic(n.id)}<span>${n.t}</span>${n.id === 'orders' && newCount ? `<em>${num(newCount)}</em>` : n.id === 'reviews' && pendingRv ? `<em>${num(pendingRv)}</em>` : ''}</a>`).join('');
     $('#topTitle').textContent = nav.t;
     $('#topKicker').textContent = nav.k;
     $('#topActions').innerHTML = '';
@@ -223,6 +387,7 @@
   const badge = (o) => `<span class="badge ${STATUS[o.status].c}">${STATUS[o.status].t}</span>`;
   const payBadge = (o) => (o.status === 'cancelled' ? '' : o.paid ? '<span class="badge st-paid">مدفوع</span>' : '<span class="badge st-unpaid">غير مدفوع</span>');
   const live = (o) => o.status !== 'cancelled';
+  const optsText = (o) => Object.keys(o || {}).map((k) => `${k}: ${o[k]}`).join('، ');
   const byPid = () => new Map(state.products.map((p) => [p.id, p]));
   const thumb = (p, cls = 'thumb') => `<span class="${cls}" style="--bg:${S.hex(p && p.bg, '#efe8dc')}">${p ? art(p) : ''}</span>`;
   const empty = (title, text, actions = '') => `<div class="empty-state"><div class="empty-ill" aria-hidden="true">${ic('orders')}</div><h3>${title}</h3><p>${text}</p><div class="row-btns center">${actions}</div></div>`;
@@ -309,7 +474,7 @@
   /* ---------- Dashboard ---------- */
   let period = 30;
   VIEWS.dashboard = () => {
-    setActions(`<button class="btn" type="button" data-act="import">${ic('import')}<span>استيراد طلب</span></button>`);
+    setActions(CLOUD ? `<button class="btn" type="button" data-act="reload">${ic('refresh')}<span>تحديث</span></button>` : `<button class="btn" type="button" data-act="import">${ic('import')}<span>استيراد طلب</span></button>`);
     const now = Date.now(), day = 864e5;
     const from = period ? now - period * day : 0;
     const prevFrom = period ? from - period * day : 0;
@@ -335,7 +500,8 @@
     const hasOrders = state.orders.length > 0;
     $('#view').innerHTML = `
       ${dirty() ? `<a class="notice" href="#publish">${ic('publish')}<span><b>عندك تعديلات ما انتشرت لسا.</b> الزبائن بيشوفوا النسخة القديمة لحتى تنشر.</span><em>انشر هلّق</em></a>` : ''}
-      ${!state.settings.whatsapp ? `<a class="notice soft" href="#payments">${ic('whatsapp')}<span><b>ما حطيت رقم واتساب.</b> بدونه الزبون ما فيه يبعتلك الطلب بكبسة وحدة.</span><em>أضف الرقم</em></a>` : ''}
+      ${state.offerImport ? `<a class="notice" href="#server">${ic('server')}<span><b>السيرفر جاهز بس فاضي.</b> انقل منتجاتك وإعداداتك الحالية إليه بكبسة وحدة.</span><em>نقل البيانات</em></a>` : ''}
+      ${!CLOUD && !state.settings.whatsapp ? `<a class="notice soft" href="#payments">${ic('whatsapp')}<span><b>ما حطيت رقم واتساب.</b> بدونه الزبون ما فيه يبعتلك الطلب بكبسة وحدة.</span><em>أضف الرقم</em></a>` : ''}
       <div class="seg" role="group" aria-label="الفترة">
         ${[[7, '٧ أيام'], [30, '٣٠ يوم'], [90, '٣ أشهر'], [0, 'الكل']].map(([v, t]) => `<button type="button" data-period="${v}" aria-pressed="${period === v}">${t}</button>`).join('')}
       </div>
@@ -348,7 +514,7 @@
       <div class="dash-grid">
         <section class="card chart-card">
           <div class="card-head"><h2>المبيعات اليومية</h2><span class="muted" id="chartRange"></span></div>
-          ${hasOrders ? '<div class="chart" id="chart"></div>' : empty('ما في طلبات لسا', 'أول ما توصلك طلبات من المتجر، رح تشوف المبيعات هون.', `<button class="btn violet" type="button" data-act="demo">${ic('plus')}جرّب ببيانات تجريبية</button><button class="btn" type="button" data-act="import">${ic('import')}استيراد طلب</button>`)}
+          ${hasOrders ? '<div class="chart" id="chart"></div>' : empty('ما في طلبات لسا', 'أول ما توصلك طلبات من المتجر، رح تشوف المبيعات هون.', CLOUD ? '' : `<button class="btn violet" type="button" data-act="demo">${ic('plus')}جرّب ببيانات تجريبية</button><button class="btn" type="button" data-act="import">${ic('import')}استيراد طلب</button>`)}
         </section>
         <section class="card">
           <div class="card-head"><h2>الأكثر مبيعاً</h2></div>
@@ -418,7 +584,7 @@
   VIEWS.orders = (arg) => {
     if (arg === 'unpaid') oFilter = 'unpaid';
     else if (arg && arg.startsWith('phone:')) { oQuery = arg.slice(6); oFilter = 'all'; }
-    setActions(`<button class="btn" type="button" data-act="sync">${ic('download')}<span>من هالجهاز</span></button><button class="btn violet" type="button" data-act="import">${ic('import')}<span>استيراد طلب</span></button>`);
+    setActions(CLOUD ? `<button class="btn" type="button" data-act="reload">${ic('refresh')}<span>تحديث</span></button>` : `<button class="btn" type="button" data-act="sync">${ic('download')}<span>من هالجهاز</span></button><button class="btn violet" type="button" data-act="import">${ic('import')}<span>استيراد طلب</span></button>`);
     const counts = { all: state.orders.length, unpaid: state.orders.filter((o) => live(o) && !o.paid).length };
     Object.keys(STATUS).forEach((k) => { counts[k] = state.orders.filter((o) => o.status === k).length; });
     $('#view').innerHTML = `
@@ -443,7 +609,8 @@
     });
     const el = $('#orderList');
     if (!state.orders.length) {
-      el.innerHTML = empty('ما في طلبات لسا', 'الطلبات بتوصلك على واتساب مع «رمز طلب». الصقه هون بكبسة «استيراد طلب»، أو جرّب اللوحة ببيانات تجريبية.',
+      el.innerHTML = CLOUD ? empty('ما في طلبات لسا', 'أول ما زبون يطلب من المتجر، الطلب بيوصل هون لحاله.', '')
+        : empty('ما في طلبات لسا', 'الطلبات بتوصلك على واتساب مع «رمز طلب». الصقه هون بكبسة «استيراد طلب»، أو جرّب اللوحة ببيانات تجريبية.',
         `<button class="btn violet" type="button" data-act="import">${ic('import')}استيراد طلب</button><button class="btn" type="button" data-act="demo">${ic('plus')}بيانات تجريبية</button>`);
       return;
     }
@@ -488,8 +655,8 @@
 
         <section class="block">
           <h3>المنتجات</h3>
-          <ul class="line-items">${o.items.map((x) => `<li>${thumb(pm.get(x.id))}<div><b>${esc(x.name)}</b><small>${money(x.price)} × ${num(x.qty)}</small></div><span>${money(x.price * x.qty)}</span></li>`).join('')}</ul>
-          <div class="sums"><div><span>المنتجات</span><b>${money(o.subtotal)}</b></div><div><span>التوصيل</span><b>${o.shipping ? money(o.shipping) : 'مجاني'}</b></div><div class="grand"><span>المجموع</span><b>${money(o.total)}</b></div></div>
+          <ul class="line-items">${o.items.map((x) => `<li>${thumb(pm.get(x.id))}<div><b>${esc(x.name)}</b><small>${optsText(x.options) ? `${esc(optsText(x.options))} · ` : ''}${money(x.price)} × ${num(x.qty)}</small></div><span>${money(x.price * x.qty)}</span></li>`).join('')}</ul>
+          <div class="sums"><div><span>المنتجات</span><b>${money(o.subtotal)}</b></div>${o.discount ? `<div class="disc"><span>الخصم ${esc(o.coupon || '')}</span><b>−${money(o.discount)}</b></div>` : ''}<div><span>التوصيل</span><b>${o.shipping ? money(o.shipping) : 'مجاني'}</b></div><div class="grand"><span>المجموع</span><b>${money(o.total)}</b></div></div>
         </section>
 
         <section class="block">
@@ -519,12 +686,30 @@
       </div>`);
     const sheet = $('#sheetInner');
     sheet.dataset.order = o.id;
-    $('[name=paid]', sheet).addEventListener('change', (e) => { o.paid = e.target.checked; e.target.nextElementSibling.nextElementSibling.textContent = o.paid ? 'مدفوع' : 'غير مدفوع'; save(); refreshBehind(); });
-    $('#oNote').addEventListener('change', (e) => { o.note = e.target.value.slice(0, 1000); save(); });
+    $('[name=paid]', sheet).addEventListener('change', async (e) => {
+      const v = e.target.checked;
+      if (CLOUD) { try { await cloudDo(() => cloudApi.patchOrder(o.id, { paid: v })); } catch { e.target.checked = !v; return; } }
+      o.paid = v; e.target.nextElementSibling.nextElementSibling.textContent = o.paid ? 'مدفوع' : 'غير مدفوع'; save(); refreshBehind();
+    });
+    $('#oNote').addEventListener('change', async (e) => {
+      const v = e.target.value.slice(0, 1000);
+      if (CLOUD) { try { await cloudDo(() => cloudApi.patchOrder(o.id, { note: v }), 'انحفظت الملاحظة'); } catch { return; } }
+      o.note = v; save();
+    });
   }
-  function setStatus(id, s) {
+  async function setStatus(id, s) {
     const o = state.orders.find((x) => x.id === id); if (!o || o.status === s) return;
     const before = o.status;
+    if (CLOUD) {
+      let fresh;
+      try { fresh = await cloudDo(() => cloudApi.setStatus(id, s)); } catch { return; }
+      Object.assign(o, fresh);
+      // stock changed on the server
+      if (s === 'cancelled' || before === 'cancelled') { try { await cloudApi.loadAll(); } catch { /* ignore */ } }
+      toast(`${STATUS[before].t} ← ${STATUS[s].t}`);
+      openOrder(id); refreshBehind();
+      return;
+    }
     // keep stock honest: reserve when an order is confirmed, give it back when cancelled
     if (!o.stockApplied && ['confirmed', 'shipped', 'delivered'].includes(s)) { applyStock(o, 1); o.stockApplied = true; }
     if (o.stockApplied && (s === 'cancelled' || s === 'new')) { applyStock(o, -1); o.stockApplied = false; }
@@ -549,8 +734,8 @@
       <div class="inv-head"><div class="inv-mark">${esc(state.settings.name)}</div><div><h1>فاتورة</h1><p class="oid">${esc(o.id)}</p><p>${fmtDate(o.createdAt)}</p></div></div>
       <div class="inv-to"><h3>إلى</h3><p><b>${esc(o.customer.name)}</b></p><p dir="ltr" style="text-align:right">${esc(o.customer.phone)}</p><p>${esc(o.customer.city)}، ${esc(o.customer.address)}</p></div>
       <table><thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>المجموع</th></tr></thead>
-      <tbody>${o.items.map((x) => `<tr><td>${esc(x.name)}</td><td>${num(x.qty)}</td><td>${money(x.price)}</td><td>${money(x.price * x.qty)}</td></tr>`).join('')}</tbody>
-      <tfoot><tr><td colspan="3">المنتجات</td><td>${money(o.subtotal)}</td></tr><tr><td colspan="3">التوصيل</td><td>${money(o.shipping)}</td></tr><tr class="g"><td colspan="3">المجموع</td><td>${money(o.total)}</td></tr></tfoot></table>
+      <tbody>${o.items.map((x) => `<tr><td>${esc(x.name)}${optsText(x.options) ? ` <small>(${esc(optsText(x.options))})</small>` : ''}</td><td>${num(x.qty)}</td><td>${money(x.price)}</td><td>${money(x.price * x.qty)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="3">المنتجات</td><td>${money(o.subtotal)}</td></tr>${o.discount ? `<tr><td colspan="3">الخصم ${esc(o.coupon || '')}</td><td>−${money(o.discount)}</td></tr>` : ''}<tr><td colspan="3">التوصيل</td><td>${money(o.shipping)}</td></tr><tr class="g"><td colspan="3">المجموع</td><td>${money(o.total)}</td></tr></tfoot></table>
       <p class="inv-foot">طريقة الدفع: ${esc(S.METHODS[o.method] || '')} · ${o.paid ? 'مدفوع' : 'غير مدفوع'}</p>`;
     window.print();
   }
@@ -591,23 +776,22 @@
 
   function editProduct(id) {
     const isNew = !id;
-    const p0 = isNew ? { id: Math.max(0, ...state.products.map((x) => +x.id || 0)) + 1, name: '', store: state.settings.name, price: 0, compare: 0, stock: 10, cat: (state.categories[0] || {}).id || '', kind: 'tote', bg: '#efe8dc', fg: '#f4efe6', ac: '#8a6a4a', desc: '', featured: false, hidden: false, rating: 0, reviews: 0 }
+    const p0 = isNew ? { id: Math.max(0, ...state.products.map((x) => +x.id || 0)) + 1, name: '', store: state.settings.name, price: 0, compare: 0, stock: 10, cat: (state.categories[0] || {}).id || '', kind: 'tote', bg: '#efe8dc', fg: '#f4efe6', ac: '#8a6a4a', desc: '', featured: false, hidden: false, rating: 0, reviews: 0, images: [], options: [] }
       : state.products.find((x) => x.id === id);
     if (!p0) return;
-    const p = { ...p0 };
-    const kinds = S.KINDS.map((k) => `<button type="button" class="kind${p.kind === k && !p.img ? ' on' : ''}" data-kind="${k}" title="${S.KIND_NAMES[k]}" aria-label="${S.KIND_NAMES[k]}">${art({ kind: k, fg: '#665a54', ac: '#332f2d' })}</button>`).join('');
+    const p = { ...p0, images: [...(p0.images && p0.images.length ? p0.images : (p0.img ? [p0.img] : []))], options: JSON.parse(JSON.stringify(p0.options || [])) };
+    const kinds = S.KINDS.map((k) => `<button type="button" class="kind${p.kind === k ? ' on' : ''}" data-kind="${k}" title="${S.KIND_NAMES[k]}" aria-label="${S.KIND_NAMES[k]}">${art({ kind: k, fg: '#665a54', ac: '#332f2d' })}</button>`).join('');
     openModal(`
       <form class="editor" id="editor" novalidate>
         <div class="modal-head"><h2>${isNew ? 'منتج جديد' : 'تعديل المنتج'}</h2><button class="icon-btn" type="button" data-act="close-modal" aria-label="إغلاق">${ic('close')}</button></div>
         <div class="editor-grid">
           <div class="editor-preview">
             <div class="prev-card"><span class="prev-img" id="prevImg"></span><b id="prevName"></b><small id="prevStore"></small><strong id="prevPrice"></strong></div>
-            <div class="img-tools">
-              <label class="btn wide">${ic('upload')}<span>${p.img ? 'غيّر الصورة' : 'ارفع صورة'}</span><input type="file" accept="image/*" id="imgIn" hidden></label>
-              <button class="btn wide" type="button" id="imgRm" ${p.img ? '' : 'hidden'}>${ic('trash')}شيل الصورة</button>
-            </div>
-            <div class="art-tools" id="artTools" ${p.img ? 'hidden' : ''}>
-              <p class="muted">أو اختار رسمة ولون خلفية:</p>
+            <div class="gallery-ed" id="galleryEd"></div>
+            <label class="btn wide" id="imgPick">${ic('upload')}<span>ارفع صور</span><input type="file" accept="image/*" id="imgIn" multiple hidden></label>
+            <p class="muted tiny" id="imgHint">${CLOUD ? 'الصور بتنرفع على السيرفر. أول صورة هي الأساسية.' : 'أول صورة هي الأساسية. الصور بتكبّر ملف المتجر، فخليها قليلة.'}</p>
+            <div class="art-tools" id="artTools">
+              <p class="muted">بلا صورة؟ اختار رسمة ولون خلفية:</p>
               <div class="kinds">${kinds}</div>
               <div class="swatches">${SWATCHES.map((c) => `<button type="button" class="sw${p.bg === c ? ' on' : ''}" data-bg="${c}" style="--c:${c}" aria-label="لون ${c}"></button>`).join('')}<label class="sw custom" title="لون آخر"><input type="color" id="bgIn" value="${S.hex(p.bg, '#efe8dc')}"></label></div>
             </div>
@@ -616,14 +800,19 @@
             ${field('اسم المنتج', `<input name="name" value="${esc(p.name)}" required maxlength="80">`)}
             <div class="two">
               ${field('المتجر / الماركة', `<input name="store" value="${esc(p.store)}" maxlength="60">`)}
-              ${field('التصنيف', `<select name="cat">${state.categories.map((c) => `<option value="${esc(c.id)}" ${p.cat === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>`, state.categories.length ? '' : 'أضف تصنيفات من الإعدادات')}
+              ${field('التصنيف', `<select name="cat"><option value="">بلا تصنيف</option>${state.categories.map((c) => `<option value="${esc(c.id)}" ${p.cat === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>`, state.categories.length ? '' : 'أضف تصنيفات من الإعدادات')}
             </div>
             <div class="three">
               ${field(`السعر (${esc(cur())})`, `<input name="price" type="number" min="0" step="0.01" inputmode="decimal" value="${p.price}" required dir="ltr">`)}
               ${field('قبل الخصم', `<input name="compare" type="number" min="0" step="0.01" inputmode="decimal" value="${p.compare || ''}" dir="ltr" placeholder="اختياري">`)}
               ${field('المخزون', `<input name="stock" type="number" min="0" step="1" inputmode="numeric" value="${Number.isFinite(+p.stock) ? p.stock : ''}" dir="ltr">`)}
             </div>
-            ${field('الوصف', `<textarea name="desc" rows="4" maxlength="600">${esc(p.desc)}</textarea>`)}
+            ${field('الوصف', `<textarea name="desc" rows="4" maxlength="2000">${esc(p.desc)}</textarea>`)}
+            <div class="opts-ed">
+              <div class="opts-head"><b>المواصفات</b><small class="muted">مثل المقاس أو اللون. الزبون لازم يختار قبل ما يضيف للسلة.</small></div>
+              <div id="optRows"></div>
+              <button class="btn" type="button" id="optAdd">${ic('plus')}أضف مواصفة</button>
+            </div>
             <div class="toggles">
               ${toggle('featured', p.featured, 'منتج مميز (بيطلع بـ«مختارات لك» وبالواجهة الـ3D)')}
               ${toggle('visible', !p.hidden, 'ظاهر بالمتجر')}
@@ -635,54 +824,81 @@
           ${isNew ? '' : `<button class="btn danger-ghost" type="button" id="edDel">${ic('trash')}حذف</button><button class="btn" type="button" id="edDup">${ic('copy')}نسخة</button>`}
           <span class="grow"></span>
           <button class="btn" type="button" data-act="close-modal">إلغاء</button>
-          <button class="btn violet" type="submit">${isNew ? 'إضافة المنتج' : 'حفظ'}</button>
+          <button class="btn violet" type="submit" id="edSave">${isNew ? 'إضافة المنتج' : 'حفظ'}</button>
         </div>
       </form>`, 'wide');
 
     const f = $('#editor');
     const preview = () => {
+      p.img = p.images[0] || '';
       $('#prevImg').style.setProperty('--bg', S.hex(p.bg, '#efe8dc'));
       $('#prevImg').innerHTML = art(p);
       $('#prevName').textContent = f.name.value || 'اسم المنتج';
       $('#prevStore').textContent = f.store.value;
       const pr = +f.price.value || 0, cmp = +f.compare.value || 0;
       $('#prevPrice').innerHTML = `${money(pr)}${cmp > pr ? ` <s>${money(cmp)}</s>` : ''}`;
+      $('#galleryEd').innerHTML = p.images.map((src, i) => `<div class="g-item${i === 0 ? ' main' : ''}"><span style="--bg:${S.hex(p.bg, '#efe8dc')}">${art({ img: src })}</span>
+        <div class="g-act">${i > 0 ? `<button type="button" data-gmain="${i}" title="اجعلها الأساسية">${ic('star')}</button>` : ''}<button type="button" data-gdel="${i}" title="حذف">${ic('trash')}</button></div></div>`).join('');
+      $('#artTools').hidden = p.images.length > 0;
     };
-    preview();
-    f.addEventListener('input', preview);
+    const optRow = (o, i) => `<div class="opt-row" data-i="${i}"><input class="opt-name" value="${esc(o.name)}" placeholder="الاسم: المقاس" maxlength="30"><input class="opt-vals" value="${esc((o.values || []).join('، '))}" placeholder="القيم: S، M، L، XL" maxlength="300"><button type="button" class="icon-btn sm" data-odel="${i}" aria-label="حذف">${ic('trash')}</button></div>`;
+    const paintOpts = () => { $('#optRows').innerHTML = p.options.map(optRow).join(''); };
+    const readOpts = () => $$('.opt-row', f).map((r) => ({
+      name: $('.opt-name', r).value.trim(),
+      values: $('.opt-vals', r).value.split(/[,،\n]/).map((v) => v.trim()).filter(Boolean).slice(0, 30),
+    })).filter((o) => o.name && o.values.length);
+    preview(); paintOpts();
+    f.addEventListener('input', (e) => { if (!e.target.closest('.opt-row')) preview(); });
+    $('#optAdd').addEventListener('click', () => { p.options = readOpts().concat([{ name: '', values: [] }]); paintOpts(); $('.opt-row:last-child .opt-name', f).focus(); });
     f.addEventListener('click', (e) => {
       const k = e.target.closest('[data-kind]');
       if (k) { p.kind = k.dataset.kind; $$('.kind', f).forEach((b) => b.classList.toggle('on', b === k)); preview(); }
       const sw = e.target.closest('[data-bg]');
       if (sw) { p.bg = sw.dataset.bg; $$('.sw', f).forEach((b) => b.classList.toggle('on', b === sw)); setFg(); preview(); }
+      const gd = e.target.closest('[data-gdel]');
+      if (gd) { p.images.splice(+gd.dataset.gdel, 1); preview(); }
+      const gm = e.target.closest('[data-gmain]');
+      if (gm) { const [x] = p.images.splice(+gm.dataset.gmain, 1); p.images.unshift(x); preview(); }
+      const od = e.target.closest('[data-odel]');
+      if (od) { p.options = readOpts().filter((_, i) => i !== +od.dataset.odel); $$('.opt-row', f)[+od.dataset.odel]?.remove(); }
     });
     const setFg = () => {
-      // pick a drawing color that reads on the chosen background
       const c = parseInt(p.bg.slice(1), 16), lum = (0.299 * (c >> 16) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
       p.fg = lum < 0.45 ? '#efe8dc' : '#665a54'; p.ac = lum < 0.45 ? '#b5806a' : '#332f2d';
     };
     $('#bgIn').addEventListener('input', (e) => { p.bg = e.target.value; $$('.sw', f).forEach((b) => b.classList.remove('on')); setFg(); preview(); });
     $('#imgIn').addEventListener('change', async (e) => {
-      const file = e.target.files[0]; if (!file) return;
-      try {
-        p.img = await shrinkImage(file);
-        $('#imgRm').hidden = false; $('#artTools').hidden = true;
-        preview();
-      } catch { toast('ما قدرنا نقرأ الصورة. جرّب صورة JPG أو PNG.'); }
+      const files = [...e.target.files].slice(0, 8 - p.images.length);
+      if (!files.length) { toast('الحد الأقصى ٨ صور'); return; }
+      const pick = $('#imgPick'); pick.classList.add('busy');
+      $('#imgHint').textContent = `عم نجهّز ${num(files.length)} صورة…`;
+      for (const file of files) {
+        try {
+          const dataUrl = await shrinkImage(file);
+          if (CLOUD) {
+            const blob = await (await fetch(dataUrl)).blob();
+            p.images.push(await cloudApi.upload(blob));
+          } else p.images.push(dataUrl);
+          preview();
+        } catch (ex) { toast(CLOUD ? `ما انرفعت صورة: ${D.friendly(ex)}` : 'ما قدرنا نقرأ الصورة. جرّب JPG أو PNG.'); }
+      }
+      pick.classList.remove('busy'); e.target.value = '';
+      $('#imgHint').textContent = 'أول صورة هي الأساسية.';
     });
-    $('#imgRm').addEventListener('click', () => { delete p.img; $('#imgRm').hidden = true; $('#artTools').hidden = false; preview(); });
     if (!isNew) {
       $('#edDel').addEventListener('click', () => {
-        confirmBox(`تحذف «${p0.name}»؟`, 'المنتج رح يختفي من المتجر بعد النشر. الطلبات القديمة ما بتتأثر.', 'حذف', () => {
+        confirmBox(`تحذف «${p0.name}»؟`, CLOUD ? 'المنتج رح ينشال من المتجر فوراً. الطلبات القديمة ما بتتأثر.' : 'المنتج رح يختفي من المتجر بعد النشر. الطلبات القديمة ما بتتأثر.', 'حذف', async () => {
+          if (CLOUD) { try { await cloudDo(() => cloudApi.deleteProduct(p0.id)); } catch { return; } }
           state.products = state.products.filter((x) => x.id !== p0.id); save(); closeModal(); toast('انحذف المنتج'); renderProducts();
         });
       });
-      $('#edDup').addEventListener('click', () => {
-        const copy = { ...p0, id: Math.max(...state.products.map((x) => +x.id || 0)) + 1, name: `${p0.name} (نسخة)`, featured: false, reviews: 0, rating: 0 };
-        state.products.push(copy); save(); closeModal(); toast('انعملت نسخة'); renderProducts(); editProduct(copy.id);
+      $('#edDup').addEventListener('click', async () => {
+        let copy = { ...p0, id: Math.max(...state.products.map((x) => +x.id || 0)) + 1, name: `${p0.name} (نسخة)`, featured: false, reviews: 0, rating: 0 };
+        if (CLOUD) { try { copy = await cloudDo(() => cloudApi.saveProduct(copy, true)); } catch { return; } }
+        state.products.unshift(copy); save(); closeModal(); toast('انعملت نسخة'); renderProducts(); editProduct(copy.id);
       });
     }
-    f.addEventListener('submit', (e) => {
+    f.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = f.name.value.trim(), price = +f.price.value;
       const err = $('#edErr');
@@ -693,9 +909,17 @@
         compare: +f.compare.value > price ? Math.round(+f.compare.value * 100) / 100 : 0,
         stock: f.stock.value === '' ? 999 : Math.max(0, Math.floor(+f.stock.value)),
         desc: f.desc.value.trim(), featured: f.featured.checked, hidden: !f.visible.checked,
+        options: readOpts(), img: p.images[0] || '',
       });
-      if (!p.compare) delete p.compare;
-      if (isNew) state.products.unshift(p); else Object.assign(p0, p), (!p.img && delete p0.img), (!p.compare && delete p0.compare);
+      let saved = { ...p };
+      if (!saved.compare) delete saved.compare;
+      if (!saved.img) delete saved.img;
+      if (CLOUD) {
+        const btn = $('#edSave'); btn.classList.add('busy');
+        try { saved = await cloudDo(() => cloudApi.saveProduct(saved, isNew)); } catch { btn.classList.remove('busy'); return; }
+      }
+      if (isNew) state.products.unshift(saved);
+      else { Object.keys(p0).forEach((k) => delete p0[k]); Object.assign(p0, saved); }
       save(); closeModal(); toast(isNew ? 'انضاف المنتج' : 'انحفظت التعديلات'); renderProducts();
     });
     setTimeout(() => f.name.focus(), 50);
@@ -803,7 +1027,7 @@
       if (!u) { toast('اكتب اسم PayPal.Me أولاً'); return; }
       window.open(`https://www.paypal.com/paypalme/${encodeURIComponent(u)}/1${f.currencyCode.value}`, '_blank', 'noopener');
     });
-    f.addEventListener('submit', (e) => {
+    f.addEventListener('submit', async (e) => {
       e.preventDefault();
       const wa = S.toLatinDigits(f.whatsapp.value).replace(/[^\d+]/g, '');
       if (f.paypal.checked && !f.paypalUser.value.trim()) { toast('اكتب اسم PayPal.Me أو طفّي PayPal'); f.paypalUser.focus(); return; }
@@ -818,7 +1042,9 @@
           bank: { on: f.bank.checked, bank: f.bankName.value.trim(), holder: f.bankHolder.value.trim(), iban: f.bankIban.value.trim() },
         },
       });
-      save(); toast('انحفظ. لا تنسى تنشر ليوصل للمتجر.'); $('#paySaved').textContent = 'محفوظ ✓';
+      if (CLOUD) { try { await cloudDo(() => cloudApi.saveSettings(), 'انحفظ ووصل للمتجر'); } catch { return; } }
+      else { save(); toast('انحفظ. لا تنسى تنشر ليوصل للمتجر.'); }
+      $('#paySaved').textContent = 'محفوظ ✓';
     });
   };
 
@@ -848,16 +1074,17 @@
       </form>
 
       <section class="card set-card">
-        <div class="set-head"><span class="set-ic">${ic('import')}</span><div><h2>نسخة احتياطية</h2><p class="muted">بيانات اللوحة محفوظة على هالجهاز بس. خود نسخة كل فترة، وفيك ترجعها على أي جهاز.</p></div></div>
+        <div class="set-head"><span class="set-ic">${ic('import')}</span><div><h2>نسخة احتياطية</h2><p class="muted">${CLOUD ? 'البيانات محفوظة على السيرفر. فيك تنزّل نسخة منها كملف للأرشيف.' : 'بيانات اللوحة محفوظة على هالجهاز بس. خود نسخة كل فترة، وفيك ترجعها على أي جهاز.'}</p></div></div>
         <div class="row-btns">
           <button class="btn" type="button" data-act="backup">${ic('download')}تنزيل نسخة احتياطية</button>
-          <label class="btn">${ic('upload')}استرجاع نسخة<input type="file" accept="application/json,.json" id="restoreIn" hidden></label>
+          ${CLOUD ? '' : `<label class="btn">${ic('upload')}استرجاع نسخة<input type="file" accept="application/json,.json" id="restoreIn" hidden></label>`}
         </div>
       </section>
 
       <section class="card set-card">
-        <div class="set-head"><span class="set-ic">${ic('eyeoff')}</span><div><h2>الأمان</h2><p class="muted">اللوحة بتقفل لحالها بعد ١٥ دقيقة بلا حركة.</p></div></div>
-        <form class="pin-form" id="pinForm" novalidate>
+        <div class="set-head"><span class="set-ic">${ic('eyeoff')}</span><div><h2>الأمان</h2><p class="muted">اللوحة بتقفل لحالها بعد ١٥ دقيقة بلا حركة.${CLOUD ? ` مسجّل دخول بـ <b dir="ltr">${esc(D.auth.user.email)}</b>.` : ''}</p></div></div>
+        ${CLOUD ? `<form class="pin-form" id="cpwForm" novalidate><div class="two">${field('كلمة سر جديدة', '<input name="n1" type="password" autocomplete="new-password" dir="ltr">')}${field('أعد كتابتها', '<input name="n2" type="password" autocomplete="new-password" dir="ltr">')}</div><button class="btn" type="submit">تغيير كلمة السر</button></form>` : ''}
+        <form class="pin-form" id="pinForm" novalidate ${CLOUD ? 'hidden' : ''}>
           <div class="three">
             ${field('الرمز الحالي', '<input name="old" type="password" inputmode="numeric" autocomplete="current-password">')}
             ${field('رمز جديد', '<input name="n1" type="password" inputmode="numeric" autocomplete="new-password">')}
@@ -870,9 +1097,9 @@
       <section class="card set-card danger-zone">
         <div class="set-head"><span class="set-ic">${ic('alert')}</span><div><h2>منطقة الخطر</h2></div></div>
         <div class="row-btns">
-          <button class="btn" type="button" data-act="demo">${ic('plus')}أضف طلبات تجريبية</button>
+          ${CLOUD ? '' : `<button class="btn" type="button" data-act="demo">${ic('plus')}أضف طلبات تجريبية</button>`}
           ${demoN ? `<button class="btn" type="button" data-act="clear-demo">${ic('trash')}امسح الطلبات التجريبية (${num(demoN)})</button>` : ''}
-          <button class="btn danger-ghost" type="button" data-act="wipe">${ic('trash')}امسح كل بيانات اللوحة من هالجهاز</button>
+          ${CLOUD ? '<p class="muted">لحذف بيانات من السيرفر، استعمل صفحات الطلبات والمنتجات، أو لوحة Supabase.</p>' : `<button class="btn danger-ghost" type="button" data-act="wipe">${ic('trash')}امسح كل بيانات اللوحة من هالجهاز</button>`}
         </div>
       </section>`;
 
@@ -904,15 +1131,21 @@
         c.name = $('input[type=text]', li).value.trim(); c.c = $('input[type=color]', li).value;
       });
     }
-    f.addEventListener('submit', (e) => {
+    const catsBefore = state.categories.map((c) => c.id);
+    f.addEventListener('submit', async (e) => {
       e.preventDefault();
       collectCats();
       if (state.categories.some((c) => !c.name)) { toast('في تصنيف بلا اسم'); return; }
       if (!f.name.value.trim()) { toast('اكتب اسم المتجر'); f.name.focus(); return; }
       Object.assign(s, { name: f.name.value.trim(), tagline: f.tagline.value.trim(), banner: f.banner.value.trim(), bannerSub: f.bannerSub.value.trim() });
-      save(); toast('انحفظ. لا تنسى تنشر ليوصل للمتجر.'); $('#setSaved').textContent = 'محفوظ ✓';
+      if (CLOUD) {
+        const removed = catsBefore.filter((id) => !state.categories.some((c) => c.id === id));
+        try { await cloudDo(async () => { await cloudApi.saveCategories(removed); await cloudApi.saveSettings(); }, 'انحفظ ووصل للمتجر'); } catch { return; }
+        catsBefore.splice(0, catsBefore.length, ...state.categories.map((c) => c.id));
+      } else { save(); toast('انحفظ. لا تنسى تنشر ليوصل للمتجر.'); }
+      $('#setSaved').textContent = 'محفوظ ✓';
     });
-    $('#restoreIn').addEventListener('change', async (e) => {
+    if (!CLOUD) $('#restoreIn').addEventListener('change', async (e) => {
       const file = e.target.files[0]; if (!file) return;
       try {
         const d = JSON.parse(await file.text());
@@ -921,6 +1154,13 @@
           state = d.state; migrate(); save(); toast('رجعت النسخة'); route();
         });
       } catch { toast('الملف مش نسخة احتياطية صحيحة'); }
+    });
+    if (CLOUD) $('#cpwForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const n1 = e.target.n1.value;
+      if (n1.length < 8) { toast('كلمة السر لازم تكون ٨ أحرف أو أكثر'); return; }
+      if (n1 !== e.target.n2.value) { toast('مش متطابقة'); return; }
+      try { await cloudDo(() => D.auth.updatePassword(n1), 'تغيّرت كلمة السر'); e.target.reset(); } catch { /* shown */ }
     });
     $('#pinForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -938,6 +1178,184 @@
     <button type="button" class="icon-btn sm" data-cat-act="up" aria-label="لفوق"><svg class="ic" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
     <button type="button" class="icon-btn sm" data-cat-act="down" aria-label="لتحت"><svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
     <button type="button" class="icon-btn sm" data-cat-act="del" aria-label="حذف">${ic('trash')}</button></li>`;
+
+  /* ---------- Coupons ---------- */
+  const KIND_T = { percent: 'نسبة مئوية', fixed: 'مبلغ ثابت', shipping: 'توصيل مجاني' };
+  const couponValue = (c) => (c.kind === 'percent' ? `${num(c.value)}٪` : c.kind === 'fixed' ? money(c.value) : 'توصيل مجاني');
+  const couponState = (c) => {
+    const now = Date.now();
+    if (!c.active) return ['موقوف', 'st-unpaid'];
+    if (c.ends && now > c.ends) return ['منتهي', 'st-cancel'];
+    if (c.starts && now < c.starts) return ['مجدول', 'st-conf'];
+    if (c.maxUses && c.uses >= c.maxUses) return ['خلص', 'st-cancel'];
+    return ['فعّال', 'st-done'];
+  };
+  VIEWS.coupons = () => {
+    setActions(`<button class="btn violet" type="button" data-act="new-coupon">${ic('plus')}<span>كوبون جديد</span></button>`);
+    // how often each code was used, from the orders we have
+    const used = new Map();
+    state.orders.filter(live).forEach((o) => { if (o.coupon) used.set(o.coupon, (used.get(o.coupon) || 0) + 1); });
+    const list = state.coupons;
+    $('#view').innerHTML = list.length ? `
+      <div class="coupon-grid">${list.map((c) => { const [t, cls] = couponState(c); return `
+        <button class="coupon-card" type="button" data-coupon="${esc(c.code)}">
+          <span class="cc-top"><b class="cc-code" dir="ltr">${esc(c.code)}</b><span class="badge ${cls}">${t}</span></span>
+          <strong class="cc-val">${couponValue(c)}</strong>
+          <span class="cc-meta">${c.min ? `على طلب فوق ${money(c.min)} · ` : ''}${c.ends ? `لحد ${fmtDate(c.ends)}` : 'بلا تاريخ انتهاء'}</span>
+          <span class="cc-uses">استُعمل ${num(CLOUD ? c.uses : (used.get(c.code) || 0))}${c.maxUses ? ` من ${num(c.maxUses)}` : ''} مرة</span>
+        </button>`; }).join('')}</div>
+      ${!CLOUD ? '<p class="muted pad">بدون سيرفر، الكوبونات بتنحفظ بملف المتجر بشكل مشفّر (hash)، وعدد مرات الاستعمال ما بينضبط. مع السيرفر بيصير الحد الأقصى دقيق.</p>' : ''}`
+      : empty('ما في كوبونات لسا', 'اعمل كود خصم تشاركه مع زبائنك على إنستغرام أو واتساب، مثلاً WELCOME10.', `<button class="btn violet" type="button" data-act="new-coupon">${ic('plus')}كوبون جديد</button>`);
+  };
+  function editCoupon(code) {
+    const c0 = code ? state.coupons.find((c) => c.code === code) : null;
+    const c = c0 ? { ...c0 } : { code: '', kind: 'percent', value: 10, min: 0, starts: null, ends: null, maxUses: null, active: true, uses: 0 };
+    const d = (t) => (t ? new Date(t - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) : '');
+    openModal(`
+      <form class="editor" id="cpForm" novalidate>
+        <div class="modal-head"><h2>${c0 ? 'تعديل الكوبون' : 'كوبون جديد'}</h2><button class="icon-btn" type="button" data-act="close-modal" aria-label="إغلاق">${ic('close')}</button></div>
+        ${field('الكود', `<input name="code" value="${esc(c.code)}" ${c0 ? 'readonly' : ''} maxlength="30" dir="ltr" placeholder="WELCOME10" style="text-transform:uppercase;letter-spacing:.06em">`, c0 ? 'الكود ما بيتغيّر بعد إنشائه' : 'حروف إنجليزية وأرقام بلا فراغات')}
+        <div class="two">
+          ${field('نوع الخصم', `<select name="kind">${Object.keys(KIND_T).map((k) => `<option value="${k}" ${c.kind === k ? 'selected' : ''}>${KIND_T[k]}</option>`).join('')}</select>`)}
+          ${field('القيمة', `<input name="value" type="number" min="0" step="0.01" dir="ltr" value="${c.value}">`, '')}
+        </div>
+        <div class="two">
+          ${field('الحد الأدنى للطلب', `<input name="min" type="number" min="0" step="0.01" dir="ltr" value="${c.min || ''}" placeholder="بلا">`)}
+          ${field('أقصى عدد استعمال', `<input name="maxUses" type="number" min="1" step="1" dir="ltr" value="${c.maxUses || ''}" placeholder="بلا حد">`)}
+        </div>
+        <div class="two">
+          ${field('يبدأ من', `<input name="starts" type="date" value="${d(c.starts)}">`)}
+          ${field('ينتهي في', `<input name="ends" type="date" value="${d(c.ends)}">`)}
+        </div>
+        <div class="toggles">${toggle('active', c.active, 'فعّال')}</div>
+        <p class="err" id="cpErr" hidden></p>
+        <div class="row-btns modal-foot">
+          ${c0 ? `<button class="btn danger-ghost" type="button" id="cpDel">${ic('trash')}حذف</button>` : ''}
+          <span class="grow"></span>
+          <button class="btn" type="button" data-act="close-modal">إلغاء</button>
+          <button class="btn violet" type="submit">${c0 ? 'حفظ' : 'إنشاء الكوبون'}</button>
+        </div>
+      </form>`);
+    const f = $('#cpForm');
+    const syncKind = () => { f.value.disabled = f.kind.value === 'shipping'; f.value.closest('.f').querySelector('span').textContent = f.kind.value === 'percent' ? 'النسبة (٪)' : f.kind.value === 'fixed' ? `المبلغ (${cur()})` : 'القيمة'; };
+    f.kind.addEventListener('change', syncKind); syncKind();
+    if (c0) $('#cpDel').addEventListener('click', () => confirmBox(`تحذف ${c0.code}؟`, 'الكود رح يوقف يشتغل فوراً.', 'حذف', async () => {
+      if (CLOUD) { try { await cloudDo(() => cloudApi.deleteCoupon(c0.code)); } catch { return; } }
+      state.coupons = state.coupons.filter((x) => x.code !== c0.code); save(); toast('انحذف الكوبون'); VIEWS.coupons();
+    }));
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = $('#cpErr');
+      const codeV = f.code.value.trim().toUpperCase();
+      const toT = (v, end) => (v ? new Date(`${v}T${end ? '23:59:59' : '00:00:00'}`).getTime() : null);
+      const nc = {
+        ...c, code: codeV, kind: f.kind.value, value: f.kind.value === 'shipping' ? 0 : Math.max(0, +f.value.value || 0),
+        min: Math.max(0, +f.min.value || 0), maxUses: +f.maxUses.value > 0 ? Math.floor(+f.maxUses.value) : null,
+        starts: toT(f.starts.value), ends: toT(f.ends.value, true), active: f.active.checked,
+      };
+      const fail = (m) => { err.textContent = m; err.hidden = false; };
+      if (!/^[A-Z0-9_-]{2,30}$/.test(codeV)) return fail('الكود لازم يكون حروف إنجليزية أو أرقام (٢ لـ ٣٠)');
+      if (!c0 && state.coupons.some((x) => x.code === codeV)) return fail('في كوبون بهالكود');
+      if (nc.kind === 'percent' && (nc.value <= 0 || nc.value > 100)) return fail('النسبة بين ١ و ١٠٠');
+      if (nc.kind === 'fixed' && nc.value <= 0) return fail('اكتب المبلغ');
+      if (nc.starts && nc.ends && nc.ends < nc.starts) return fail('تاريخ الانتهاء قبل البداية');
+      let saved = nc;
+      if (CLOUD) { try { saved = await cloudDo(() => cloudApi.saveCoupon(nc, !c0)); } catch { return; } }
+      else saved = { ...nc, h: await D.sha(`raff:${codeV}`) };
+      if (c0) Object.assign(c0, saved); else state.coupons.unshift(saved);
+      save(); closeModal(); toast(c0 ? 'انحفظ الكوبون' : `جاهز! شارك الكود ${codeV}`); VIEWS.coupons();
+    });
+    setTimeout(() => (c0 ? f.value : f.code).focus(), 50);
+  }
+
+  /* ---------- Reviews ---------- */
+  let rvFilter = 'pending';
+  VIEWS.reviews = () => {
+    if (!CLOUD) {
+      $('#view').innerHTML = `<div class="card">${empty('التقييمات بتحتاج السيرفر', 'لحتى الزبائن يقيّموا المنتجات يلي اشتروها، لازم يكون عندهم حسابات، وهيدا بيصير بعد ربط المتجر بـ Supabase.', `<a class="btn violet" href="#server">${ic('server')}ربط السيرفر</a>`)}</div>`;
+      return;
+    }
+    setActions(`<button class="btn" type="button" data-act="reload">${ic('refresh')}<span>تحديث</span></button>`);
+    const pm = byPid();
+    const counts = { pending: 0, approved: 0, rejected: 0 };
+    state.reviews.forEach((r) => { counts[r.status]++; });
+    const list = state.reviews.filter((r) => r.status === rvFilter);
+    $('#view').innerHTML = `
+      <div class="chips" role="group">${[['pending', 'بانتظار المراجعة'], ['approved', 'منشورة'], ['rejected', 'مرفوضة']].map(([k, t]) => `<button type="button" data-rvf="${k}" aria-pressed="${rvFilter === k}">${t}<em>${num(counts[k])}</em></button>`).join('')}</div>
+      ${list.length ? `<ul class="rv-admin">${list.map((r) => { const p = pm.get(+r.product_id); return `<li class="card">
+        <div class="rva-head">${thumb(p)}<div><b>${esc(p ? p.name : 'منتج محذوف')}</b><small>${esc(r.author || 'زبون')} · ${fmtDate(new Date(r.created_at).getTime())}</small></div><span class="rva-stars" aria-label="${num(r.rating)} نجوم">${'★'.repeat(r.rating)}<i>${'★'.repeat(5 - r.rating)}</i></span></div>
+        ${r.body ? `<p>${esc(r.body)}</p>` : '<p class="muted">بلا تعليق</p>'}
+        <div class="row-btns">${r.status !== 'approved' ? `<button class="btn violet" type="button" data-rv="${r.id}" data-to="approved">${ic('check')}نشر</button>` : ''}${r.status !== 'rejected' ? `<button class="btn" type="button" data-rv="${r.id}" data-to="rejected">رفض</button>` : ''}<button class="btn danger-ghost" type="button" data-rv="${r.id}" data-to="delete">${ic('trash')}حذف</button></div>
+      </li>`; }).join('')}</ul>` : `<p class="muted pad center">${rvFilter === 'pending' ? 'ما في تقييمات بانتظارك.' : 'ما في شي هون.'}</p>`}`;
+  };
+  async function moderate(id, to) {
+    try {
+      if (to === 'delete') { await cloudDo(() => cloudApi.deleteReview(id), 'انحذف'); state.reviews = state.reviews.filter((r) => r.id !== id); }
+      else { await cloudDo(() => cloudApi.setReview(id, to), to === 'approved' ? 'انتشر التقييم' : 'انرفض'); state.reviews.find((r) => r.id === id).status = to; }
+    } catch { return; }
+    route();
+  }
+
+  /* ---------- Server (Supabase) ---------- */
+  VIEWS.server = () => {
+    const over = ls.get('raff.cloud', null);
+    const site = `${location.origin}${location.pathname.replace(/admin\/?(index\.html)?$/, '')}`;
+    const status = CLOUD
+      ? `<section class="card pub-status clean"><span class="pub-ic">${ic('check')}</span><div><h2>متصل بالسيرفر</h2><p class="muted" dir="ltr" style="text-align:right">${esc(D.cfg.url)}</p>${D.cfg.override ? '<p class="err">هالاتصال مفعّل على هالجهاز بس. اتبع الخطوة ٥ ليشتغل عند كل الزبائن.</p>' : ''}</div></section>`
+      : '<section class="card pub-status pending"><span class="pub-ic">' + ic('server') + '</span><div><h2>المتجر شغّال بلا سيرفر</h2><p class="muted">الطلبات بتوصل على واتساب وما في حسابات للزبائن. اربطه بـ Supabase (مجاني) لتشتغل الحسابات والتقييمات والطلبات التلقائية.</p></div></section>';
+    $('#view').innerHTML = `
+      <div class="publish">
+        ${status}
+        ${CLOUD && state.offerImport ? `<section class="card"><div class="card-head"><h2>انقل بياناتك للسيرفر</h2></div><p class="muted">السيرفر فاضي. فينا ننقل المنتجات والتصنيفات والإعدادات الحالية من ملف المتجر بكبسة وحدة.</p><div class="row-btns" style="margin-top:12px"><button class="btn violet" type="button" data-act="migrate">${ic('upload')}نقل البيانات</button></div></section>` : ''}
+        <ol class="steps">
+          <li class="card"><span class="step-n">١</span><div><h3>اعمل مشروع مجاني على Supabase</h3><p class="muted">ادخل على supabase.com، سجّل بحساب GitHub أو إيميل، واكبس <b>New project</b>. اختار اسم وكلمة سر لقاعدة البيانات، والمنطقة الأقرب لزبائنك.</p></div><a class="btn" href="https://supabase.com/dashboard/new" target="_blank" rel="noopener noreferrer">${ic('server')}فتح Supabase</a></li>
+          <li class="card"><span class="step-n">٢</span><div><h3>شغّل ملف الإعداد</h3><p class="muted">بالمشروع، روح على <b>SQL Editor</b> ← <b>New query</b>، الصق الملف كامل، واكبس <b>Run</b>. بيعمل الجداول وقواعد الأمان.</p></div><button class="btn" type="button" data-act="copy-sql">${ic('copy')}نسخ ملف الإعداد</button></li>
+          <li class="card"><span class="step-n">٣</span><div><h3>اضبط روابط تسجيل الدخول</h3><p class="muted">روح على <b>Authentication</b> ← <b>URL Configuration</b>. حط بـ <b>Site URL</b> وبـ <b>Redirect URLs</b> هالرابط:</p><p class="mono-box" dir="ltr">${esc(site)}</p></div><button class="btn" type="button" data-copy-text="${esc(site)}">${ic('copy')}نسخ الرابط</button></li>
+          <li class="card"><span class="step-n">٤</span><div><h3>جرّب الاتصال من هون</h3><p class="muted">من <b>Project Settings</b> ← <b>API</b>، انسخ <b>Project URL</b> و<b>anon public key</b> (هيدا المفتاح معمول ليكون علني، وقواعد الأمان هي يلي بتحمي البيانات).</p>
+            <form class="srv-form" id="srvForm" novalidate>
+              ${field('Project URL', `<input name="url" dir="ltr" placeholder="https://xxxx.supabase.co" value="${esc((over && over.url) || (D.cfg ? D.cfg.url : ''))}">`)}
+              ${field('anon public key', `<input name="key" dir="ltr" placeholder="eyJhbGciOi..." value="${esc((over && over.key) || (D.cfg ? D.cfg.key : ''))}">`)}
+              <p class="err" id="srvErr" hidden></p>
+              <div class="row-btns"><button class="btn violet" type="submit">${ic('check')}اختبار واستعمال على هالجهاز</button>${over ? `<button class="btn" type="button" data-act="srv-clear">إلغاء التجربة</button>` : ''}</div>
+            </form></div></li>
+          <li class="card"><span class="step-n">٥</span><div><h3>فعّله لكل الزبائن</h3><p class="muted">نزّل ملف <b dir="ltr">config.js</b> وارفعه على GitHub بمجلد <b dir="ltr">store</b> مكان القديم. أو ابعت الرابط والمفتاح لمطوّر الموقع.</p></div><button class="btn" type="button" data-act="dl-config">${ic('download')}تنزيل config.js</button></li>
+        </ol>
+        <details class="card faq"><summary>شو بيتغيّر بعد الربط؟</summary><p class="muted">الزبائن بيقدروا يعملوا حسابات ويتابعوا طلباتهم ويحفظوا عناوينهم ويقيّموا. الطلبات بتوصل لهون فوراً بلا نسخ رموز. المنتجات والإعدادات بتنحفظ مباشرة بلا رفع ملفات. الأسعار والمخزون والكوبونات بتنحسب على السيرفر، فما حدا بيقدر يغيّر سعر من المتصفح.</p></details>
+      </div>`;
+    $('#srvForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = e.target.url.value.trim().replace(/\/+$/, ''), keyV = e.target.key.value.trim();
+      const err = $('#srvErr'); err.hidden = true;
+      if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)) { err.textContent = 'الرابط لازم يكون متل https://xxxx.supabase.co'; err.hidden = false; return; }
+      if (keyV.length < 30) { err.textContent = 'المفتاح قصير. انسخ anon public key كامل.'; err.hidden = false; return; }
+      try {
+        const r = await fetch(`${url}/rest/v1/rpc/admin_exists`, { method: 'POST', headers: { apikey: keyV, Authorization: `Bearer ${keyV}`, 'Content-Type': 'application/json' }, body: '{}' });
+        if (r.status === 404) throw new Error('الاتصال نجح بس الجداول مش موجودة. شغّل ملف الإعداد (الخطوة ٢).');
+        if (r.status === 401 || r.status === 403) throw new Error('المفتاح غلط.');
+        if (!r.ok) throw new Error(`صار خطأ (${r.status}).`);
+      } catch (ex) { err.textContent = ex.message === 'Failed to fetch' ? 'ما قدرنا نوصل للرابط. تأكد منه.' : ex.message; err.hidden = false; return; }
+      ls.set('raff.cloud', { url, key: keyV });
+      toast('الاتصال شغّال! عم نفتح اللوحة على السيرفر…');
+      setTimeout(() => { location.hash = '#dashboard'; location.reload(); }, 900);
+    });
+  };
+  async function migrateToCloud() {
+    let cat = null;
+    try { cat = await S.loadCatalog('../'); } catch { /* ignore */ }
+    const src = cat || { settings: state.settings, categories: [], products: [] };
+    try {
+      await cloudDo(async () => {
+        state.settings = { ...src.settings }; delete state.settings.coupons;
+        state.categories = (src.categories || []).map((c) => ({ ...c }));
+        await cloudApi.saveCategories([]);
+        await cloudApi.saveSettings();
+        const rows = (src.products || []).map((p) => ({ ...D.toRow({ ...p, images: S.safeImg(p.img) && !String(p.img).startsWith('data:') ? [p.img] : [] }), rating: +p.rating || 0, reviews_count: +p.reviews || 0 }));
+        for (let i = 0; i < rows.length; i += 50) must(await sb.from('products').insert(rows.slice(i, i + 50)));
+      }, 'انتقلت البيانات للسيرفر');
+    } catch { return; }
+    await cloudApi.loadAll();
+    route();
+  }
 
   /* ---------- Publish ---------- */
   VIEWS.publish = () => {
@@ -996,7 +1414,7 @@
   /* ---------- Global clicks ---------- */
   document.addEventListener('click', (e) => {
     if (!state) return;
-    const t = e.target.closest('[data-act],[data-order],[data-product],[data-period],[data-ofilter],[data-status],[data-customer]');
+    const t = e.target.closest('[data-act],[data-order],[data-product],[data-period],[data-ofilter],[data-status],[data-customer],[data-coupon],[data-rv],[data-rvf],[data-copy-text]');
     if (!t) return;
     const d = t.dataset;
     if (d.period !== undefined) { period = +d.period; VIEWS.dashboard(); return; }
@@ -1004,20 +1422,43 @@
     if (d.status) { setStatus($('#sheetInner').dataset.order, d.status); return; }
     if (d.order) { openOrder(d.order); return; }
     if (d.product) { if (current !== 'products') location.hash = `#products/${d.product}`; else editProduct(+d.product); return; }
+    if (d.coupon) { editCoupon(d.coupon); return; }
+    if (d.rv) { moderate(+d.rv, d.to); return; }
+    if (d.rvf) { rvFilter = d.rvf; VIEWS.reviews(); return; }
+    if (d.copyText) { navigator.clipboard?.writeText(d.copyText).then(() => toast('انسخ'), () => toast('ما قدرنا ننسخ')); return; }
     if (d.customer) { location.hash = `#orders/phone:${encodeURIComponent(d.customer)}`; return; }
     switch (d.act) {
       case 'lock': lock(); break;
       case 'import': importDialog(); break;
+      case 'reload': cloudApi.loadAll().then(() => { toast('تحدّثت البيانات'); route(); }, (e2) => toast(D.friendly(e2))); break;
       case 'sync': if (syncLocalOrders(false)) route(); break;
       case 'demo': seedDemo(); break;
       case 'close-modal': closeModal(); break;
       case 'close-sheet': closeSheet(); break;
       case 'new-product': editProduct(0); break;
+      case 'new-coupon': editCoupon(null); break;
+      case 'migrate': migrateToCloud(); break;
+      case 'srv-clear': ls.del('raff.cloud'); toast('رجعنا للوضع بلا سيرفر'); setTimeout(() => location.reload(), 600); break;
+      case 'copy-sql':
+        fetch('../supabase/setup.sql', { cache: 'no-cache' }).then((r) => r.text()).then((txt) => navigator.clipboard.writeText(txt)).then(() => toast('انسخ ملف الإعداد. الصقه بـ SQL Editor.'), () => { window.open('../supabase/setup.sql', '_blank', 'noopener'); });
+        break;
+      case 'dl-config': {
+        const over = ls.get('raff.cloud', null) || (D.cfg ? { url: D.cfg.url, key: D.cfg.key } : null);
+        if (!over) { toast('جرّب الاتصال أولاً (الخطوة ٤)'); break; }
+        download('config.js', `/* رَفّ · connection to Supabase. The anon key is public by design; row level security protects the data. */
+window.RAFF_CONFIG = {
+  supabaseUrl: ${JSON.stringify(over.url)},
+  supabaseAnonKey: ${JSON.stringify(over.key)},
+};
+`, 'text/javascript');
+        break;
+      }
       case 'print': printInvoice(d.id); break;
       case 'delete-order':
-        confirmBox(`تحذف الطلب ${d.id}؟`, 'ما في تراجع. إذا بدك تخبّيه بس، غيّر حالته لـ«ملغى».', 'حذف', () => {
+        confirmBox(`تحذف الطلب ${d.id}؟`, 'ما في تراجع. إذا بدك تخبّيه بس، غيّر حالته لـ«ملغى».', 'حذف', async () => {
           const o = state.orders.find((x) => x.id === d.id);
-          if (o && o.stockApplied) applyStock(o, -1);
+          if (CLOUD) { try { await cloudDo(() => cloudApi.deleteOrder(d.id)); } catch { return; } }
+          else if (o && o.stockApplied) applyStock(o, -1);
           state.orders = state.orders.filter((x) => x.id !== d.id); save(); closeSheet(); toast('انحذف الطلب'); route();
         });
         break;

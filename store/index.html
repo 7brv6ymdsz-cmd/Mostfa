@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="color-scheme" content="light">
 <meta name="theme-color" content="#f2f4f5">
@@ -12,7 +12,7 @@
 <link rel="canonical" href="https://7brv6ymdsz-cmd.github.io/Mostfa/store/">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../assets/css/fonts.css">
-<link rel="stylesheet" href="store.css?v=4">
+<link rel="stylesheet" href="store.css?v=5">
 </head>
 <body>
 
@@ -20,20 +20,22 @@
 
 <!-- Side rail (desktop) / bottom bar (mobile) -->
 <nav class="rail" aria-label="التنقل الرئيسي">
-  <a class="rail-logo" href="#top" aria-label="رَفّ، الرئيسية">ر<span class="dot"></span></a>
+  <a class="rail-logo" href="#/" aria-label="رَفّ، الرئيسية">ر<span class="dot"></span></a>
   <ul>
-    <li><a class="rail-btn is-active" href="#top" aria-label="الرئيسية" title="الرئيسية">
+    <li><a class="rail-btn is-active" href="#/" data-nav="home" aria-label="الرئيسية" title="الرئيسية">
       <svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg></a></li>
     <li><button class="rail-btn" type="button" data-action="focus-search" aria-label="ابحث" title="ابحث">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button></li>
-    <li><button class="rail-btn" type="button" data-action="show-saved" aria-label="المحفوظات" title="المحفوظات">
+    <li><a class="rail-btn" href="#/wishlist" data-nav="wishlist" aria-label="المفضلة" title="المفضلة">
       <svg viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10A4.5 4.5 0 0 1 12 7.3 4.5 4.5 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/></svg>
-      <span class="badge" id="savedBadge" hidden>0</span></button></li>
+      <span class="badge" id="savedBadge" hidden>0</span></a></li>
     <li><button class="rail-btn" type="button" data-action="open-cart" aria-label="السلة" title="السلة">
       <svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11.1a1 1 0 0 1-1 .9H7.2a1 1 0 0 1-1-.9z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/></svg>
       <span class="badge" id="cartBadge" hidden>0</span></button></li>
   </ul>
-  <span class="avatar" aria-hidden="true">م</span>
+  <a class="rail-btn rail-account" href="#/account" data-nav="account" aria-label="حسابي" title="حسابي">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+    <span class="avatar" id="railAvatar" hidden></span></a>
 </nav>
 
 <div class="page">
@@ -41,6 +43,16 @@
     <span class="banner-icon" aria-hidden="true">ر</span>
     <p><b id="bannerTitle"></b><small id="bannerSub"></small></p>
     <svg class="banner-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+  </div>
+
+  <div class="topbar">
+    <a class="topbar-brand" href="#/" data-brand-sm>رَفّ<span class="dot"></span></a>
+    <nav class="topbar-links" aria-label="روابط سريعة">
+      <a href="#/track">تتبّع طلبك</a>
+      <a class="acct-pill" id="acctPill" href="#/login">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span id="acctPillText">تسجيل الدخول</span></a>
+    </nav>
   </div>
 
   <header class="hero" id="top">
@@ -86,6 +98,8 @@
     <div id="sections"></div>
   </main>
 
+  <main class="page-view" id="page" hidden tabindex="-1"></main>
+
   <footer class="foot">
     <div class="foot-inner">
       <div class="foot-brand">
@@ -94,6 +108,7 @@
       </div>
       <div class="foot-cols">
         <div id="footShop"><h3>تسوّق</h3></div>
+        <div><h3>حسابي</h3><a href="#/account">حسابي</a><a href="#/orders">طلباتي</a><a href="#/wishlist">المفضلة</a><a href="#/track">تتبّع طلب</a></div>
         <div><h3>المتجر</h3><a href="#picks">مختارات</a><a href="#stores">المتاجر</a><a href="admin/">لوحة الإدارة</a></div>
         <div><h3>مساعدة</h3><a href="#top">التوصيل</a><a href="#top">الإرجاع</a><a href="#top">تواصل معنا</a></div>
       </div>
@@ -112,6 +127,8 @@
     <h2 id="qvName"></h2>
     <p class="qv-rate" id="qvRate"></p>
     <p class="qv-desc" id="qvDesc"></p>
+    <div class="opts" id="qvOpts"></div>
+    <a class="qv-more" id="qvMore" href="#/">صفحة المنتج الكاملة والتقييمات ←</a>
     <div class="qv-actions">
       <span class="qv-price" id="qvPrice"></span>
       <span class="qv-stock" id="qvStock"></span>
@@ -145,21 +162,30 @@
 
   <div class="drawer-view" data-view="checkout" hidden>
     <form class="checkout" id="checkoutForm" novalidate>
+      <div class="co-auth" id="coAuth"></div>
       <fieldset>
         <legend>معلومات التوصيل</legend>
+        <div class="addr-pick" id="addrPick" hidden></div>
         <label class="field" data-f="name"><span>الاسم الكامل</span><input name="name" autocomplete="name" required><em>اكتب اسمك</em></label>
         <label class="field" data-f="phone"><span>رقم الهاتف (واتساب)</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" required><em>رقم الهاتف مش صحيح</em></label>
         <div class="field-row">
           <label class="field" data-f="city"><span>المدينة</span><input name="city" autocomplete="address-level2" required><em>اكتب المدينة</em></label>
         </div>
         <label class="field" data-f="address"><span>العنوان</span><input name="address" autocomplete="street-address" placeholder="الحي، الشارع، البناية" required><em>اكتب العنوان بالتفصيل</em></label>
+        <label class="field" data-f="email"><span>الإيميل (اختياري، لنبعتلك تحديثات الطلب)</span><input name="email" type="email" autocomplete="email" dir="ltr"><em>الإيميل مش صحيح</em></label>
         <label class="field"><span>ملاحظات (اختياري)</span><textarea name="notes" rows="2"></textarea></label>
       </fieldset>
       <fieldset>
         <legend>طريقة الدفع</legend>
         <div class="pay-methods" id="payMethods"></div>
       </fieldset>
+      <div class="coupon" id="couponBox">
+        <input name="coupon" placeholder="كود خصم" autocomplete="off" dir="ltr" aria-label="كود الخصم">
+        <button type="button" class="btn-ghost" data-action="apply-coupon">تطبيق</button>
+      </div>
+      <p class="coupon-msg" id="couponMsg" hidden></p>
       <div class="co-summary" id="coSummary"></div>
+      <p class="err" id="coErr" hidden></p>
       <button class="btn-violet wide" type="submit">تأكيد الطلب</button>
       <p class="secure"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>ما منطلب أرقام بطاقات على هالموقع أبداً.</p>
     </form>
@@ -173,7 +199,11 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="shared.js?v=4"></script>
-<script src="store.js?v=4"></script>
+<script src="config.js?v=5"></script>
+<script src="vendor/supabase.min.js?v=2.45.4"></script>
+<script src="shared.js?v=5"></script>
+<script src="data.js?v=5"></script>
+<script src="store.js?v=5"></script>
+<script src="pages.js?v=5"></script>
 </body>
 </html>
