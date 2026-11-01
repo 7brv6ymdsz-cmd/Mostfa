@@ -542,3 +542,7 @@ a.kpi:hover { transform: translateY(-2px); }
   .side-nav::-webkit-scrollbar { display: none; }
   .side-nav a { flex: 0 0 auto; min-width: 68px; }
 }
+/* lock card must shrink on phones */
+.lock { grid-template-columns: minmax(0, 1fr); }
+.lock-card { width: 100%; max-width: 400px; justify-self: center; }
+.lock-card input::placeholder { letter-spacing: 0; }
