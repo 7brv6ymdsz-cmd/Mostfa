@@ -105,7 +105,7 @@
     if (out.length === 0 && storesHTML) out.push(storesHTML);
     $('#sections').innerHTML = out.join('') || '<p class="empty" style="text-align:center">ما في منتجات لسا.</p>';
 
-    $('#footShop').innerHTML = '<h3>تسوّق</h3>' + CATS.filter((c) => P.some((p) => p.cat === c.id)).slice(0, 5)
+    $('#footShop').innerHTML = '<h2>تسوّق</h2>' + CATS.filter((c) => P.some((p) => p.cat === c.id)).slice(0, 5)
       .map((c) => `<a href="#cat-${esc(c.id)}">${esc(c.name)}</a>`).join('');
     $('#footYear').textContent = `© ${new Date().getFullYear()} ${CFG.name || ''}`;
     observeBands();
@@ -239,11 +239,11 @@
   const openCart = () => {
     lastFocus = document.activeElement;
     view('cart');
-    scrim.hidden = false; cartEl.classList.add('open'); cartEl.setAttribute('aria-hidden', 'false');
+    scrim.hidden = false; cartEl.classList.add('open'); cartEl.inert = false;
     cartEl.querySelector('[data-action="close-cart"]').focus();
   };
   const closeCart = () => {
-    scrim.hidden = true; cartEl.classList.remove('open'); cartEl.setAttribute('aria-hidden', 'true');
+    scrim.hidden = true; cartEl.classList.remove('open'); cartEl.inert = true;
     lastFocus?.focus?.();
   };
 
@@ -516,6 +516,7 @@
     }
   });
   scrim.addEventListener('click', closeCart);
+  addEventListener('hashchange', () => { if (cartEl.classList.contains('open')) { lastFocus = null; closeCart(); } if (qv.open) closeQV(); });
   $('#checkoutForm').coupon.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && cartEl.classList.contains('open')) closeCart();
@@ -588,8 +589,20 @@
     api.isReady = true;
     D.auth.onChange(() => { D.wishlist.load().then(renderSaved).catch(() => {}); });
 
-    const boot = () => load('../assets/js/three.min.js').then(() => load('store3d.js?v=5')).catch(() => { /* keep flat hero */ });
-    if (document.readyState === 'complete') boot(); else addEventListener('load', boot, { once: true });
+    // 3D is a bonus: load it on the visitor's first interaction or when the browser is idle, never on slow/data-saver connections
+    const conn = navigator.connection || {};
+    const skip3d = matchMedia('(prefers-reduced-motion: reduce)').matches || conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '');
+    let booted = false;
+    const boot = () => {
+      if (booted || skip3d || document.documentElement.classList.contains('route-page') && location.hash.length > 2) return;
+      booted = true;
+      ['pointerdown', 'pointermove', 'scroll', 'keydown', 'touchstart'].forEach((ev) => removeEventListener(ev, boot));
+      load('vendor/three.min.js').then(() => load('store3d.js?v=7')).catch(() => { /* keep flat hero */ });
+    };
+    ['pointerdown', 'pointermove', 'scroll', 'keydown', 'touchstart'].forEach((ev) => addEventListener(ev, boot, { once: true, passive: true }));
+    const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1));
+    addEventListener('load', () => setTimeout(() => idle(boot, { timeout: 3000 }), 3500), { once: true });
+    if (window.raffRouter) addEventListener('hashchange', () => { if (!location.hash.startsWith('#/') || location.hash === '#/') boot(); });
   }).catch((e) => {
     $('#sections').innerHTML = `<p class="empty" style="text-align:center">ما قدرنا نحمّل المنتجات. حدّث الصفحة بعد شوي.<br><small>${esc(D.friendly(e))}</small></p>`;
   });

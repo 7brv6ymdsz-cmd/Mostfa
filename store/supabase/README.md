@@ -5,8 +5,8 @@
 
 1. اعمل مشروع على https://supabase.com/dashboard/new
 2. **SQL Editor → New query**: الصق `setup.sql` كامل واكبس **Run**. فيك تشغّله أكتر من مرة بلا مشاكل.
-3. **Authentication → URL Configuration**: حط رابط المتجر (`https://<user>.github.io/<repo>/store/`) بـ **Site URL** وبـ **Redirect URLs**.
-4. **Project Settings → API**: انسخ **Project URL** و **anon public key** وحطهم بـ `store/config.js`.
+3. **Authentication → URL Configuration**: حط رابط المتجر (`https://7brv6ymdsz-cmd.github.io/raff-store/`) بـ **Site URL** وبـ **Redirect URLs**.
+4. **Project Settings → API**: انسخ **Project URL** و **anon public key** وحطهم بـ `config.js`.
    (أو جرّبهم من لوحة الإدارة → «السيرفر والحسابات»، وبعدين نزّل `config.js` من هناك.)
 5. افتح `store/admin/` وأنشئ حساب المدير. أول حساب بيدخل اللوحة بيصير هو المدير، وبعدها ما حدا غيره بيقدر.
 6. من «السيرفر والحسابات» اكبس **نقل البيانات** لتنقل المنتجات والإعدادات الحالية للسيرفر.

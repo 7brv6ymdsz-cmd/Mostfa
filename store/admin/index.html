@@ -10,15 +10,15 @@
 <meta name="theme-color" content="#f2f4f5">
 <title>لوحة الإدارة · رَفّ</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="../../assets/css/fonts.css">
-<link rel="stylesheet" href="admin.css?v=3">
+<link rel="stylesheet" href="../assets/fonts.css">
+<link rel="stylesheet" href="admin.css?v=5">
 </head>
 <body>
 
 <!-- Lock -->
 <div class="lock" id="lock">
   <form class="lock-card" id="lockForm" novalidate>
-    <div class="lock-mark">رَفّ<span class="dot"></span></div>
+    <h1 class="lock-mark">رَفّ<span class="dot"></span><span class="sr"> · لوحة الإدارة</span></h1>
     <p class="lock-sub">لوحة الإدارة</p>
     <p class="lock-msg" id="lockMsg">اكتب الرمز السري لتفتح اللوحة.</p>
     <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••••" aria-label="الرمز السري">
@@ -49,9 +49,11 @@
     <header class="top">
       <div>
         <p class="top-kicker" id="topKicker"></p>
-        <h1 id="topTitle"></h1>
+        <h1 id="topTitle">لوحة الإدارة</h1>
       </div>
       <div class="top-actions" id="topActions"></div>
+      <span class="role-badge" id="roleBadge" hidden></span>
+      <button class="bell" type="button" id="bellBtn" data-act="bell" aria-label="التنبيهات" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><em id="bellCount" hidden>0</em></button>
       <a class="cloud-badge" href="#server" id="cloudBadge" hidden><i></i>متصل بالسيرفر</a>
       <a class="publish-btn" href="#publish" id="publishBtn"><span class="pulse" id="publishDot" hidden></span>نشر التغييرات</a>
     </header>
@@ -62,14 +64,14 @@
 <!-- Modal & drawer shells -->
 <dialog class="modal" id="modal"><div class="modal-inner" id="modalInner"></div></dialog>
 <div class="scrim" id="scrim" hidden></div>
-<aside class="sheet" id="sheet" aria-hidden="true"><div class="sheet-inner" id="sheetInner"></div></aside>
+<aside class="sheet" id="sheet" aria-label="تفاصيل الطلب" inert><div class="sheet-inner" id="sheetInner"></div></aside>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="invoice" id="invoice" aria-hidden="true"></div>
 
 <script src="../config.js?v=5"></script>
 <script src="../vendor/supabase.min.js?v=2.45.4"></script>
 <script src="../shared.js?v=5"></script>
-<script src="../data.js?v=6"></script>
-<script src="admin.js?v=3"></script>
+<script src="../data.js?v=8"></script>
+<script src="admin.js?v=5"></script>
 </body>
 </html>

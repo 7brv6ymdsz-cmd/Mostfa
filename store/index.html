@@ -22,8 +22,11 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="apple-touch-icon" href="og.png">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="../assets/css/fonts.css">
-<link rel="stylesheet" href="store.css?v=6">
+<link rel="preload" href="assets/fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="store.css?v=7">
+<script src="boot.js?v=7"></script>
 </head>
 <body>
 
@@ -67,7 +70,7 @@
   </div>
 
   <header class="hero" id="top">
-    <div class="constellation" id="constellation" aria-label="منتجات مختارة"></div>
+    <section class="constellation" id="constellation" aria-label="منتجات مختارة"></section>
 
     <h1 class="wordmark" data-brand>رَفّ<span class="dot" aria-hidden="true"></span></h1>
     <p class="tagline" id="tagline">متاجر صغيرة، أشياء تحبها</p>
@@ -83,7 +86,7 @@
     <div class="pills" id="pills" role="group" aria-label="التصنيفات"></div>
   </header>
 
-  <main id="main">
+  <main id="main" aria-label="المتجر">
     <section class="band" id="results" hidden aria-live="polite">
       <div class="band-head">
         <h2 id="resultsTitle">النتائج</h2>
@@ -119,7 +122,7 @@
     <div id="sections"></div>
   </main>
 
-  <main class="page-view" id="page" hidden tabindex="-1"></main>
+  <main class="page-view" id="page" aria-label="الصفحة" hidden tabindex="-1"></main>
 
   <footer class="foot">
     <div class="foot-inner">
@@ -129,10 +132,10 @@
         <div class="socials" id="footSocial"></div>
       </div>
       <div class="foot-cols">
-        <div id="footShop"><h3>تسوّق</h3></div>
-        <div><h3>حسابي</h3><a href="#/account">حسابي</a><a href="#/orders">طلباتي</a><a href="#/wishlist">المفضلة</a><a href="#/track">تتبّع طلب</a></div>
-        <div><h3>المتجر</h3><a href="#/about">من نحن</a><a href="#picks">مختارات</a><a href="#/terms">الشروط والخصوصية</a><a href="admin/">لوحة الإدارة</a></div>
-        <div><h3>مساعدة</h3><a href="#/shipping">التوصيل</a><a href="#/returns">الإرجاع</a><a href="#/faq">الأسئلة الشائعة</a><a href="#/contact">تواصل معنا</a></div>
+        <div id="footShop"><h2>تسوّق</h2></div>
+        <div><h2>حسابي</h2><a href="#/account">حسابي</a><a href="#/orders">طلباتي</a><a href="#/wishlist">المفضلة</a><a href="#/track">تتبّع طلب</a></div>
+        <div><h2>المتجر</h2><a href="#/about">من نحن</a><a href="#picks">مختارات</a><a href="#/terms">الشروط والخصوصية</a><a href="admin/">لوحة الإدارة</a></div>
+        <div><h2>مساعدة</h2><a href="#/shipping">التوصيل</a><a href="#/returns">الإرجاع</a><a href="#/faq">الأسئلة الشائعة</a><a href="#/contact">تواصل معنا</a></div>
       </div>
     </div>
     <p class="foot-legal"><span id="footYear"></span> · الدفع يتم عبر PayPal أو تحويل بنكي أو عند الاستلام. ما منطلب ولا منخزّن أرقام بطاقات.</p>
@@ -146,7 +149,7 @@
   <div class="qv-img" id="qvImg"></div>
   <div class="qv-body">
     <p class="qv-store" id="qvStore"></p>
-    <h2 id="qvName"></h2>
+    <h2 id="qvName">المنتج</h2>
     <p class="qv-rate" id="qvRate"></p>
     <p class="qv-desc" id="qvDesc"></p>
     <div class="opts" id="qvOpts"></div>
@@ -161,7 +164,7 @@
 
 <!-- Cart drawer -->
 <div class="scrim" id="scrim" hidden></div>
-<aside class="drawer" id="cart" aria-labelledby="drawerTitle" aria-hidden="true">
+<aside class="drawer" id="cart" aria-labelledby="drawerTitle" inert>
   <div class="drawer-head">
     <button class="icon-btn" type="button" id="drawerBack" data-action="back-to-cart" aria-label="رجوع للسلة" hidden>
       <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -188,12 +191,12 @@
       <fieldset>
         <legend>معلومات التوصيل</legend>
         <div class="addr-pick" id="addrPick" hidden></div>
-        <label class="field" data-f="name"><span>الاسم الكامل</span><input name="name" autocomplete="name" required><em>اكتب اسمك</em></label>
+        <label class="field" data-f="name"><span>الاسم الكامل</span><input name="name" type="text" autocomplete="name" required><em>اكتب اسمك</em></label>
         <label class="field" data-f="phone"><span>رقم الهاتف (واتساب)</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" required><em>رقم الهاتف مش صحيح</em></label>
         <div class="field-row">
-          <label class="field" data-f="city"><span>المدينة</span><input name="city" autocomplete="address-level2" required><em>اكتب المدينة</em></label>
+          <label class="field" data-f="city"><span>المدينة</span><input name="city" type="text" autocomplete="address-level2" required><em>اكتب المدينة</em></label>
         </div>
-        <label class="field" data-f="address"><span>العنوان</span><input name="address" autocomplete="street-address" placeholder="الحي، الشارع، البناية" required><em>اكتب العنوان بالتفصيل</em></label>
+        <label class="field" data-f="address"><span>العنوان</span><input name="address" type="text" autocomplete="address-line1" placeholder="الحي، الشارع، البناية" required><em>اكتب العنوان بالتفصيل</em></label>
         <label class="field" data-f="email"><span>الإيميل (اختياري، لنبعتلك تحديثات الطلب)</span><input name="email" type="email" autocomplete="email" dir="ltr"><em>الإيميل مش صحيح</em></label>
         <label class="field"><span>ملاحظات (اختياري)</span><textarea name="notes" rows="2"></textarea></label>
       </fieldset>
@@ -202,7 +205,7 @@
         <div class="pay-methods" id="payMethods"></div>
       </fieldset>
       <div class="coupon" id="couponBox">
-        <input name="coupon" placeholder="كود خصم" autocomplete="off" dir="ltr" aria-label="كود الخصم">
+        <input name="coupon" type="text" placeholder="كود خصم" autocomplete="off" dir="ltr" aria-label="كود الخصم">
         <button type="button" class="btn-ghost" data-action="apply-coupon">تطبيق</button>
       </div>
       <p class="coupon-msg" id="couponMsg" hidden></p>
@@ -224,8 +227,9 @@
 <script src="config.js?v=5"></script>
 <script src="vendor/supabase.min.js?v=2.45.4"></script>
 <script src="shared.js?v=5"></script>
-<script src="data.js?v=6"></script>
-<script src="store.js?v=6"></script>
-<script src="pages.js?v=6"></script>
+<script src="data.js?v=8"></script>
+<script src="store.js?v=7"></script>
+<script src="pages.js?v=7"></script>
+<script src="help.js?v=7"></script>
 </body>
 </html>
